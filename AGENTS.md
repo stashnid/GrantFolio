@@ -35,3 +35,24 @@
 ## Codex orchestration preference (2026-11-13)
 
 User explicitly requests Astra as coordinator and agents using other models for execution. Follow [Codex collaboration](docs/codex-collaboration.md): Sol for focused research, Terra for implementation, independent review when warranted. Record actual model/role, bounded scope, owned paths and checks. Do not silently claim delegation when an agent was unavailable. Both teammates use Codex; GitHub files are the shared handoff.
+
+
+## Development tools: ECC, gstack and Karpathy principles (2026-11-13)
+
+User selected ECC for development after planning with gstack. Keep the existing accepted plan and the decision/proposal distinctions in STATUS, DECISIONS and architecture.md. Both teammates must follow the [shared Codex setup and session workflow](docs/codex-setup.md); do not assume a teammate has another machine's plugins or global instructions.
+
+| Area | Primary toolkit | Use |
+|---|---|---|
+| Product discovery, scope and plan review | [gstack](https://github.com/garrytan/gstack) | office-hours/autoplan only when planning is requested; preserve agreed scope |
+| React/TypeScript frontend, Express backend, API and PostgreSQL implementation | [ECC](https://github.com/affaan-m/ECC) | Relevant coding-standards, frontend-patterns, backend-patterns, api-design, postgres-patterns and database-migrations guidance |
+| Unit/integration tests, build repair, focused code/security review | ECC | Relevant testing, tdd-workflow, verification-loop and security-review skills; run checks appropriate to the change |
+| Integrated user journeys and visual quality | gstack | qa for fixes, qa-only for reports, design-review for interface review; avoid repeating checks already sufficient |
+| Release preparation, PR and deployment | gstack | ship / land-and-deploy only within explicit user authorization and project billing constraints |
+| Research, data or ML tasks | ECC where relevant | Select specialist skills only for requested tasks; installation does not authorize model training or evaluation spend |
+| Every implementation task | [Karpathy-inspired principles](https://github.com/multica-ai/andrej-karpathy-skills) | Explicit assumptions, simple solutions, surgical changes and verifiable completion |
+
+- Read the selected installed SKILL.md and its required references before use; the table describes responsibilities, not a claim that every named skill is installed or certified on this host.
+- For the current GCP proposal, adapt generic ECC guidance to the existing Cloud Run/Firebase/PostgreSQL/Storage plan. Do not silently switch cloud, framework, identity model or product model provider.
+- For Firebase auth and private data, preserve server-side identity and ownership checks and two-user isolation tests. Keep budget arithmetic deterministic. ECC templates do not override project contracts.
+- Use one primary workflow per stage. Do not run a second planning/review/release pipeline just because it exists in the other toolkit. The Codex model/agent preference above remains in effect; do not import Claude-specific agent/model assumptions from ECC.
+- No automatic continuous learning, additional MCP startup or hook-trust changes as part of the initial install. Use only relevant skills; assess automation separately when needed. Native Codex plugin installation is per-machine, so teammates must install their own copy.

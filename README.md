@@ -218,6 +218,7 @@ GrantFolio має цілодобово перевіряти підключені
 - [Архітектура Google Cloud](docs/architecture.md) і [порядок розгортання](docs/cloud-deployment.md).
 - [Рішення](docs/DECISIONS.md), [задачі](docs/BACKLOG.md), [журнал](docs/WORKLOG.md) та [остання передача роботи](docs/handoffs/2026-11-13-publication.md).
 - [Дослідження моделей](docs/ai-model-research.md) і [план донавчання](docs/ai-training-plan.md).
+- [Налаштування Codex, ECC і gstack для обох учасників](docs/codex-setup.md).
 - [Звіти агентів](docs/agents/README.md), [вимоги викладача](docs/assignment.md), [запис реальних відгуків](docs/user-feedback.md).
 
 ## Структура, запуск і розгортання
