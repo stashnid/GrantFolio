@@ -39,6 +39,8 @@ User explicitly requests Astra as coordinator and agents using other models for 
 
 ## Development tools: ECC, gstack and Karpathy principles (2026-11-13)
 
+**Scope: this repository only.** These tool choices do not apply to unrelated chats or projects. Keep ECC disabled at user level; the trusted project .codex/config.toml enables it here. Use project-local gstack skill copies; the setup guide explains global exclusions.
+
 User selected ECC for development after planning with gstack. Keep the existing accepted plan and the decision/proposal distinctions in STATUS, DECISIONS and architecture.md. Both teammates must follow the [shared Codex setup and session workflow](docs/codex-setup.md); do not assume a teammate has another machine's plugins or global instructions.
 
 | Area | Primary toolkit | Use |
