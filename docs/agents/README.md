@@ -16,3 +16,5 @@
 Попередні звіти в [planning](../planning/README.md) і старі плани в [archive](../archive/README.md) є історією. Майбутня задача використовує [шаблон](TEMPLATE.md); короткий запис прогресу потрібний і до завершення, щоб незакінчену роботу можна було підхопити.
 
 [13.11: Astra + Sol + Terra, Anthropic research](2026-11-13-anthropic.md).
+
+[13.11: ECC setup і спільні правила Codex](2026-11-13-ecc-setup.md).

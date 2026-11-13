@@ -22,3 +22,6 @@ coverage/
 *.tfvars.json
 !*.example.tfvars
 !*.example.tfvars.json
+
+# Machine-local copies of project-scoped Codex skills
+/.agents/skills/
