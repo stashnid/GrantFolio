@@ -1,0 +1,14 @@
+.git
+.env
+.env.*
+!.env.example
+node_modules
+.local
+.gstack
+.firebase
+**/.terraform
+*.tfstate*
+*.tfvars*
+*.tfplan
+*.log
+.DS_Store

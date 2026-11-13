@@ -16,3 +16,9 @@
 Попередні звіти в [planning](../planning/README.md) і старі плани в [archive](../archive/README.md) є історією. Майбутня задача використовує [шаблон](TEMPLATE.md); короткий запис прогресу потрібний і до завершення, щоб незакінчену роботу можна було підхопити.
 
 [13.11: Astra + Sol + Terra, Anthropic research](2026-11-13-anthropic.md).
+
+[13.11: огляд усіх файлів, координатор Codex + Sol](2026-11-13-repository-review.md).
+
+[13.11: координація R0/R1](2026-11-13-local-auth-coordination.md) · [реалізація Terra](2026-11-13-local-auth-implementation.md).
+
+[13.11: координація R2](2026-11-13-case-budget-coordination.md) · [реалізація R2](2026-11-13-case-budget-implementation.md).

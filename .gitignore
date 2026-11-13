@@ -22,3 +22,4 @@ coverage/
 *.tfvars.json
 !*.example.tfvars
 !*.example.tfvars.json
+.firebase/
