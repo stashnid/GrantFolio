@@ -1,0 +1,38 @@
+{
+  "downloaded_at": "2026-11-13",
+  "installed_globally": false,
+  "repositories": [
+    {
+      "name": "taste-skill",
+      "url": "https://github.com/leonxlnx/taste-skill.git",
+      "commit": "f6b76575f949707b4e3c37cd86cb44b0b98643e8",
+      "local_path": ".local/design-references/taste-skill",
+      "license": "MIT",
+      "skill_entrypoints": [
+        "skills/taste-skill/SKILL.md"
+      ]
+    },
+    {
+      "name": "ui-ux-pro-max-skill",
+      "url": "https://github.com/nextlevelbuilder/ui-ux-pro-max-skill.git",
+      "commit": "6ae86f61f520d6ca229d2f40e070410638c908c5",
+      "local_path": ".local/design-references/ui-ux-pro-max-skill",
+      "license": "MIT",
+      "skill_entrypoints": [
+        "cli/assets/skills/design/SKILL.md",
+        "cli/assets/skills/design-system/SKILL.md",
+        "cli/assets/skills/ui-styling/SKILL.md"
+      ]
+    },
+    {
+      "name": "hallmark",
+      "url": "https://github.com/nutlope/hallmark.git",
+      "commit": "04977e15f3dfd6ee4b74c887dac3eb52665d6c92",
+      "local_path": ".local/design-references/hallmark",
+      "license": "MIT",
+      "skill_entrypoints": [
+        "skills/hallmark/SKILL.md"
+      ]
+    }
+  ]
+}

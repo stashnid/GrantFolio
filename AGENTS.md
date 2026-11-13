@@ -58,3 +58,7 @@ User selected ECC for development after planning with gstack. Keep the existing 
 - For Firebase auth and private data, preserve server-side identity and ownership checks and two-user isolation tests. Keep budget arithmetic deterministic. ECC templates do not override project contracts.
 - Use one primary workflow per stage. Do not run a second planning/review/release pipeline just because it exists in the other toolkit. The Codex model/agent preference above remains in effect; do not import Claude-specific agent/model assumptions from ECC.
 - No automatic continuous learning, additional MCP startup or hook-trust changes as part of the initial install. Use only relevant skills; assess automation separately when needed. Native Codex plugin installation is per-machine, so teammates must install their own copy.
+
+## Design quality and downloaded references (2026-11-13)
+
+User requests a competitive, comfortable, carefully designed interface. Follow [design quality](docs/design-quality.md). Downloaded references are project-local under `.local/design-references/`; [manifest](docs/design-references.json) records upstream URLs and pinned versions. Read the relevant skill before applying it, use one primary workflow per stage, and adapt landing-page conventions to GrantFolio's document/budget workflows. Downloading is not global installation. Validate real Ukrainian content, responsive layouts, keyboard access, and empty/loading/error states; do not claim design quality merely because a skill was used.
