@@ -18,7 +18,7 @@
 | Gemini 4 Carbon | Початковий незалежний від Anthropic контроль, Google Cloud та пошукові інструменти | Наявність пошукових можливостей не гарантує правильного читання норм; фактичний доступ перевіряється |
 | GPT-6 Astra API | Додатковий контроль складного reasoning/research при погодженому бюджеті | Окремий доступ і API-бюджет; вибір Astra в Codex не дає автоматично API продукту |
 
-Первинні model cards: [Opus](https://platform.claude.com/docs/en/models/opus-5-5/overview), [Sonnet](https://platform.claude.com/docs/en/models/sonnet-5-5/overview), [Fable](https://platform.claude.com/docs/en/models/fable-5-2/overview), [Carbon](https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/gemini/4-carbon), [Astra](https://developers.openai.com/api/docs/models/gpt-6-astra).
+Первинні model cards: [Opus](https://platform.claude.com/docs/en/models/opus-5-5/overview), [Sonnet](https://platform.claude.com/docs/en/models/sonnet-5-5/overview), [Fable](https://platform.claude.com/docs/en/models/fable-5-2/overview), [Astra](https://developers.openai.com/api/docs/models/gpt-6-astra).
 
 Opus/Sonnet/Fable мають документований доступ через обидва варіанти Claude у GCP; доступ конкретного проєкту ще не перевірений. Основний shortlist: **Opus + Sonnet + Carbon**. Fable/Astra додаються лише якщо залишилися складні невирішені сценарії, щоб не оплачувати безмежний турнір моделей.
 
@@ -90,3 +90,5 @@ Astra координував дослідження; Sol перевіряв Anth
 У [Fable announcement](https://www.anthropic.com/claude-fable-and-mythos-5-2) WANDR search: Fable 82.1% проти Opus 72.3%; AutomationBench 51.4% проти 42.5%. При цьому результати різних метрик Briefcase не дають однакового порядку моделей. Налаштування effort і версія прогону важливі; не змішуємо цифри різних публікацій у єдиний рейтинг. Ці дані обґрунтовують включення Fable до складних контрольних кейсів, але не обов’язкову покупку найдорожчої моделі.
 
 Для якісного незалежного контролю обрано Carbon замість дешевшого Argon: у наведеній Anthropic-оцінці Carbon показує сильний AutomationBench, хоча це не Google-незалежна оцінка грантів. Argon можна додати згодом як цінову альтернативу. Не прирівнювати бізнес-автоматизацію до юридичної достовірності.
+
+Межа перевірки: сторінка Google model card для Carbon не відкрилася через web-інструмент. Його включення спирається на явно позначене порівняння Anthropic; точні API ID, можливості, ціни й доступ Carbon перевірити в Google перед пілотом.
