@@ -36,3 +36,7 @@ Astra скоординував Sol research і Terra specialization plan. Ств
 ## 13.11: Opus, бізнес-право та грантовий research
 
 Astra + Sol + Terra перевірили первинні джерела й уточнили рекомендацію до Opus-first пілота. [Звіт](agents/2026-11-13-business-legal.md), [дослідження](business-legal-model-selection.md). Вибір попередній, тестів моделей не проводили.
+
+## 13.11: research плану виконання
+
+Перевірено предметні джерела й залежності архітектури; [оновлений план](next-work-research.md), [внесок агентів](agents/2026-11-13-next-work.md). Запропоновано перший grant adapter і вертикальні релізи без заяви про вже готовий продукт.

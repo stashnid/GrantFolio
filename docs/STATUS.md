@@ -37,3 +37,5 @@
 Оновлення 13.11: [Claude plan](anthropic-assistant-plan.md), [Astra та агенти в Codex](codex-collaboration.md). Дослідження підготовлене в task branch; остаточного вибору моделі й paid evaluation немає.
 
 [Актуальне дослідження бізнесу/права/грантів](business-legal-model-selection.md): 24-кейсовий план оцінювання, без проведеного benchmark.
+
+Актуальне уточнення порядку виконання: [research і наступні зрізи](next-work-research.md). Пропозиції скорочення/перенесення функцій ще не є прийнятим demo scope.

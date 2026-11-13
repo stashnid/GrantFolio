@@ -234,3 +234,5 @@ GrantFolio має цілодобово перевіряти підключені
 Актуальне уточнення: [Claude для GrantFolio](docs/anthropic-assistant-plan.md), [спільна робота Codex з Astra та агентами](docs/codex-collaboration.md).
 
 [Вибір моделі для бізнес-кейсів, юридичних умов і грантового пошуку](docs/business-legal-model-selection.md).
+
+[Наступні кроки: джерела, зрізи реалізації та календар](docs/next-work-research.md).
