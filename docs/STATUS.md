@@ -20,7 +20,7 @@
 |---|---|
 | Хмара | Google Cloud, вибір користувача |
 | Стек | React/Vite + TypeScript/Express, PostgreSQL; інженерна рекомендація |
-| ШІ | Пілотний кандидат Claude Sonnet 5.5; Gemini — контрольний/SFT варіант. Якість і доступ не перевірені |
+| ШІ | Пілотний кандидат Opus 5.5; Sonnet і Gemini Carbon — контроль. Якість і доступ не перевірені |
 | Навчальні дані | Відсутні, підтверджено користувачем |
 | Перша грантова програма | Ще не обрана; потрібні чинні офіційні умови й форма |
 | Google project / дозволи / квоти | Не перевірені для розгортання |
@@ -35,3 +35,5 @@
 [Остання передача роботи](handoffs/2026-11-13-publication.md) · [Архітектура](architecture.md) · [Рішення](DECISIONS.md) · [Журнал](WORKLOG.md) · [Звіти агентів](agents/README.md)
 
 Оновлення 13.11: [Claude plan](anthropic-assistant-plan.md), [Astra та агенти в Codex](codex-collaboration.md). Дослідження підготовлене в task branch; остаточного вибору моделі й paid evaluation немає.
+
+[Актуальне дослідження бізнесу/права/грантів](business-legal-model-selection.md): 24-кейсовий план оцінювання, без проведеного benchmark.

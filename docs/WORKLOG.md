@@ -32,3 +32,7 @@
 ## 13.11.2026: Anthropic та агенти різних моделей
 
 Astra скоординував Sol research і Terra specialization plan. Створено docs/anthropic-assistant-plan.md і docs/codex-collaboration.md; оновлено AGENTS, README, STATUS і DECISIONS. [Хід роботи й обмеження](agents/2026-11-13-anthropic.md). Платних дій не було.
+
+## 13.11: Opus, бізнес-право та грантовий research
+
+Astra + Sol + Terra перевірили первинні джерела й уточнили рекомендацію до Opus-first пілота. [Звіт](agents/2026-11-13-business-legal.md), [дослідження](business-legal-model-selection.md). Вибір попередній, тестів моделей не проводили.
