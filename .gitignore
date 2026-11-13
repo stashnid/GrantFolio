@@ -2,3 +2,23 @@
 .env
 .env.*
 !.env.example
+
+# Local course reference materials
+/.local/
+
+# Private browser sessions and generated development files
+/.gstack/
+node_modules/
+dist/
+coverage/
+*.log
+
+# Infrastructure state, plans and private values
+**/.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfvars
+*.tfvars.json
+!*.example.tfvars
+!*.example.tfvars.json
