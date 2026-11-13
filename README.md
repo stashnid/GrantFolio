@@ -209,7 +209,7 @@ GrantFolio має цілодобово перевіряти підключені
 
 13 листопада 2026: обрано **Google Cloud**, підготовлено архітектуру й спільні файли роботи. Прототип, хмарні ресурси та донавчання ще не реалізовані; URL демо поки немає. Опис вище є баченням продукту, а не переліком готових функцій.
 
-Плановий стек: React/Vite + TypeScript/Express, Cloud Run, Firebase Authentication, Cloud SQL PostgreSQL, private Cloud Storage, Cloud Tasks/Scheduler. Попередня модель — Gemini 3.5 Flash-Lite; якість і доступ проєкту ще перевіряються. Матеріалів для навчання поки немає.
+Плановий стек: React/Vite + TypeScript/Express, Cloud Run, Firebase Authentication, Cloud SQL PostgreSQL, private Cloud Storage, Cloud Tasks/Scheduler. Для пілота розглядаємо Claude Sonnet 5.5; Gemini лишається альтернативою для порівняння та SFT. Якість і доступ проєкту ще перевіряються. Матеріалів для навчання поки немає.
 
 ## Як продовжити спільну роботу
 
@@ -230,3 +230,5 @@ GrantFolio має цілодобово перевіряти підключені
 | [docs/](docs/STATUS.md) | Плани, стан, рішення, агентські звіти | Спільний контекст команди |
 
 Наразі запускати застосунок ще неможливо: немає package configuration, серверного коду, Dockerfile чи Terraform. Фактичні команди setup/run/test/deploy та HTTPS URL додамо одночасно з перевіреною реалізацією. План запуску є в docs/cloud-deployment.md; він не підмінює робочу інструкцію, потрібну до здачі 19 листопада.
+
+Актуальне уточнення: [Claude для GrantFolio](docs/anthropic-assistant-plan.md), [спільна робота Codex з Astra та агентами](docs/codex-collaboration.md).

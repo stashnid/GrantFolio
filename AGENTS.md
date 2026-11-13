@@ -31,3 +31,7 @@
 - Keep private files in Cloud Storage and persistent state in PostgreSQL; never rely on the container filesystem. Long work must have durable status and bounded retries.
 - Pin supported runtime/dependency versions after checking current documentation. Commit the package lockfile. Do not invent runnable commands before creating the corresponding configuration.
 - Run checks appropriate to the actual change. Currently this is a documentation baseline: no application build, test suite, container or Terraform configuration exists. Each implementation PR must add real run/test/deploy instructions for what it introduces.
+
+## Codex orchestration preference (2026-11-13)
+
+User explicitly requests Astra as coordinator and agents using other models for execution. Follow [Codex collaboration](docs/codex-collaboration.md): Sol for focused research, Terra for implementation, independent review when warranted. Record actual model/role, bounded scope, owned paths and checks. Do not silently claim delegation when an agent was unavailable. Both teammates use Codex; GitHub files are the shared handoff.
