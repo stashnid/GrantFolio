@@ -90,3 +90,14 @@ Terra використав завантажені design/ui-styling рекоме
 ## 14.11: безкоштовна черга і живий асистент
 
 Завершено OmniRoute з Gemini/Groq: реальний fallback після 429 пройшов. Terra додали backend/UI асистента, координатор перевірив 9 тестів і live browser. [Докази/межі](agents/2026-11-14-omniroute-live-assistant.md).
+
+## 14.11 (вечір): історія асистента, grant sources і cloud runbook
+
+Закомічено та запушено результати роботи трьох агентів:
+- **Історія розмов**: збереження exchange (question/reply/revision) у PostgreSQL з owner-scoped ізоляцією, keyset пагінацією по 20, позначенням stale. Модель отримує останні 2 повідомлення з обрізкою як untrusted контекст. Frontend: завантаження при відкритті справи, кнопка попередніх, скасування при зміні case, блокування поля під час запиту. Міграція 004.
+- **Grant sources**: контекст програми «Власна справа» для system prompt з URL першоджерела, спостереженнями та явними null для невідомого раунду/відповідності.
+- **Cloud release runbook**: повністю параметризовані команди провізіонування SQL/Run/Registry/Secrets, build-once-migrate-deploy pipeline, preflight.sh без secret leaking, acceptance/rollback інструкції з pinned documentation. Блокується на конкретному GCP-проєкті та перевірці кредитів.
+- **scripts/dev-local.sh**: зручний запуск з/без OmniRoute в одну команду.
+- Typecheck/build PASS; 11 unit тестів включно з save-failure і integration history test.
+- Три звіти агентів для кожної частини.
+- Оновлено STATUS і WORKLOG; запуш на GitHub.

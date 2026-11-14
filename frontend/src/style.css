@@ -516,3 +516,6 @@ a:focus-visible {
 .assistant-stale {
   font-weight: 600;
 }
+.assistant form {
+  margin-top: 20px;
+}

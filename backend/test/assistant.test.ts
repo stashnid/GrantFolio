@@ -5,9 +5,12 @@ import type { Pool } from "pg";
 import { assistantRouter, configuredResponder, type AssistantResponder } from "../src/assistant.js";
 
 const id = "7e4b2e29-5b26-42dd-b21d-9ec2be62b4f2";
-async function setup(responder?: AssistantResponder, timeout = 100) {
+async function setup(responder?: AssistantResponder, timeout = 100, failSave = false) {
   let revision = 1;
   const db = { query: async (sql: string, values: string[]) => {
+    if (sql.startsWith("SELECT question, reply, revision FROM assistant_exchanges")) return { rowCount: 0, rows: [] };
+    if (sql.startsWith("WITH inserted") && failSave) throw new Error("database details");
+    if (sql.startsWith("WITH inserted")) return { rowCount: 1, rows: [{ id: values[0], question: values[3], reply: values[4], revision: values[5], created_at: "2026-11-14T00:00:00.000Z", current_revision: revision }] };
     if (values[0] !== id || values[1] !== "owner") return { rowCount: 0, rows: [] };
     return { rowCount: 1, rows: [sql.startsWith("SELECT revision") ? { revision } : { title: "Проєкт", revision, details: {}, items: [], total_kopecks: "0" }] };
   } } as unknown as Pool;
@@ -46,7 +49,9 @@ test("response records the snapshot revision and detects concurrent edits; coold
   try {
     const response = await s.call("owner");
     assert.equal(response.status, 200);
-    assert.deepEqual(await response.json(), { reply: "Відповідь", revision: 1, stale: true });
+    const data = await response.json() as { reply: string; revision: number; stale: boolean; exchange: { id: string; question: string; reply: string; revision: number; createdAt: string; stale: boolean } };
+    assert.equal(data.reply, "Відповідь"); assert.equal(data.revision, 1); assert.equal(data.stale, true);
+    assert.deepEqual(data.exchange, { id: data.exchange.id, question: "Порада", reply: "Відповідь", revision: 1, createdAt: "2026-11-14T00:00:00.000Z", stale: true });
     assert.equal((await s.call("owner", id, { expectedRevision: 2, message: "ще" })).status, 429);
   } finally { await s.close(); }
 });
@@ -56,4 +61,11 @@ test("upstream failure and timeout return bounded errors", async () => {
   try { const r = await failure.call("owner"); assert.equal(r.status, 502); assert.deepEqual(await r.json(), { error: "assistant_error" }); } finally { await failure.close(); }
   const timeout = await setup(async () => new Promise<string>(() => {}), 20);
   try { assert.equal((await timeout.call("owner")).status, 504); } finally { await timeout.close(); }
+});
+
+
+test("save failure reports an error without returning an unsaved answer", async () => {
+  const s = await setup(async () => "Unsaved answer", 100, true);
+  try { const response = await s.call("owner"); assert.equal(response.status, 500); assert.deepEqual(await response.json(), { error: "assistant_save_failed" }); }
+  finally { await s.close(); }
 });

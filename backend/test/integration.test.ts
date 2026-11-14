@@ -2,6 +2,9 @@ import { test, after } from "node:test";
 import assert from "node:assert/strict";
 import { once } from "node:events";
 import { initializeApp } from "firebase-admin/app";
+import { getAuth } from "firebase-admin/auth";
+import express from "express";
+import { assistantRouter } from "../src/assistant.js";
 import pg from "pg";
 import { createApp } from "../src/app.js";
 import { configuration } from "../src/config.js";
@@ -412,4 +415,40 @@ test("draft export is private and reflects the saved details and budget revision
   assert.match(result, /3 × 19,99 грн = 59,97 грн/);
   assert.match(result, /2 × 0,01 грн = 0,02 грн/);
   assert.match(result, /Загалом: 59,99 грн/);
+});
+
+
+test("assistant history isolates owners, paginates tied timestamps, and preserves snapshot revisions", async () => {
+  const [a, b] = await Promise.all([signup(), signup()]);
+  const create = async (token: string) => {
+    const response = await fetch(`${base}/api/cases`, { method: "POST", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, body: JSON.stringify({ title: "History" }) });
+    return ((await response.json()) as { case: { id: string } }).case.id;
+  };
+  const [id, otherId] = await Promise.all([create(a), create(b)]);
+  const owner = (await getAuth().verifyIdToken(a)).uid;
+  const otherOwner = (await getAuth().verifyIdToken(b)).uid;
+  const ids = Array.from({ length: 21 }, () => crypto.randomUUID()).sort();
+  for (const exchangeId of ids) await db.query("INSERT INTO assistant_exchanges(id,case_id,owner_id,question,reply,revision,created_at) VALUES($1,$2,$3,'Q','A',0,'2026-01-01T00:00:00Z')", [exchangeId,id,owner]);
+  const foreignId = crypto.randomUUID();
+  await db.query("INSERT INTO assistant_exchanges(id,case_id,owner_id,question,reply,revision) VALUES($1,$2,$3,'private','private',0)", [foreignId,otherId,otherOwner]);
+  let calls = 0;
+  const app = express(); app.use(express.json());
+  app.use(async (req, res, next) => { try { res.locals.uid = (await getAuth().verifyIdToken((req.header("authorization") ?? "").replace(/^Bearer /, ""))).uid; next(); } catch { res.sendStatus(401); } });
+  app.use(assistantRouter(db, async (snapshot) => { calls++; assert.equal(snapshot.conversation?.length, 2); assert.ok(snapshot.conversation?.every(turn => turn.question === "Q" && turn.reply === "A" && !turn.stale && !turn.truncated)); await db.query("UPDATE cases SET revision=revision+1 WHERE id=$1", [id]); return "Generated"; }));
+  const historyServer = app.listen(0, "127.0.0.1"); await once(historyServer, "listening");
+  const port = (historyServer.address() as {port: number}).port;
+  const call = (token: string, path: string, method = "GET", body?: unknown) => fetch(`http://127.0.0.1:${port}/${path}`, { method, headers: { Authorization: `Bearer ${token}`, ...(body ? { "Content-Type": "application/json" } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });
+  try {
+    assert.equal((await call(b, `${id}/assistant/history`)).status, 404);
+    assert.equal((await call(a, `${id}/assistant/history?before=${foreignId}`)).status, 404);
+    const first = await (await call(a, `${id}/assistant/history`)).json() as {exchanges: {id:string; stale:boolean}[]; hasMore:boolean; nextBefore:string};
+    assert.deepEqual(first.exchanges.map(x => x.id), ids.slice(1)); assert.equal(first.hasMore,true); assert.equal(first.nextBefore,ids[1]);
+    const second = await (await call(a, `${id}/assistant/history?before=${first.nextBefore}`)).json() as {exchanges:{id:string}[];hasMore:boolean;nextBefore:null};
+    assert.deepEqual(second.exchanges.map(x => x.id), ids.slice(0,1)); assert.equal(second.hasMore,false); assert.equal(second.nextBefore,null); assert.equal(calls,0);
+    const response = await call(a, `${id}/assistant`, "POST", { expectedRevision: 0, message: "Question" }); assert.equal(response.status,200);
+    const generated = await response.json() as {revision:number;stale:boolean;exchange:{id:string;question:string;revision:number;stale:boolean}};
+    assert.equal(generated.revision,0); assert.equal(generated.stale,true); assert.equal(generated.exchange.question,"Question"); assert.equal(generated.exchange.stale,true);
+    const history = await (await call(a, `${id}/assistant/history`)).json() as {exchanges:{id:string;revision:number;stale:boolean}[]};
+    assert.ok(history.exchanges.every(x => x.revision === 0 && x.stale)); assert.ok(history.exchanges.some(x => x.id === generated.exchange.id)); assert.equal(calls,1);
+  } finally { await new Promise<void>((resolve,reject) => historyServer.close(e => e ? reject(e) : resolve())); }
 });
