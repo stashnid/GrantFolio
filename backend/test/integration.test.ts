@@ -197,12 +197,46 @@ test("cases isolate owners and serialize budget commands", async () => {
     ).status,
     400,
   );
+  // Replaying an older command must not overwrite a later revision.
+  const retry = await call(a, `${path}/budget`, "PUT", command);
+  assert.equal(retry.status, 200);
+  assert.deepEqual(await retry.json(), results[0]);
+  const current = await call(a, path);
+  assert.equal(
+    ((await current.json()) as { case: { revision: number } }).case.revision,
+    2,
+  );
+  assert.equal((await call(b, `${path}/budget`, "PUT", command)).status, 404);
+
+  // All 100 valid items, including multi-byte Ukrainian names, fit the API limit.
+  const maxItems = Array.from({ length: 100 }, () => ({
+    name: "я".repeat(160),
+    quantity: 1,
+    unitPriceKopecks: 1,
+  }));
+  const maxBudget = await call(a, `${path}/budget`, "PUT", {
+    expectedRevision: 2,
+    idempotencyKey: crypto.randomUUID(),
+    items: maxItems,
+  });
+  assert.equal(maxBudget.status, 200);
+  assert.equal(
+    ((await maxBudget.json()) as { case: { totalKopecks: number } }).case
+      .totalKopecks,
+    100,
+  );
+  const oversized = await call(a, `${path}/budget`, "PUT", {
+    expectedRevision: 3,
+    idempotencyKey: crypto.randomUUID(),
+    items: [{ name: "я".repeat(70000), quantity: 1, unitPriceKopecks: 1 }],
+  });
+  assert.equal(oversized.status, 413);
   const history = await db.query(
     "SELECT revision FROM budget_history WHERE case_id=$1 ORDER BY revision",
     [c.id],
   );
   assert.deepEqual(
     history.rows.map((row) => row.revision),
-    [1, 2],
+    [1, 2, 3],
   );
 });

@@ -14,7 +14,7 @@ const profile = z
 export function createApp(db: Pool) {
   const app = express();
   app.disable("x-powered-by");
-  app.use(express.json({ limit: "16kb" }));
+  app.use(express.json({ limit: "128kb" }));
   app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
   app.use(["/api/me", "/api/cases"], async (req, res, next) => {
     const match = /^Bearer ([^\s]+)$/.exec(req.header("authorization") ?? "");

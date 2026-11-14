@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 
 type Item = { name: string; quantity: number; unitPriceKopecks: number };
@@ -27,6 +27,8 @@ export function Cases({ user }: { user: User }) {
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false),
     [ready, setReady] = useState(false),
+    [listLoading, setListLoading] = useState(false),
+    [listFailed, setListFailed] = useState(false),
     [conflict, setConflict] = useState(false);
   const [pending, setPending] = useState<{ id: string; body: string } | null>(
     null,
@@ -38,20 +40,49 @@ export function Cases({ user }: { user: User }) {
       headers: { ...init.headers, Authorization: `Bearer ${token}` },
     });
   }
+  const listRequest = useRef(false);
   async function loadList() {
+    if (listRequest.current) return;
+    listRequest.current = true;
+    setListLoading(true);
+    setListFailed(false);
+    setError("");
     try {
       const r = await request("/api/cases");
       if (!r.ok) throw Error();
       setCases((await r.json()).cases);
       setReady(true);
     } catch {
+      setListFailed(true);
       setError("Не вдалося завантажити чернетки.");
+    } finally {
+      listRequest.current = false;
+      setListLoading(false);
     }
   }
   useEffect(() => {
     void loadList();
   }, [user]);
-  async function select(id: string) {
+  const dirty = selected !== null && JSON.stringify(draft) !== JSON.stringify(toDraft(selected.items));
+  useEffect(() => {
+    if (!dirty && !pending) return;
+    const warn = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [dirty, pending]);
+  function mayLeaveDraft() {
+    if (pending) {
+      setError("Спочатку повторіть збереження бюджету, щоб дізнатися його результат.");
+      return false;
+    }
+    return !dirty || window.confirm("У бюджеті є незбережені зміни. Відкрити іншу чернетку та втратити їх?");
+  }
+  async function select(id: string, discard = false) {
+    if (!discard && selected?.id === id) return;
+    if (!discard && !mayLeaveDraft()) return;
     setBusy(true);
     setError("");
     try {
@@ -71,8 +102,10 @@ export function Cases({ user }: { user: User }) {
   }
   async function create(e: React.FormEvent) {
     e.preventDefault();
+    if (!mayLeaveDraft()) return;
     setBusy(true);
     setError("");
+    setNotice("");
     try {
       const r = await request("/api/cases", {
         method: "POST",
@@ -167,7 +200,7 @@ export function Cases({ user }: { user: User }) {
       setNotice("Бюджет збережено.");
     } catch {
       setError(
-        "Не вдалося отримати відповідь. Повторіть збереження: команда буде надіслана з тим самим ключем.",
+        "Не вдалося отримати відповідь. Повторіть збереження: повторна спроба перевірить результат тієї самої команди. До цього редагування недоступне.",
       );
     } finally {
       setBusy(false);
@@ -203,13 +236,14 @@ export function Cases({ user }: { user: User }) {
           Створити чернетку <span>↗</span>
         </button>
       </form>
-      {!ready && (
-        <button className="link" onClick={() => void loadList()}>
+      {listLoading && <p role="status">Завантаження чернеток…</p>}
+      {listFailed && (
+        <button className="link" disabled={listLoading} onClick={() => void loadList()}>
           Повторити завантаження
         </button>
       )}
       {cases.length > 0 && (
-        <div className="case-list" aria-label="Ваші чернетки">
+        <div className="case-list" role="group" aria-label="Ваші чернетки">
           {cases.map((c) => (
             <button
               className={
@@ -217,6 +251,7 @@ export function Cases({ user }: { user: User }) {
               }
               key={c.id}
               disabled={busy}
+              aria-pressed={selected?.id === c.id}
               onClick={() => void select(c.id)}
             >
               {c.title} <span>↗</span>
@@ -229,13 +264,13 @@ export function Cases({ user }: { user: User }) {
           <h3>{selected.title}</h3>
           <p>Бюджет · версія {selected.revision}</p>
           {draft.map((row, index) => (
-            <div className="budget-row" key={index}>
+            <div className="budget-row" key={index} role="group" aria-label={`Витрата ${index + 1}`}>
               <label>
                 Назва
                 <input
                   maxLength={160}
                   value={row.name}
-                  disabled={busy}
+                  disabled={busy || !!pending}
                   onChange={(e) => edit(index, { name: e.target.value })}
                 />
               </label>
@@ -244,7 +279,7 @@ export function Cases({ user }: { user: User }) {
                 <input
                   inputMode="numeric"
                   value={row.quantity}
-                  disabled={busy}
+                  disabled={busy || !!pending}
                   onChange={(e) => edit(index, { quantity: e.target.value })}
                 />
               </label>
@@ -253,16 +288,18 @@ export function Cases({ user }: { user: User }) {
                 <input
                   inputMode="decimal"
                   value={row.price}
-                  disabled={busy}
+                  disabled={busy || !!pending}
                   onChange={(e) => edit(index, { price: e.target.value })}
                 />
               </label>
               <button
-                className="link"
-                disabled={busy}
+                className="link remove-item"
+                aria-label={`Видалити витрату ${row.name || index + 1}`}
+                disabled={busy || !!pending}
                 onClick={() => {
                   setDraft(draft.filter((_, i) => i !== index));
                   setPending(null);
+                  setNotice("");
                 }}
               >
                 Видалити
@@ -271,10 +308,11 @@ export function Cases({ user }: { user: User }) {
           ))}
           <button
             className="link"
-            disabled={busy || draft.length >= 100}
+            disabled={busy || !!pending || draft.length >= 100}
             onClick={() => {
               setDraft([...draft, { name: "", quantity: "1", price: "0.00" }]);
               setPending(null);
+              setNotice("");
             }}
           >
             + Додати витрату
@@ -293,7 +331,9 @@ export function Cases({ user }: { user: User }) {
             <button
               className="link"
               disabled={busy}
-              onClick={() => void select(selected.id)}
+              onClick={() => {
+                if (window.confirm("Завантажити актуальну версію? Незбережені зміни буде втрачено.")) void select(selected.id, true);
+              }}
             >
               Завантажити актуальну версію
             </button>

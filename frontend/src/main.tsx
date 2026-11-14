@@ -115,7 +115,7 @@ function App() {
           <span className="mark">✳</span> grantfolio
           <span className="dot">.</span>
         </a>
-        <span className="header-note">Простір для ваших ідей</span>
+        <span className="header-note">Гранти та фінансова підтримка бізнесу</span>
         {user && (
           <nav aria-label="Розділи">
             <button
@@ -144,43 +144,43 @@ function App() {
           </button>
         )}
       </header>
-      <main>
-        <section className="intro">
+      <main className={user ? "workspace" : undefined}>
+        {!user && <section className="intro">
           <div className="eyebrow">
-            <span className="small-dot" /> ВАША ІДЕЯ МАЄ ЗНАЧЕННЯ
+            <span className="small-dot" /> GRANTFOLIO ДЛЯ БІЗНЕСУ
           </div>
           <h1>
-            Від задуму
+            Асистент із грантів
             <br />
-            до <em>можливості.</em>
+            для бізнесу
           </h1>
           <p>
-            Місце, де ваша ідея отримує простір для розвитку. Почніть із
-            короткої розповіді про себе та свій бізнес.
+            Підготуйте профіль бізнесу, опишіть проєкт і розрахуйте бюджет
+            для заявки на фінансування.
           </p>
           <div className="intro-bottom">
             <div className="orbit">✳</div>
             <span>
-              КРОК ЗА КРОКОМ
+              ПРОФІЛЬ БІЗНЕСУ
               <br />
-              <b>ДО БІЛЬШОГО</b>
+              <b>ПРОЄКТ І БЮДЖЕТ</b>
             </span>
           </div>
-        </section>
+        </section>}
         <section className="panel">
           {loading ? (
             <p>Завантаження…</p>
           ) : !user ? (
             <div className="card">
               <div className="card-top">
-                <span>01 / ПОЧАТОК</span>
+                <span>ОБЛІКОВИЙ ЗАПИС</span>
                 <span>✳</span>
               </div>
-              <h2>{register ? "Створіть акаунт" : "Раді вас бачити"}</h2>
+              <h2>{register ? "Створіть акаунт" : "Вхід до кабінету"}</h2>
               <p>
                 {register
-                  ? "Зробіть перший крок до свого простору."
-                  : "Увійдіть, щоб повернутися до свого профілю."}
+                  ? "Створіть акаунт, щоб зберігати профіль бізнесу та плани."
+                  : "Увійдіть, щоб працювати з профілем бізнесу та планами."}
               </p>
               <form onSubmit={login}>
                 <label>
@@ -223,7 +223,7 @@ function App() {
                 </button>
               </form>
               <div className="switch">
-                {register ? "Вже маєте акаунт?" : "Ще не з нами?"}{" "}
+                {register ? "Вже маєте акаунт?" : "Немає акаунта?"}{" "}
                 <button
                   className="link"
                   onClick={() => {
@@ -235,15 +235,15 @@ function App() {
                 </button>
               </div>
             </div>
-          ) : tab === "cases" ? (
-            <Cases key={user.uid} user={user} />
           ) : (
-            <div className="card">
+            <>
+            <div hidden={tab !== "cases"}><Cases key={user.uid} user={user} /></div>
+            <div className="card" hidden={tab !== "profile"}>
               <div className="card-top">
                 <span>01 / ВАШ ПРОФІЛЬ</span>
                 <span>✳</span>
               </div>
-              <h2>Розкажіть про себе</h2>
+              <h2>Профіль бізнесу</h2>
               <p>
                 Ці дані збережуться у вашому особистому профілі. Їх можна
                 змінити будь-коли.
@@ -267,7 +267,7 @@ function App() {
                       maxLength={160}
                       value={profile.businessName}
                       onChange={(e) =>
-                        setProfile({ ...profile, businessName: e.target.value })
+                        { setProfile({ ...profile, businessName: e.target.value }); setMessage(""); }
                       }
                       placeholder="Наприклад, майстерня кераміки"
                     />
@@ -278,19 +278,19 @@ function App() {
                       maxLength={120}
                       value={profile.region}
                       onChange={(e) =>
-                        setProfile({ ...profile, region: e.target.value })
+                        { setProfile({ ...profile, region: e.target.value }); setMessage(""); }
                       }
                       placeholder="Наприклад, Львів"
                     />
                   </label>
                   <label>
-                    Коротко про вашу ідею
+                    Опис бізнесу або проєкту
                     <textarea
                       maxLength={2000}
                       rows={4}
                       value={profile.description}
                       onChange={(e) =>
-                        setProfile({ ...profile, description: e.target.value })
+                        { setProfile({ ...profile, description: e.target.value }); setMessage(""); }
                       }
                       placeholder="Чим ви займаєтесь або плануєте займатись?"
                     />
@@ -312,12 +312,13 @@ function App() {
               </form>
               <div className="switch">Ви увійшли як {user.email}</div>
             </div>
+            </>
           )}
         </section>
       </main>
       <footer>
         <span>© GrantFolio</span>
-        <span>ІДЕЇ ВАРТІ РОЗВИТКУ ✳</span>
+        <span>Гранти та фінансова підтримка бізнесу</span>
       </footer>
     </>
   );

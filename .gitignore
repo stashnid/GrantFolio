@@ -23,3 +23,6 @@ coverage/
 !*.example.tfvars
 !*.example.tfvars.json
 .firebase/
+
+# Project-local downloaded agent tools
+/.agents/skills/
