@@ -525,3 +525,353 @@ a:focus-visible {
 .danger:hover {
   color: #e74c3c;
 }
+
+
+/* Case Workspace & Step Navigation */
+.case-workspace {
+  margin-top: 24px;
+}
+.case-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 20px;
+}
+.case-header h3 {
+  margin: 0;
+  font-size: 22px;
+  color: #203c2d;
+}
+.case-revision {
+  font-size: 13px;
+  color: #7b8879;
+}
+.case-steps-nav {
+  display: flex;
+  gap: 8px;
+  border-bottom: 2px solid #e1e5dc;
+  padding-bottom: 8px;
+  margin-bottom: 24px;
+  overflow-x: auto;
+}
+.step-tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: #55685a;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+.step-tab:hover {
+  background: #eef2ea;
+  color: #223e2d;
+}
+.step-tab.active {
+  background: #31513c;
+  color: #ffffff;
+  font-weight: 600;
+}
+.step-num {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.08);
+  font-size: 11px;
+  font-weight: 700;
+}
+.step-tab.active .step-num {
+  background: #e7e9bf;
+  color: #203c2d;
+}
+.assistant-tab {
+  margin-left: auto;
+  border: 1px solid #7c9b83;
+  color: #2a4c35;
+  background: #eef4ec;
+}
+.assistant-tab.active {
+  background: #2a4c35;
+  color: #ffffff;
+}
+
+/* Step Panel & Headers */
+.step-panel {
+  background: #fbfbf8;
+  border: 1px solid #e5e8df;
+  border-radius: 8px;
+  padding: 24px;
+  margin-bottom: 24px;
+}
+.step-panel-header h4 {
+  margin: 0 0 8px;
+  font-size: 18px;
+  color: #203c2d;
+}
+.step-panel-header p {
+  margin: 0 0 18px;
+  font-size: 14px;
+  color: #53685a;
+  line-height: 1.5;
+}
+
+/* AI Helper Banners */
+.step-ai-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #f1f6ed;
+  border-left: 4px solid #477054;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  border-radius: 0 6px 6px 0;
+}
+.step-ai-banner-text strong {
+  display: block;
+  font-size: 14px;
+  color: #22432c;
+  margin-bottom: 3px;
+}
+.step-ai-banner-text span {
+  font-size: 13px;
+  color: #4a6351;
+}
+.ai-call-btn {
+  font-weight: 700;
+  color: #244b30;
+  white-space: nowrap;
+  padding: 6px 12px;
+  background: #ffffff;
+  border: 1px solid #c2d5c5;
+  border-radius: 4px;
+}
+.ai-call-btn:hover {
+  background: #e3ede5;
+}
+
+/* Actions at the end of each step */
+.step-actions {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e8ebe2;
+}
+.secondary-btn {
+  padding: 12px 20px;
+  background: #ffffff;
+  color: #31513c;
+  border: 1px solid #9db5a1;
+  border-radius: 4px;
+  font-size: 14px;
+  font-weight: 600;
+}
+.secondary-btn:hover {
+  background: #eef4ec;
+}
+
+/* Budget Explanations and Templates */
+.budget-rules-card {
+  background: #fdfbf7;
+  border: 1px solid #eddcc6;
+  border-radius: 6px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+.budget-rules-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: #8c572b;
+  margin-bottom: 8px;
+}
+.budget-rules-list {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: #4f4236;
+}
+.budget-templates-section {
+  margin-bottom: 20px;
+}
+.templates-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4b6051;
+  margin-bottom: 10px;
+}
+.templates-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.template-chip {
+  padding: 8px 14px;
+  background: #ffffff;
+  border: 1px solid #b7ccbb;
+  border-radius: 20px;
+  font-size: 13px;
+  color: #25462f;
+  transition: all 0.15s ease;
+}
+.template-chip:hover {
+  background: #e5f0e6;
+  border-color: #558060;
+}
+.template-chip.custom {
+  background: #f7f9f5;
+  border-style: dashed;
+  font-weight: 600;
+}
+
+/* Budget Summary Bar */
+.budget-summary-banner {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #eaf1e8;
+  border: 1px solid #cedec9;
+  border-radius: 6px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+}
+.summary-col {
+  display: flex;
+  flex-direction: column;
+}
+.summary-label {
+  font-size: 12px;
+  color: #546a5a;
+  margin-bottom: 2px;
+}
+.summary-value {
+  font-size: 20px;
+  font-weight: 700;
+  color: #1e3927;
+}
+.summary-value.secondary {
+  font-size: 16px;
+  color: #5a7460;
+}
+.summary-badge {
+  flex-basis: 100%;
+}
+.badge-ok {
+  display: inline-block;
+  padding: 4px 10px;
+  background: #d8eed6;
+  color: #1f5824;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.badge-warn {
+  display: inline-block;
+  padding: 4px 10px;
+  background: #fbebd8;
+  color: #8c5119;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.empty-budget-notice {
+  padding: 20px;
+  text-align: center;
+  color: #647a6b;
+  font-size: 14px;
+  background: #f8faf6;
+  border: 1px dashed #cedccf;
+  border-radius: 6px;
+  margin-bottom: 18px;
+}
+
+/* Quick Prompts for Assistant */
+.quick-prompts-section {
+  margin-bottom: 18px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e6e9e0;
+}
+.quick-prompts-title {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: #4a6150;
+  margin-bottom: 8px;
+}
+.quick-prompts-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.quick-prompt-chip {
+  padding: 7px 13px;
+  background: #f4f8f3;
+  border: 1px solid #c7dac9;
+  border-radius: 16px;
+  font-size: 13px;
+  color: #274832;
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.quick-prompt-chip:hover {
+  background: #e2ede1;
+  border-color: #618c6b;
+}
+
+/* Review & Export Styles */
+.check-complete {
+  color: #1f6426 !important;
+}
+.check-missing {
+  color: #9c6020 !important;
+}
+.readiness-disclaimer {
+  font-size: 12px;
+  color: #677d6d;
+  margin-top: 10px;
+}
+.readiness-dirty {
+  font-size: 12px;
+  color: #b05423;
+  font-weight: 600;
+}
+.export-section {
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #e4e7de;
+}
+.export-section h4,
+.delete-section h4 {
+  margin: 0 0 8px;
+  font-size: 16px;
+}
+.export-section p,
+.delete-section p {
+  font-size: 13px;
+  color: #556c5b;
+  margin: 0 0 14px;
+}
+.export-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.delete-section {
+  margin-top: 28px;
+  padding-top: 18px;
+  border-top: 1px dashed #e6cfce;
+}

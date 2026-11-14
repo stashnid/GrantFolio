@@ -5,7 +5,32 @@ type Props = {
   revision: number;
   blocked: boolean;
   request: (path: string, init?: RequestInit) => Promise<Response>;
+  prefilledPrompt?: string;
+  onClearPrefilled?: () => void;
 };
+
+const QUICK_PROMPTS = [
+  {
+    icon: "💡",
+    label: "Запропонуй статті бюджету",
+    text: "Запропонуй перелік типових витрат та орієнтовний бюджет для мого проєкту з урахуванням дозволених напрямків програми «Власна справа» (обладнання, оренда, сировина, маркетинг).",
+  },
+  {
+    icon: "❓",
+    label: "Що дозволено купувати?",
+    text: "На які саме цілі дозволено витрачати грант «Власна справа», які є обмеження (наприклад, по оренді чи сировині) та що суворо заборонено?",
+  },
+  {
+    icon: "✍️",
+    label: "Як описати клієнтів?",
+    text: "Підкажи, як чітко й переконливо описати моїх клієнтів і канали збуту для грантової комісії на основі мого проєкту.",
+  },
+  {
+    icon: "🔍",
+    label: "Перевір готовність заявки",
+    text: "Проаналізуй збережений опис проєкту та статті бюджету. Яких важливих деталей ще бракує для сильної заявки?",
+  },
+];
 type Exchange = {
   id: string;
   question: string;
@@ -52,7 +77,14 @@ function mergeExchanges(first: Exchange[], second: Exchange[]) {
   });
 }
 
-export function Assistant({ caseId, revision, blocked, request }: Props) {
+export function Assistant({
+  caseId,
+  revision,
+  blocked,
+  request,
+  prefilledPrompt,
+  onClearPrefilled,
+}: Props) {
   const [message, setMessage] = useState("");
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [error, setError] = useState("");
@@ -68,6 +100,13 @@ export function Assistant({ caseId, revision, blocked, request }: Props) {
   const submitController = useRef<AbortController | null>(null);
   const historyBusy = useRef(false);
   const submitBusy = useRef(false);
+
+  useEffect(() => {
+    if (prefilledPrompt) {
+      setMessage(prefilledPrompt);
+      onClearPrefilled?.();
+    }
+  }, [prefilledPrompt, onClearPrefilled]);
 
   async function loadHistory(before: string | null) {
     if (historyBusy.current) return;
@@ -227,6 +266,22 @@ export function Assistant({ caseId, revision, blocked, request }: Props) {
           </article>
         ))}
       </div>
+      <div className="quick-prompts-section">
+        <span className="quick-prompts-title">Швидкі запитання до асистента:</span>
+        <div className="quick-prompts-list">
+          {QUICK_PROMPTS.map((qp, index) => (
+            <button
+              key={index}
+              type="button"
+              className="quick-prompt-chip"
+              disabled={loading || blocked}
+              onClick={() => setMessage(qp.text)}
+            >
+              <span>{qp.icon}</span> {qp.label}
+            </button>
+          ))}
+        </div>
+      </div>
       <form onSubmit={submit}>
         <label htmlFor="assistant-message">Ваше запитання</label>
         <textarea
@@ -236,7 +291,7 @@ export function Assistant({ caseId, revision, blocked, request }: Props) {
           value={message}
           disabled={loading}
           onChange={(event) => setMessage(event.target.value)}
-          placeholder="Наприклад, що варто уточнити в описі проєкту?"
+          placeholder="Наприклад, що варто уточнити в описі проєкту або які статті бюджету додати?"
         />
         {blocked && <p>Спочатку збережіть зміни в описі та бюджеті.</p>}
         <button

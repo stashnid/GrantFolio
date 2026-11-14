@@ -22,32 +22,48 @@ const emptyDetails: Details = {
   implementationPlan: "",
   expectedResults: "",
 };
-const fields: { key: keyof Details; label: string; hint: string }[] = [
+const basicsFields = [
   {
-    key: "projectDescription",
-    label: "Опис проєкту",
-    hint: "Що ви плануєте створити або змінити?",
+    key: "projectDescription" as const,
+    label: "Опис проєкту / ідеї",
+    hint: "Що саме ви створюєте чи розвиваєте? У чому цінність вашого бізнесу?",
+    placeholder: "Наприклад: Відкриття затишної кав'ярні формату «to-go» зі свіжою випічкою та якісною спешелті кавою в спальному районі міста...",
   },
   {
-    key: "customers",
-    label: "Клієнти",
-    hint: "Хто ваші клієнти та які їхні потреби?",
+    key: "customers" as const,
+    label: "Цільова аудиторія (клієнти)",
+    hint: "Хто ваші покупці, які їхні потреби та чому вони оберуть саме вас?",
+    placeholder: "Наприклад: Мешканці навколишніх будинків, молоді батьки, офісні працівники та студенти, які цінують швидкість та якість...",
   },
   {
-    key: "salesChannels",
-    label: "Канали продажу",
-    hint: "Як ви плануєте знаходити клієнтів і продавати?",
+    key: "salesChannels" as const,
+    label: "Канали продажу та залучення",
+    hint: "Як клієнти дізнаються про вас і як ви будете продавати?",
+    placeholder: "Наприклад: Офлайн-точка на першій лінії, сторінка в Instagram, локальна реклама, програма лояльності для постійних гостей...",
+  },
+];
+
+const planFields = [
+  {
+    key: "implementationPlan" as const,
+    label: "Покроковий план реалізації",
+    hint: "Які основні етапи запуску та строки ви передбачаєте?",
+    placeholder: "Наприклад: Місяць 1: підписання договору оренди та ремонт. Місяць 2: закупівля обладнання, оформлення ФОП та отримання дозволів. Місяць 3: найм персоналу, тестовий запуск та відкриття...",
   },
   {
-    key: "implementationPlan",
-    label: "План реалізації",
-    hint: "Які основні кроки та строки ви передбачаєте?",
+    key: "expectedResults" as const,
+    label: "Очікувані результати та робочі місця",
+    hint: "Яких фінансових показників плануєте досягти та скільки людей працевлаштуєте?",
+    placeholder: "Наприклад: Створення 2 офіційних робочих місць (бариста). Вихід на самоокупність на 3-й місяць роботи з прогнозованим доходом від 120 000 грн на місяць...",
   },
-  {
-    key: "expectedResults",
-    label: "Очікувані результати",
-    hint: "Яких результатів ви очікуєте від проєкту?",
-  },
+];
+
+const BUDGET_TEMPLATES = [
+  { label: "⚙️ Обладнання / техніка", name: "Виробниче або торгове обладнання", price: "80000.00" },
+  { label: "🏢 Оренда (до 25%)", name: "Оренда нежитлового приміщення", price: "25000.00" },
+  { label: "📦 Сировина (до 50%)", name: "Сировина та витратні матеріали", price: "35000.00" },
+  { label: "📢 Маркетинг і реклама", name: "Маркетингові послуги та реклама", price: "15000.00" },
+  { label: "💻 ПРРО / Каса / ПЗ", name: "Програмне забезпечення та термінал ПРРО", price: "10000.00" },
 ];
 type Case = {
   id: string;
@@ -86,7 +102,9 @@ export function Cases({
     [ready, setReady] = useState(false),
     [listLoading, setListLoading] = useState(false),
     [listFailed, setListFailed] = useState(false),
-    [conflict, setConflict] = useState(false);
+    [conflict, setConflict] = useState(false),
+    [activeStep, setActiveStep] = useState<"basics" | "plan" | "budget" | "review" | "assistant">("basics"),
+    [assistantPrompt, setAssistantPrompt] = useState<string>("");
   const [pending, setPending] = useState<{
     id: string;
     body: string;
@@ -180,6 +198,8 @@ export function Cases({
       setSelected(c);
       setDraft(toDraft(c.items));
       setDetails(c.details || emptyDetails);
+      setActiveStep("basics");
+      setAssistantPrompt("");
       void loadReadiness(c.id);
       setConflict(false);
       setPending(null);
@@ -208,6 +228,8 @@ export function Cases({
       setSelected(c);
       setDraft([]);
       setDetails(c.details || emptyDetails);
+      setActiveStep("basics");
+      setAssistantPrompt("");
       void loadReadiness(c.id);
       setTitle("");
       setPending(null);
@@ -426,6 +448,25 @@ export function Cases({
     setPending(null);
     setNotice("");
   }
+  function addBudgetItem(name = "", price = "0.00", quantity = "1") {
+    if (draft.length >= 100) return;
+    setDraft([...draft, { name, quantity, price }]);
+    setPending(null);
+    setNotice("");
+  }
+  function askAssistant(promptText: string) {
+    setAssistantPrompt(promptText);
+    setActiveStep("assistant");
+  }
+  const liveBudgetKopecks = draft.reduce((sum, row) => {
+    const price = row.price.trim().replace(",", ".");
+    if (!/^\d+(\.\d{1,2})?$/.test(price) || !/^\d+$/.test(row.quantity)) return sum;
+    const [whole, decimal = ""] = price.split(".");
+    const kopecks = Number(whole) * 100 + Number(decimal.padEnd(2, "0"));
+    const quantity = Number(row.quantity);
+    if (!Number.isSafeInteger(kopecks) || !Number.isSafeInteger(quantity)) return sum;
+    return sum + kopecks * quantity;
+  }, 0);
   return (
     <div className="card cases-card">
       <div className="card-top">
@@ -477,200 +518,425 @@ export function Cases({
         </div>
       )}
       {selected && (
-        <div className="budget">
-          <h3>{selected.title}</h3>
-          <p>Версія чернетки: {selected.revision}</p>
-          <section
-            className="project-details"
-            aria-labelledby="details-heading"
-          >
-            <h4 id="details-heading">Опис проєкту</h4>
-            <p>
-              Запишіть відомі вам факти та плани. Ці дані вводите ви; вони не
-              створені штучним інтелектом.
-            </p>
-            {fields.map((field) => (
-              <label key={field.key}>
-                {field.label}
-                <span className="field-hint">{field.hint}</span>
-                <textarea
-                  rows={3}
-                  maxLength={3000}
-                  value={details[field.key]}
-                  disabled={busy || !!pending}
-                  onChange={(e) => {
-                    setDetails({ ...details, [field.key]: e.target.value });
-                    setNotice("");
-                  }}
-                />
-              </label>
-            ))}
-            <button
-              className="primary"
-              disabled={
-                busy || conflict || (!!pending && pending.kind !== "details")
-              }
-              onClick={() => void saveDetails()}
-            >
-              {busy && pending?.kind === "details"
-                ? "Зберігаємо…"
-                : pending?.kind === "details"
-                  ? "Повторити збереження опису"
-                  : "Зберегти опис"}{" "}
-              <span>↗</span>
-            </button>
-          </section>
-          <section className="readiness" aria-labelledby="readiness-heading">
-            <h4 id="readiness-heading">Що вже заповнено</h4>
-            <p>
-              Список показує лише збережені дані для підготовки. Це не перевірка
-              відповідності умовам гранту.
-            </p>
-            {readiness && (
-              <>
-                <p>Збережена версія у списку: {readiness.revision}</p>
-                <ul>
-                  {readiness.checks.map((check) => (
-                    <li key={check.id}>
-                      <span>{check.label}</span>
-                      <strong>
-                        {check.status === "complete"
-                          ? "Заповнено"
-                          : "Потрібно заповнити"}
-                      </strong>
-                    </li>
-                  ))}
-                </ul>
-                <p>{readiness.disclaimer}</p>
-              </>
-            )}
-            {!readiness && !readinessError && (
-              <p role="status">Завантаження списку…</p>
-            )}
-            {readinessError && (
-              <p>
-                Не вдалося завантажити список.{" "}
-                <button
-                  className="link"
-                  onClick={() => void loadReadiness(selected.id)}
-                >
-                  Повторити
-                </button>
-              </p>
-            )}
-            {dirty && <p>Незбережені зміни ще не враховані у списку.</p>}
-          </section>
-          <h4>Бюджет</h4>
-          {draft.map((row, index) => (
-            <div
-              className="budget-row"
-              key={index}
-              role="group"
-              aria-label={`Витрата ${index + 1}`}
-            >
-              <label>
-                Назва
-                <input
-                  maxLength={160}
-                  value={row.name}
-                  disabled={busy || !!pending}
-                  onChange={(e) => edit(index, { name: e.target.value })}
-                />
-              </label>
-              <label>
-                Кількість
-                <input
-                  inputMode="numeric"
-                  value={row.quantity}
-                  disabled={busy || !!pending}
-                  onChange={(e) => edit(index, { quantity: e.target.value })}
-                />
-              </label>
-              <label>
-                Ціна за одиницю, грн
-                <input
-                  inputMode="decimal"
-                  value={row.price}
-                  disabled={busy || !!pending}
-                  onChange={(e) => edit(index, { price: e.target.value })}
-                />
-              </label>
-              <button
-                className="link remove-item"
-                aria-label={`Видалити витрату ${row.name || index + 1}`}
-                disabled={busy || !!pending}
-                onClick={() => {
-                  setDraft(draft.filter((_, i) => i !== index));
-                  setPending(null);
-                  setNotice("");
-                }}
-              >
-                Видалити
-              </button>
+        <div className="case-workspace">
+          <div className="case-header">
+            <div>
+              <h3>{selected.title}</h3>
+              <span className="case-revision">Версія чернетки: {selected.revision}</span>
             </div>
-          ))}
-          <button
-            className="link"
-            disabled={busy || !!pending || draft.length >= 100}
-            onClick={() => {
-              setDraft([...draft, { name: "", quantity: "1", price: "0.00" }]);
-              setPending(null);
-              setNotice("");
-            }}
-          >
-            + Додати витрату
-          </button>
-          <p>
-            Збережений підсумок: <strong>{money(selected.totalKopecks)}</strong>
-          </p>
-          <button
-            className="primary"
-            disabled={
-              busy || conflict || (!!pending && pending.kind !== "budget")
-            }
-            onClick={() => void save()}
-          >
-            {busy && pending?.kind === "budget"
-              ? "Зберігаємо…"
-              : pending?.kind === "budget"
-                ? "Повторити збереження бюджету"
-                : "Зберегти бюджет"}{" "}
-            <span>↗</span>
-          </button>
-          <Assistant
-            key={selected.id}
-            caseId={selected.id}
-            revision={selected.revision}
-            blocked={dirty || !!pending || busy || conflict}
-            request={request}
-          />
-          <section aria-labelledby="export-heading">
-            <h4 id="export-heading">Завантаження чернетки</h4>
-            <p>
-              Текстовий файл містить збережений опис проєкту та бюджет. Це
-              робоча чернетка, а не офіційна форма грантової заявки.
-            </p>
+          </div>
+
+          <div className="case-steps-nav" role="tablist" aria-label="Етапи проєкту">
             <button
-              className="link"
-              disabled={busy || dirty || !!pending || conflict}
-              onClick={() => void downloadDraft()}
+              type="button"
+              className={activeStep === "basics" ? "step-tab active" : "step-tab"}
+              onClick={() => setActiveStep("basics")}
             >
-              Завантажити чернетку (.txt)
+              <span className="step-num">1</span>
+              <span>Ідея та клієнти</span>
             </button>
-            {(dirty || pending) && (
-              <p>Перед завантаженням збережіть зміни в описі та бюджеті.</p>
-            )}
-          </section>
-          <section aria-labelledby="delete-heading">
-            <h4 id="delete-heading">Видалення</h4>
             <button
-              className="link danger"
-              disabled={busy || !!pending}
-              onClick={() => void deleteDraft()}
+              type="button"
+              className={activeStep === "plan" ? "step-tab active" : "step-tab"}
+              onClick={() => setActiveStep("plan")}
             >
-              Видалити чернетку
+              <span className="step-num">2</span>
+              <span>План запуску</span>
             </button>
-          </section>
+            <button
+              type="button"
+              className={activeStep === "budget" ? "step-tab active" : "step-tab"}
+              onClick={() => setActiveStep("budget")}
+            >
+              <span className="step-num">3</span>
+              <span>Бюджет гранту</span>
+            </button>
+            <button
+              type="button"
+              className={activeStep === "review" ? "step-tab active" : "step-tab"}
+              onClick={() => setActiveStep("review")}
+            >
+              <span className="step-num">4</span>
+              <span>Готовність та експорт</span>
+            </button>
+            <button
+              type="button"
+              className={activeStep === "assistant" ? "step-tab active assistant-tab" : "step-tab assistant-tab"}
+              onClick={() => setActiveStep("assistant")}
+            >
+              <span className="step-icon">🤖</span>
+              <span>ШІ-Асистент</span>
+            </button>
+          </div>
+
+          {activeStep === "basics" && (
+            <section className="step-panel" aria-labelledby="step1-heading">
+              <div className="step-panel-header">
+                <h4 id="step1-heading">Крок 1: Ідея бізнесу та цільові клієнти</h4>
+                <p>
+                  Опишіть вашу ідею, клієнтів та як ви будете продавати. Грантова комісія оцінює розуміння ринку та цінність продукту.
+                </p>
+              </div>
+              <div className="step-ai-banner">
+                <div className="step-ai-banner-text">
+                  <strong>💡 Потрібна порада ШІ для формулювання?</strong>
+                  <span>Асистент допоможе чітко розписати цільову аудиторію та переваги вашого продукту.</span>
+                </div>
+                <button
+                  type="button"
+                  className="link ai-call-btn"
+                  onClick={() => askAssistant("Допоможи мені сформулювати та переконливо описати ідею бізнесу, цільових клієнтів та канали продажу для грантової заявки.")}
+                >
+                  Запитати ШІ-асистента ↗
+                </button>
+              </div>
+              {basicsFields.map((field) => (
+                <label key={field.key}>
+                  {field.label}
+                  <span className="field-hint">{field.hint}</span>
+                  <textarea
+                    rows={4}
+                    maxLength={3000}
+                    placeholder={field.placeholder}
+                    value={details[field.key]}
+                    disabled={busy || !!pending}
+                    onChange={(e) => {
+                      setDetails({ ...details, [field.key]: e.target.value });
+                      setNotice("");
+                    }}
+                  />
+                </label>
+              ))}
+              <div className="step-actions">
+                <button
+                  className="primary"
+                  disabled={busy || conflict || (!!pending && pending.kind !== "details")}
+                  onClick={() => void saveDetails()}
+                >
+                  {busy && pending?.kind === "details"
+                    ? "Зберігаємо…"
+                    : pending?.kind === "details"
+                      ? "Повторити збереження опису"
+                      : "Зберегти крок 1"}{" "}
+                  <span>↗</span>
+                </button>
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => setActiveStep("plan")}
+                >
+                  Далі: План запуску ➡️
+                </button>
+              </div>
+            </section>
+          )}
+
+          {activeStep === "plan" && (
+            <section className="step-panel" aria-labelledby="step2-heading">
+              <div className="step-panel-header">
+                <h4 id="step2-heading">Крок 2: План реалізації та очікувані результати</h4>
+                <p>
+                  Зазначте основні кроки запуску (графік) та ключові результати: плановий дохід та обов'язкове створення нових робочих місць.
+                </p>
+              </div>
+              <div className="step-ai-banner">
+                <div className="step-ai-banner-text">
+                  <strong>💡 Скласти графік запуску разом із ШІ?</strong>
+                  <span>Асистент підкаже помісячні етапи запуску та вимоги до працевлаштування за грантом.</span>
+                </div>
+                <button
+                  type="button"
+                  className="link ai-call-btn"
+                  onClick={() => askAssistant("Запропонуй помісячний план реалізації (етапи запуску) та очікувані результати (включаючи створення робочих місць) для мого проєкту.")}
+                >
+                  Запитати ШІ-асистента ↗
+                </button>
+              </div>
+              {planFields.map((field) => (
+                <label key={field.key}>
+                  {field.label}
+                  <span className="field-hint">{field.hint}</span>
+                  <textarea
+                    rows={4}
+                    maxLength={3000}
+                    placeholder={field.placeholder}
+                    value={details[field.key]}
+                    disabled={busy || !!pending}
+                    onChange={(e) => {
+                      setDetails({ ...details, [field.key]: e.target.value });
+                      setNotice("");
+                    }}
+                  />
+                </label>
+              ))}
+              <div className="step-actions">
+                <button
+                  className="primary"
+                  disabled={busy || conflict || (!!pending && pending.kind !== "details")}
+                  onClick={() => void saveDetails()}
+                >
+                  {busy && pending?.kind === "details"
+                    ? "Зберігаємо…"
+                    : pending?.kind === "details"
+                      ? "Повторити збереження плану"
+                      : "Зберегти крок 2"}{" "}
+                  <span>↗</span>
+                </button>
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => setActiveStep("budget")}
+                >
+                  Далі: Бюджет гранту ➡️
+                </button>
+              </div>
+            </section>
+          )}
+
+          {activeStep === "budget" && (
+            <section className="step-panel" aria-labelledby="step3-heading">
+              <div className="step-panel-header">
+                <h4 id="step3-heading">Крок 3: Бюджет грантової заявки</h4>
+                <p>
+                  Вкажіть конкретні витрати, на які ви плануєте залучити грант. Держава фінансує лише безготівкову оплату затверджених цільових статей.
+                </p>
+              </div>
+
+              <div className="budget-rules-card">
+                <div className="budget-rules-title">📌 Як працює бюджет за програмою «Власна справа»:</div>
+                <ul className="budget-rules-list">
+                  <li><strong>Сума гранту:</strong> до <strong>150 000 грн</strong> (за умови створення 1 робочого місця) або до <strong>250 000 грн</strong> (за 2 робочих місця).</li>
+                  <li><strong>Дозволені статті:</strong> закупівля обладнання, меблів, верстатів; оренда приміщення (до 25% від суми); сировина та матеріали (до 50%); маркетинг; ПРРО/каси.</li>
+                  <li><strong>Заборонено:</strong> зняття готівки, виплата зарплати собі з гранту, сплата старих боргів чи кредитів.</li>
+                </ul>
+              </div>
+
+              <div className="step-ai-banner">
+                <div className="step-ai-banner-text">
+                  <strong>💡 Не знаєте, що включити до кошторису?</strong>
+                  <span>ШІ підбере типові статті витрат та орієнтовні суми під ваш профіль бізнесу.</span>
+                </div>
+                <button
+                  type="button"
+                  className="link ai-call-btn"
+                  onClick={() => askAssistant("Запропонуй конкретні статті витрат з приблизними цінами для мого бізнесу в межах гранту «Власна справа» (до 250 000 грн).")}
+                >
+                  Підібрати витрати з ШІ ↗
+                </button>
+              </div>
+
+              <div className="budget-templates-section">
+                <span className="templates-label">Швидке додавання дозволених статей:</span>
+                <div className="templates-list">
+                  {BUDGET_TEMPLATES.map((tmpl, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      className="template-chip"
+                      disabled={busy || !!pending || draft.length >= 100}
+                      onClick={() => addBudgetItem(tmpl.name, tmpl.price, "1")}
+                    >
+                      {tmpl.label}
+                    </button>
+                  ))}
+                  <button
+                    key="custom"
+                    type="button"
+                    className="template-chip custom"
+                    disabled={busy || !!pending || draft.length >= 100}
+                    onClick={() => addBudgetItem("", "0.00", "1")}
+                  >
+                    + Додати свою витрату
+                  </button>
+                </div>
+              </div>
+
+              <div className="budget-summary-banner">
+                <div className="summary-col">
+                  <span className="summary-label">Загальна сума у формі:</span>
+                  <span className="summary-value">{money(liveBudgetKopecks)}</span>
+                </div>
+                <div className="summary-col">
+                  <span className="summary-label">Збережено в базі:</span>
+                  <span className="summary-value secondary">{money(selected.totalKopecks)}</span>
+                </div>
+                <div className="summary-badge">
+                  {liveBudgetKopecks <= 25000000 ? (
+                    <span className="badge-ok">✓ Вкладається в ліміт 250 000 грн (2 робочих місця)</span>
+                  ) : (
+                    <span className="badge-warn">⚠️ Перевищує 250 000 грн (потрібні власні кошти або ветеранський грант)</span>
+                  )}
+                </div>
+              </div>
+
+              {draft.length === 0 && (
+                <div className="empty-budget-notice">
+                  Поки не додано жодної статті витрат. Скористайтеся кнопками швидкого додавання вище або додайте статтю вручну.
+                </div>
+              )}
+
+              {draft.map((row, index) => (
+                <div
+                  className="budget-row"
+                  key={index}
+                  role="group"
+                  aria-label={`Витрата ${index + 1}`}
+                >
+                  <label>
+                    Назва витрати
+                    <input
+                      maxLength={160}
+                      value={row.name}
+                      placeholder="Наприклад: Професійна кавомашина"
+                      disabled={busy || !!pending}
+                      onChange={(e) => edit(index, { name: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Кількість
+                    <input
+                      inputMode="numeric"
+                      value={row.quantity}
+                      disabled={busy || !!pending}
+                      onChange={(e) => edit(index, { quantity: e.target.value })}
+                    />
+                  </label>
+                  <label>
+                    Ціна за од., грн
+                    <input
+                      inputMode="decimal"
+                      value={row.price}
+                      disabled={busy || !!pending}
+                      onChange={(e) => edit(index, { price: e.target.value })}
+                    />
+                  </label>
+                  <button
+                    className="link remove-item"
+                    aria-label={`Видалити витрату ${row.name || index + 1}`}
+                    disabled={busy || !!pending}
+                    onClick={() => {
+                      setDraft(draft.filter((_, i) => i !== index));
+                      setPending(null);
+                      setNotice("");
+                    }}
+                  >
+                    Видалити
+                  </button>
+                </div>
+              ))}
+
+              <div className="step-actions">
+                <button
+                  className="primary"
+                  disabled={busy || conflict || (!!pending && pending.kind !== "budget")}
+                  onClick={() => void save()}
+                >
+                  {busy && pending?.kind === "budget"
+                    ? "Зберігаємо…"
+                    : pending?.kind === "budget"
+                      ? "Повторити збереження бюджету"
+                      : "Зберегти бюджет"}{" "}
+                  <span>↗</span>
+                </button>
+                <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => setActiveStep("review")}
+                >
+                  Далі: Перевірка та експорт ➡️
+                </button>
+              </div>
+            </section>
+          )}
+
+          {activeStep === "review" && (
+            <section className="step-panel" aria-labelledby="step4-heading">
+              <div className="step-panel-header">
+                <h4 id="step4-heading">Крок 4: Перевірка готовності та експорт чернетки</h4>
+                <p>
+                  Перевірте заповненість усіх блоків. Коли все готово — завантажте робочу чернетку для зручного подання заявки через портал Дія.
+                </p>
+              </div>
+
+              <section className="readiness" aria-labelledby="readiness-heading">
+                <h4 id="readiness-heading">Чек-лист заповненості проєкту</h4>
+                {readiness && (
+                  <>
+                    <p>Збережена версія у списку: {readiness.revision}</p>
+                    <ul>
+                      {readiness.checks.map((check) => (
+                        <li key={check.id}>
+                          <span>{check.label}</span>
+                          <strong className={check.status === "complete" ? "check-complete" : "check-missing"}>
+                            {check.status === "complete" ? "✓ Заповнено" : "Потрібно заповнити"}
+                          </strong>
+                        </li>
+                      ))}
+                    </ul>
+                    <p className="readiness-disclaimer">{readiness.disclaimer}</p>
+                  </>
+                )}
+                {!readiness && !readinessError && (
+                  <p role="status">Завантаження списку…</p>
+                )}
+                {readinessError && (
+                  <p>
+                    Не вдалося завантажити список.{" "}
+                    <button
+                      className="link"
+                      onClick={() => void loadReadiness(selected.id)}
+                    >
+                      Повторити
+                    </button>
+                  </p>
+                )}
+                {dirty && <p className="readiness-dirty">Незбережені зміни ще не враховані у списку.</p>}
+              </section>
+
+              <section className="export-section" aria-labelledby="export-heading">
+                <h4 id="export-heading">Завантаження для порталу Дія</h4>
+                <p>
+                  Сформований файл містить структуровані відповіді та бюджет. Скопіюйте їх під час заповнення офіційної заявки на державному порталі.
+                </p>
+                <button
+                  className="primary export-btn"
+                  disabled={busy || dirty || !!pending || conflict}
+                  onClick={() => void downloadDraft()}
+                >
+                  Завантажити чернетку (.txt) <span>↗</span>
+                </button>
+                {(dirty || pending) && (
+                  <p className="error">Перед завантаженням збережіть зміни в описі та бюджеті.</p>
+                )}
+              </section>
+
+              <section className="delete-section" aria-labelledby="delete-heading">
+                <h4 id="delete-heading">Керування чернеткою</h4>
+                <button
+                  className="link danger"
+                  disabled={busy || !!pending}
+                  onClick={() => void deleteDraft()}
+                >
+                  Видалити чернетку
+                </button>
+              </section>
+            </section>
+          )}
+
+          {activeStep === "assistant" && (
+            <section className="step-panel" aria-labelledby="assistant-tab-heading">
+              <Assistant
+                key={selected.id}
+                caseId={selected.id}
+                revision={selected.revision}
+                blocked={dirty || !!pending || busy || conflict}
+                request={request}
+                prefilledPrompt={assistantPrompt}
+                onClearPrefilled={() => setAssistantPrompt("")}
+              />
+            </section>
+          )}
+
           {conflict && (
             <button
               className="link"
