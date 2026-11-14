@@ -1,9 +1,11 @@
+import { Feedback } from "./Feedback";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   createUserWithEmailAndPassword,
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  sendPasswordResetEmail,
   signOut,
   type User,
 } from "firebase/auth";
@@ -11,7 +13,7 @@ import { auth } from "./firebase";
 import "./style.css";
 import { Cases } from "./Cases";
 import { PilotProgram } from "./PilotProgram";
-import { GrantCatalog, type GrantProgram } from "./GrantCatalog";
+import { GrantCatalog, GRANT_PROGRAMS, type GrantProgram } from "./GrantCatalog";
 type Profile = { businessName: string; region: string; description: string };
 const empty: Profile = { businessName: "", region: "", description: "" };
 function App() {
@@ -41,6 +43,7 @@ function App() {
         setProfile(empty);
         setSavedProfile(empty);
         setCasesDirty(false);
+        setSelectedProgram(null);
         setMessage("");
         setError("");
       }),
@@ -101,6 +104,25 @@ function App() {
       setBusy(false);
     }
   }
+  async function resetPassword() {
+    if (busy) return;
+    if (!email.trim() || !emailInput.current?.reportValidity()) {
+      setError("Вкажіть електронну пошту акаунта.");
+      emailInput.current?.focus();
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await sendPasswordResetEmail(auth, email.trim());
+      setMessage("Якщо акаунт із цією поштою існує, ви отримаєте лист для зміни пароля.");
+    } catch (error) {
+      if ((error as { code?: string }).code === "auth/user-not-found") {
+        setMessage("Якщо акаунт із цією поштою існує, ви отримаєте лист для зміни пароля.");
+      } else setError("Не вдалося надіслати лист. Перевірте адресу та спробуйте ще раз.");
+    } finally { setBusy(false); }
+  }
   async function save(e: React.FormEvent) {
     e.preventDefault();
     if (!user || !profileReady) return;
@@ -152,7 +174,7 @@ function App() {
               aria-current={tab === "catalog" ? "page" : undefined}
               onClick={() => setTab("catalog")}
             >
-              Каталог грантів <span className="nav-badge">5</span>
+              Каталог грантів <span className="nav-badge">{GRANT_PROGRAMS.length}</span>
             </button>
             <button
               className="link nav-tab"
@@ -235,6 +257,7 @@ function App() {
                     {error}
                   </p>
                 )}
+                {message && <p className="success" role="status">{message}</p>}
                 <button className="primary" disabled={busy}>
                   {busy
                     ? "Зачекайте…"
@@ -243,6 +266,7 @@ function App() {
                       : "Увійти"}{" "}
                   <span>↗</span>
                 </button>
+                {!register && <button type="button" className="link" disabled={busy} onClick={() => void resetPassword()}>Забули пароль?</button>}
               </form>
               <div className="switch">
                 {register ? "Вже маєте акаунт?" : "Немає акаунта?"}{" "}
@@ -251,6 +275,7 @@ function App() {
                   onClick={() => {
                     setRegister(!register);
                     setError("");
+                    setMessage("");
                   }}
                 >
                   {register ? "Увійти" : "Зареєструватися"}
@@ -350,6 +375,7 @@ function App() {
               </form>
               <div className="switch">Ви увійшли як {user.email}</div>
             </div>
+            {profileReady && <Feedback user={user} />}
             </>
           )}
         </section>

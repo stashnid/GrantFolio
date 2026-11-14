@@ -18,7 +18,6 @@ for name in PROJECT_ID REGION SERVICE MIGRATION_JOB SQL_INSTANCE DB_NAME DB_USER
 done
 [[ -z "${FIREBASE_AUTH_EMULATOR_HOST:-}" ]] || fail 'Unset production Firebase emulator host'
 [[ "${AUTH_MODE:-}" != emulator && "${VITE_AUTH_MODE:-}" != emulator ]] || fail 'Unset emulator modes'
-[[ -z "${OPENAI_COMPATIBLE_BASE_URL:-}" && -z "${ASSISTANT_API_KEY:-}" ]] || fail 'Cloud assistant route is unresolved; leave assistant variables unset'
 [[ -z "${PROJECT_ID:-}" || "${PROJECT_ID:-}" == "${VITE_FIREBASE_PROJECT_ID:-}" ]] || fail 'Firebase and GCP project must match for this runbook'
 [[ -z "${DB_SECRET_VERSION:-}" || "${DB_SECRET_VERSION:-}" =~ ^[1-9][0-9]*$ ]] || fail 'Use a numeric Secret Manager version'
 if command -v docker >/dev/null 2>&1; then

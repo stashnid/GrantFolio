@@ -266,9 +266,9 @@ export function Assistant({
       <div className="live-chat-header">
         <div className="chat-header-avatar">✳️</div>
         <div className="chat-header-info">
-          <h4 id="live-chat-heading">GrantFolio AI — Ваш грантовий партнер</h4>
+          <h4 id="live-chat-heading">Асистент із грантів</h4>
           <span className="chat-status-indicator">
-            <span className="status-dot-pulse" /> На зв'язку · Веде ваш проєкт
+            <span className="status-dot-pulse" /> Працює зі збереженою версією проєкту
           </span>
         </div>
       </div>
@@ -292,7 +292,7 @@ export function Assistant({
             <div className="welcome-content">
               <strong>Вітаю! Я ваш проактивний консультант з грантів.</strong>
               <p>
-                Я вже бачу збережений опис вашого проєкту. Моя мета — допомогти вам підготувати заявку так, щоб її схвалила комісія. З чого почнемо?
+                Я вже бачу збережений опис вашого проєкту. Допоможу уточнити бізнес-план, структурувати витрати й підготувати чернетку заявки. З чого почнемо?
               </p>
               <div className="welcome-quick-actions">
                 {STARTER_PROMPTS.map((sp, idx) => (
@@ -398,7 +398,7 @@ export function Assistant({
           type="button"
           className="followup-chip"
           disabled={loading || blocked}
-          onClick={() => void sendQuestion("Які ще статті витрат можна включити в межах 250 000 грн за програмою «Власна справа»?")}
+          onClick={() => void sendQuestion("Яких витрат бракує в моєму кошторисі? Врахуй, що умови програми ще потрібно перевірити.")}
         >
           💡 Додай ще статей витрат
         </button>
@@ -431,6 +431,7 @@ export function Assistant({
         <textarea
           rows={2}
           maxLength={2000}
+          aria-label="Ваше запитання"
           value={message}
           disabled={loading}
           onChange={(event) => setMessage(event.target.value)}

@@ -6,6 +6,7 @@ import { commandSchema, totalKopecks } from "./budget.js";
 import { detailsCommandSchema, readiness } from "./project-details.js";
 import { draftExport } from "./draft-export.js";
 import { assistantRouter } from "./assistant.js";
+import { configuredGeminiResponder } from "./gemini.js";
 const idSchema = z.string().uuid();
 const titleSchema = z
   .object({ title: z.string().trim().min(1).max(160) })
@@ -30,7 +31,7 @@ function view(row: CaseRow) {
 }
 export function casesRouter(db: Pool) {
   const router = Router();
-  router.use(assistantRouter(db));
+  router.use(assistantRouter(db, configuredGeminiResponder()));
   router.use((_req, res, next) => {
     res.set("Cache-Control", "no-store");
     next();

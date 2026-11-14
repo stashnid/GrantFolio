@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import type { User } from "firebase/auth";
 import { Assistant } from "./Assistant";
 import type { GrantProgram } from "./GrantCatalog";
@@ -61,8 +62,8 @@ const planFields = [
 
 const BUDGET_TEMPLATES = [
   { label: "⚙️ Обладнання / техніка", name: "Виробниче або торгове обладнання", price: "80000.00" },
-  { label: "🏢 Оренда (до 25%)", name: "Оренда нежитлового приміщення", price: "25000.00" },
-  { label: "📦 Сировина (до 50%)", name: "Сировина та витратні матеріали", price: "35000.00" },
+  { label: "🏢 Оренда", name: "Оренда нежитлового приміщення", price: "25000.00" },
+  { label: "📦 Сировина", name: "Сировина та витратні матеріали", price: "35000.00" },
   { label: "📢 Маркетинг і реклама", name: "Маркетингові послуги та реклама", price: "15000.00" },
   { label: "💻 ПРРО / Каса / ПЗ", name: "Програмне забезпечення та термінал ПРРО", price: "10000.00" },
 ];
@@ -471,24 +472,36 @@ export function Cases({
   }
   const liveBudgetKopecks = draft.reduce((sum, row) => {
     const price = row.price.trim().replace(",", ".");
-    if (!/^\d+(\.\d{1,2})?$/.test(price) || !/^\d+$/.test(row.quantity)) return sum;
+    if (!/^\d+(\.\d{1,2})?$/.test(price) || !/^\d+$/.test(row.quantity)) return Number.NaN;
     const [whole, decimal = ""] = price.split(".");
     const kopecks = Number(whole) * 100 + Number(decimal.padEnd(2, "0"));
     const quantity = Number(row.quantity);
-    if (!Number.isSafeInteger(kopecks) || !Number.isSafeInteger(quantity)) return sum;
-    return sum + kopecks * quantity;
+    if (!Number.isSafeInteger(kopecks) || !Number.isSafeInteger(quantity) || quantity < 1 || quantity > 1000000 || kopecks > 1000000000) return Number.NaN;
+    const total = sum + kopecks * quantity;
+    return Number.isSafeInteger(total) ? total : Number.NaN;
   }, 0);
-  const programMaxKopecks = selectedProgram
-    ? selectedProgram.id === "veteran-grant"
-      ? 100000000
-      : selectedProgram.id === "processing-business"
-        ? 800000000
-        : selectedProgram.id === "agro-gardens"
-          ? 1000000000
-          : 25000000
-    : 25000000;
   return (
     <div className="card cases-card">
+      {selected && createPortal(
+        <article className="print-document" aria-label="Чернетка проєкту для друку">
+          <p>GrantFolio · Робоча чернетка</p>
+          <h1>{selected.title}</h1>
+          <p>Збережена версія: {selected.revision}. Документ не замінює офіційної форми заявки.</p>
+          {[...basicsFields, ...planFields].map((field) => (
+            <section key={field.key}>
+              <h2>{field.label}</h2>
+              <p className="print-paragraph">{selected.details[field.key] || "Не заповнено"}</p>
+            </section>
+          ))}
+          <h2>Бюджет</h2>
+          <table>
+            <thead><tr><th>Витрата</th><th>Кількість</th><th>Ціна за одиницю</th><th>Сума</th></tr></thead>
+            <tbody>{selected.items.map((item, index) => <tr key={index}><td>{item.name}</td><td>{item.quantity}</td><td>{money(item.unitPriceKopecks)}</td><td>{money(item.quantity * item.unitPriceKopecks)}</td></tr>)}</tbody>
+          </table>
+          <p><strong>Разом: {money(selected.totalKopecks)}</strong></p>
+          <p>Умови участі, актуальний прийом і дозволені витрати перевіряйте на офіційній сторінці програми.</p>
+        </article>, document.body
+      )}
       <div className="card-top">
         <span>02 / ЧЕРНЕТКИ ПЛАНУ</span>
         <span>✳</span>
@@ -549,7 +562,7 @@ export function Cases({
           {selectedProgram ? (
             <div className="applied-program-banner">
               <div className="applied-program-info">
-                <span className="applied-program-tag">🎯 Обрана програма гранту:</span>
+                <span className="applied-program-tag">Довідкова програма:</span>
                 <strong>{selectedProgram.title}</strong>
                 <span className="applied-program-desc">
                   Фінансування: <strong>{selectedProgram.amount}</strong> · Ключова умова: {selectedProgram.keyCondition}
@@ -568,8 +581,8 @@ export function Cases({
           ) : (
             <div className="applied-program-banner neutral">
               <div className="applied-program-info">
-                <span className="applied-program-tag">🎯 Базова програма:</span>
-                <strong>Державний мікрогрант «Власна справа» (до 250 000 грн)</strong>
+                <span className="applied-program-tag">Пілотна програма:</span>
+                <strong>Програма «Власна справа»</strong>
                 <span className="applied-program-desc">
                   Ви можете обрати іншу програму у вкладці «Каталог грантів» або готувати заявку під Власну справу.
                 </span>
@@ -687,7 +700,7 @@ export function Cases({
               <div className="step-panel-header">
                 <h4 id="step2-heading">Крок 2: План реалізації та очікувані результати</h4>
                 <p>
-                  Зазначте основні кроки запуску (графік) та ключові результати: плановий дохід та обов'язкове створення нових робочих місць.
+                  Зазначте основні кроки запуску (графік) та ключові результати: плановий дохід та робочі місця, якщо вони передбачені вашим планом і умовами програми.
                 </p>
               </div>
               <div className="step-ai-banner">
@@ -754,11 +767,11 @@ export function Cases({
               </div>
 
               <div className="budget-rules-card">
-                <div className="budget-rules-title">📌 Як працює бюджет за програмою «Власна справа»:</div>
+                <div className="budget-rules-title">Підготовка кошторису</div>
                 <ul className="budget-rules-list">
-                  <li><strong>Сума гранту:</strong> до <strong>150 000 грн</strong> (за умови створення 1 робочого місця) або до <strong>250 000 грн</strong> (за 2 робочих місця).</li>
-                  <li><strong>Дозволені статті:</strong> закупівля обладнання, меблів, верстатів; оренда приміщення (до 25% від суми); сировина та матеріали (до 50%); маркетинг; ПРРО/каси.</li>
-                  <li><strong>Заборонено:</strong> зняття готівки, виплата зарплати собі з гранту, сплата старих боргів чи кредитів.</li>
+                  <li>Для кожної витрати вкажіть назву, кількість та ціну за одиницю.</li>
+                  <li>Приклади нижче — початкові шаблони. Замініть ціни на пропозиції постачальників.</li>
+                  <li>Дозволені витрати, максимальна сума та співфінансування залежать від програми. Перевірте їх в офіційних умовах.</li>
                 </ul>
               </div>
 
@@ -770,14 +783,14 @@ export function Cases({
                 <button
                   type="button"
                   className="link ai-call-btn"
-                  onClick={() => askAssistant("Запропонуй конкретні статті витрат з приблизними цінами для мого бізнесу в межах гранту «Власна справа» (до 250 000 грн).")}
+                  onClick={() => askAssistant("Допоможи скласти перелік витрат для мого бізнесу. Відділи орієнтовні приклади від підтверджених цін; запитай про невідомі суми й умови програми.")}
                 >
                   Підібрати витрати з ШІ ↗
                 </button>
               </div>
 
               <div className="budget-templates-section">
-                <span className="templates-label">Швидке додавання дозволених статей:</span>
+                <span className="templates-label">Приклади витрат — перевірте ціни та умови:</span>
                 <div className="templates-list">
                   {BUDGET_TEMPLATES.map((tmpl, idx) => (
                     <button
@@ -805,22 +818,14 @@ export function Cases({
               <div className="budget-summary-banner">
                 <div className="summary-col">
                   <span className="summary-label">Загальна сума у формі:</span>
-                  <span className="summary-value">{money(liveBudgetKopecks)}</span>
+                  <span className="summary-value">{Number.isFinite(liveBudgetKopecks) ? money(liveBudgetKopecks) : "Перевірте кількість і ціну"}</span>
                 </div>
                 <div className="summary-col">
                   <span className="summary-label">Збережено в базі:</span>
                   <span className="summary-value secondary">{money(selected.totalKopecks)}</span>
                 </div>
                 <div className="summary-badge">
-                  {liveBudgetKopecks <= programMaxKopecks ? (
-                    <span className="badge-ok">
-                      ✓ Вкладається в ліміт {money(programMaxKopecks)} ({selectedProgram?.keyCondition || "1-2 робочих місця"})
-                    </span>
-                  ) : (
-                    <span className="badge-warn">
-                      ⚠️ Перевищує орієнтовний ліміт {money(programMaxKopecks)} (потрібні власні кошти або більший грант)
-                    </span>
-                  )}
+                  <span className="badge-warn">Сума кошторису не визначає відповідність умовам гранту.</span>
                 </div>
               </div>
 
@@ -909,7 +914,7 @@ export function Cases({
               <div className="step-panel-header">
                 <h4 id="step4-heading">Крок 4: Перевірка готовності та експорт чернетки</h4>
                 <p>
-                  Перевірте заповненість усіх блоків. Коли все готово — завантажте робочу чернетку для зручного подання заявки через портал Дія.
+                  Перевірте заповненість усіх блоків. Після збереження завантажте робочу чернетку для підготовки офіційної заявки.
                 </p>
               </div>
 
@@ -949,7 +954,7 @@ export function Cases({
               </section>
 
               <section className="export-section" aria-labelledby="export-heading">
-                <h4 id="export-heading">Завантаження для порталу Дія</h4>
+                <h4 id="export-heading">Експорт робочої чернетки</h4>
                 <p>
                   Сформований файл містить структуровані відповіді та бюджет. Скопіюйте їх під час заповнення офіційної заявки на державному порталі.
                 </p>

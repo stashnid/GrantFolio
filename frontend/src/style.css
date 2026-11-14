@@ -1508,3 +1508,41 @@ a:focus-visible {
     color: #000000 !important;
   }
 }
+
+/* The print document uses saved case data, independently of the active wizard step. */
+.print-document { display: none; }
+@media print {
+  @page { size: A4; margin: 16mm; }
+  body > *:not(.print-document) { display: none !important; }
+  .print-document { display: block; color: #111; background: #fff; font: 11pt/1.5 Arial, sans-serif; }
+  .print-document h1 { font-size: 22pt; margin: 0 0 12pt; }
+  .print-document h2 { font-size: 13pt; margin: 16pt 0 6pt; break-after: avoid; }
+  .print-paragraph { white-space: pre-wrap; overflow-wrap: anywhere; }
+  .print-document table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+  .print-document th, .print-document td { padding: 6pt; border: 1px solid #bbb; text-align: left; overflow-wrap: anywhere; }
+  .print-document th:first-child { width: 40%; }
+  .print-document tr { break-inside: avoid; }
+  .print-document thead { display: table-header-group; }
+}
+
+/* Keep the wizard and chat inside narrow screens; scroll chips locally. */
+.workspace .panel > div,
+.case-workspace,
+.step-panel,
+.live-chat-container { min-width: 0; max-width: 100%; }
+.case-steps-nav, .chat-followups-bar { min-width: 0; max-width: 100%; }
+.step-tab, .followup-chip { flex-shrink: 0; }
+.chat-input-form textarea { min-width: 0; width: auto; flex: 1 1 0; }
+.chat-bubble { overflow-wrap: anywhere; }
+@media (max-width: 600px) {
+  .workspace .card { padding: 24px 16px; }
+  .step-panel { padding: 16px 10px; }
+  .case-header, .applied-program-banner { align-items: flex-start; flex-wrap: wrap; }
+  .live-chat-header, .chat-scroll-area, .chat-followups-bar { padding-left: 12px; padding-right: 12px; }
+  .live-chat-header h4 { overflow-wrap: anywhere; }
+  .chat-input-form { flex-direction: column; align-items: stretch; padding: 12px; }
+  .chat-input-form textarea { flex: auto; width: 100%; }
+  .chat-send-btn { align-self: flex-end; }
+}
+
+@media print { .print-document h1, .print-document h2 { font-family: Arial, sans-serif; letter-spacing: normal; } }

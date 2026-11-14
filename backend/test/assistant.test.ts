@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
 import type { Pool } from "pg";
-import { assistantRouter, configuredResponder, type AssistantResponder } from "../src/assistant.js";
+import { assistantRouter, type AssistantResponder } from "../src/assistant.js";
 
 const id = "7e4b2e29-5b26-42dd-b21d-9ec2be62b4f2";
 async function setup(responder?: AssistantResponder, timeout = 100, failSave = false) {
@@ -16,20 +16,13 @@ async function setup(responder?: AssistantResponder, timeout = 100, failSave = f
   } } as unknown as Pool;
   const app = express(); app.use(express.json());
   app.use((req, res, next) => { const uid = req.header("x-test-user"); if (!uid) { res.sendStatus(401); return; } res.locals.uid = uid; next(); });
-  app.use(assistantRouter(db, responder ?? null, timeout));
+  app.use(responder ? assistantRouter(db, responder, timeout) : assistantRouter(db));
   const server = app.listen(0, "127.0.0.1");
   await new Promise<void>((resolve) => server.once("listening", resolve));
   const port = (server.address() as { port: number }).port;
   const call = (user: string | undefined, path = id, body: unknown = { expectedRevision: 1, message: "Порада" }) => fetch(`http://127.0.0.1:${port}/${path}/assistant`, { method: "POST", headers: { "content-type": "application/json", ...(user ? { "x-test-user": user } : {}) }, body: JSON.stringify(body) });
   return { call, close: () => new Promise<void>((resolve, reject) => server.close((e) => e ? reject(e) : resolve())), update: () => { revision++; } };
 }
-
-test("configuration accepts only the explicitly configured local free route", () => {
-  assert.equal(configuredResponder({}), undefined);
-  assert.equal(configuredResponder({ OPENAI_COMPATIBLE_BASE_URL: "http://example.com:20128/v1", ASSISTANT_API_KEY: "x", ASSISTANT_MODEL: "grantfolio-free" }), undefined);
-  assert.equal(configuredResponder({ OPENAI_COMPATIBLE_BASE_URL: "http://localhost:20128/v1", ASSISTANT_API_KEY: "x", ASSISTANT_MODEL: "paid" }), undefined);
-  assert.equal(typeof configuredResponder({ OPENAI_COMPATIBLE_BASE_URL: "http://localhost:20128/v1", ASSISTANT_API_KEY: "x", ASSISTANT_MODEL: "grantfolio-free" }), "function");
-});
 
 test("owner, revision, validation and unavailable boundaries precede generation", async () => {
   const s = await setup();
@@ -39,7 +32,9 @@ test("owner, revision, validation and unavailable boundaries precede generation"
     assert.equal((await s.call("owner", crypto.randomUUID())).status, 404);
     assert.equal((await s.call("owner", id, { expectedRevision: 0, message: "x" })).status, 409);
     assert.equal((await s.call("owner", id, { expectedRevision: 1, message: " " })).status, 400);
-    assert.equal((await s.call("owner")).status, 503);
+    const unavailable = await s.call("owner");
+    assert.equal(unavailable.status, 503);
+    assert.deepEqual(await unavailable.json(), { error: "assistant_unavailable" });
   } finally { await s.close(); }
 });
 
