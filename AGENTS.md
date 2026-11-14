@@ -20,7 +20,7 @@
 - Deployment cloud: **Google Cloud**, explicitly selected by the user. React/TypeScript/Express and the service mapping are the current implementation proposal, not completed code.
 - Read [the original assignment](docs/assignment.md) before finalizing coursework. Deadline: Thursday **19 November 2026**. Required: backend/, frontend/, infra/, informative run/deploy README, deployed HTTPS sign-up/sign-in, factual PDF about actual user feedback and changes. Real payment/donation evidence is an optional bonus.
 - OOAD materials are optional design guidance. Do not require a course-material index, add academic methods or turn examples into mandatory architecture.
-- The [README product vision](README.md) is broader than the first demonstrated scenario. Do not claim every grant is supported or invent an official template. First program remains to choose.
+- The [README product vision](README.md) is broader than the first demonstrated scenario. Do not claim every grant is supported or invent an official template. Pilot program: Власна справа, explicitly chosen by the user on 2026-11-14; current round and official form remain unverified.
 - User confirms **no training materials exist**. Model selection is provisional; never describe prompts/retrieval as trained weights or claim a model is trained before a real job and evaluation.
 - Paid cloud/model/training actions and billing changes need the user's authorization for the concrete scope. Planning does not authorize them.
 
@@ -30,8 +30,12 @@
 - Verify Firebase ID tokens server-side. Firebase UID is opaque text. Derive ownership from identity, scope every private operation to its owner, and test isolation between two users.
 - Keep private files in Cloud Storage and persistent state in PostgreSQL; never rely on the container filesystem. Long work must have durable status and bounded retries.
 - Pin supported runtime/dependency versions after checking current documentation. Commit the package lockfile. Do not invent runnable commands before creating the corresponding configuration.
-- Run checks appropriate to the actual change. Currently this is a documentation baseline: no application build, test suite, container or Terraform configuration exists. Each implementation PR must add real run/test/deploy instructions for what it introduces.
+- Run checks appropriate to the actual change. Local React/Express application, Docker Compose, migrations and integration tests exist; cloud deployment is not complete. Each implementation PR must add real run/test/deploy instructions for what it introduces.
 
 ## Codex orchestration preference (2026-11-13)
 
 User explicitly requests Astra as coordinator and agents using other models for execution. Follow [Codex collaboration](docs/codex-collaboration.md): Sol for focused research, Terra for implementation, independent review when warranted. Record actual model/role, bounded scope, owned paths and checks. Do not silently claim delegation when an agent was unavailable. Both teammates use Codex; GitHub files are the shared handoff.
+
+## Delivery focus (2026-11-14)
+
+User prioritizes finishing the prototype over additional model/provider research. Use already verified Gemini Flash-Lite as initial integration candidate; no Claude API or additional gateway setup needed now. This supersedes Opus-first as immediate implementation priority, not as a quality benchmark result. No paid calls without concrete authorization. Record first test version scope/status in docs/STATUS.md.

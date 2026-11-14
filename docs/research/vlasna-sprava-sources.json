@@ -1,0 +1,30 @@
+{
+  "schema_version": 1,
+  "program_id": "vlasna-sprava",
+  "title": "Власна справа — започаткування бізнесу",
+  "checked_at": "2026-11-14T10:44:49Z",
+  "status": "needs_review",
+  "current_round_open": null,
+  "current_deadline": null,
+  "eligibility_rules_reviewed": false,
+  "official_form_reviewed": false,
+  "summary": "Офіційна програма підтримки започаткування та масштабування бізнесу. Чинний раунд прийому потребує перевірки.",
+  "sources": [
+    {
+      "id": "diia-service",
+      "title": "Започаткування та масштабування власної справи",
+      "url": "https://diia.gov.ua/services/zapochatkuvannia-ta-masshtabuvannia-vlasnoi-spravy/",
+      "checked_at": "2026-11-14T10:44:49Z",
+      "verification_status": "public_page_verified_round_unresolved",
+      "summary": "Сторінку прочитано. Вона показує завершення етапу 27.10.2026; це не підтверджує відкритий прийом 14.11.2026."
+    },
+    {
+      "id": "diia-application",
+      "title": "Подати заявку — офіційне посилання Дії",
+      "url": "https://my.diia.gov.ua/tasks/create/1031335/1031335001",
+      "checked_at": "2026-11-14T10:44:49Z",
+      "verification_status": "official_link_verified_form_uninspected",
+      "summary": "Посилання отримане з кнопки на сторінці послуги. Публічне відкриття не показало полів форми; подання не виконувалося."
+    }
+  ]
+}

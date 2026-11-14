@@ -1,0 +1,21 @@
+{
+  "checked_at": "2026-11-14",
+  "repositories": [
+    {
+      "name": "freellmapi",
+      "url": "https://github.com/tashfeenahmed/freellmapi",
+      "commit": "730ba7942a7acbfe2d30b20f6f9b6efcd8b5ae04",
+      "path": ".local/model-gateways/freellmapi",
+      "downloaded": true,
+      "configured": false
+    },
+    {
+      "name": "OmniRoute",
+      "url": "https://github.com/cheaper-inference/OmniRoute",
+      "commit": "19197b16c41236d65e1e7c73bef01217ad04396f",
+      "path": ".local/model-gateways/OmniRoute",
+      "downloaded": true,
+      "configured": false
+    }
+  ]
+}

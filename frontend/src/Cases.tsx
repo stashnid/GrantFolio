@@ -2,11 +2,58 @@ import { useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 
 type Item = { name: string; quantity: number; unitPriceKopecks: number };
+type Details = {
+  projectDescription: string;
+  customers: string;
+  salesChannels: string;
+  implementationPlan: string;
+  expectedResults: string;
+};
+type Readiness = {
+  revision: number;
+  checks: { id: string; label: string; status: "complete" | "missing" }[];
+  disclaimer: string;
+};
+const emptyDetails: Details = {
+  projectDescription: "",
+  customers: "",
+  salesChannels: "",
+  implementationPlan: "",
+  expectedResults: "",
+};
+const fields: { key: keyof Details; label: string; hint: string }[] = [
+  {
+    key: "projectDescription",
+    label: "Опис проєкту",
+    hint: "Що ви плануєте створити або змінити?",
+  },
+  {
+    key: "customers",
+    label: "Клієнти",
+    hint: "Хто ваші клієнти та які їхні потреби?",
+  },
+  {
+    key: "salesChannels",
+    label: "Канали продажу",
+    hint: "Як ви плануєте знаходити клієнтів і продавати?",
+  },
+  {
+    key: "implementationPlan",
+    label: "План реалізації",
+    hint: "Які основні кроки та строки ви передбачаєте?",
+  },
+  {
+    key: "expectedResults",
+    label: "Очікувані результати",
+    hint: "Яких результатів ви очікуєте від проєкту?",
+  },
+];
 type Case = {
   id: string;
   title: string;
   revision: number;
   items: Item[];
+  details: Details;
   totalKopecks: number;
 };
 type DraftItem = { name: string; quantity: string; price: string };
@@ -18,10 +65,19 @@ const toDraft = (items: Item[]): DraftItem[] =>
   }));
 const money = (n: number) =>
   `${Math.floor(n / 100).toLocaleString("uk-UA")},${String(n % 100).padStart(2, "0")} грн`;
-export function Cases({ user }: { user: User }) {
+export function Cases({
+  user,
+  onUnsavedChange,
+}: {
+  user: User;
+  onUnsavedChange?: (dirty: boolean) => void;
+}) {
   const [cases, setCases] = useState<Case[]>([]),
     [selected, setSelected] = useState<Case | null>(null),
     [draft, setDraft] = useState<DraftItem[]>([]),
+    [details, setDetails] = useState<Details>(emptyDetails),
+    [readiness, setReadiness] = useState<Readiness | null>(null),
+    [readinessError, setReadinessError] = useState(false),
     [title, setTitle] = useState(""),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
@@ -30,9 +86,11 @@ export function Cases({ user }: { user: User }) {
     [listLoading, setListLoading] = useState(false),
     [listFailed, setListFailed] = useState(false),
     [conflict, setConflict] = useState(false);
-  const [pending, setPending] = useState<{ id: string; body: string } | null>(
-    null,
-  );
+  const [pending, setPending] = useState<{
+    id: string;
+    body: string;
+    kind: "budget" | "details";
+  } | null>(null);
   async function request(path: string, init: RequestInit = {}) {
     const token = await user.getIdToken();
     return fetch(path, {
@@ -63,7 +121,31 @@ export function Cases({ user }: { user: User }) {
   useEffect(() => {
     void loadList();
   }, [user]);
-  const dirty = selected !== null && JSON.stringify(draft) !== JSON.stringify(toDraft(selected.items));
+  const budgetDirty =
+    selected !== null &&
+    JSON.stringify(draft) !== JSON.stringify(toDraft(selected.items));
+  const detailsDirty =
+    selected !== null &&
+    JSON.stringify(details) !==
+      JSON.stringify(selected.details || emptyDetails);
+  const dirty = budgetDirty || detailsDirty;
+  useEffect(() => {
+    onUnsavedChange?.(dirty || !!pending);
+  }, [dirty, pending, onUnsavedChange]);
+  const readinessRequest = useRef(0);
+  async function loadReadiness(id: string) {
+    const sequence = ++readinessRequest.current;
+    setReadiness(null);
+    setReadinessError(false);
+    try {
+      const r = await request(`/api/cases/${id}/readiness`);
+      if (!r.ok) throw Error();
+      const result = await r.json();
+      if (sequence === readinessRequest.current) setReadiness(result);
+    } catch {
+      if (sequence === readinessRequest.current) setReadinessError(true);
+    }
+  }
   useEffect(() => {
     if (!dirty && !pending) return;
     const warn = (event: BeforeUnloadEvent) => {
@@ -75,10 +157,15 @@ export function Cases({ user }: { user: User }) {
   }, [dirty, pending]);
   function mayLeaveDraft() {
     if (pending) {
-      setError("Спочатку повторіть збереження бюджету, щоб дізнатися його результат.");
+      setError("Спочатку повторіть збереження, щоб дізнатися його результат.");
       return false;
     }
-    return !dirty || window.confirm("У бюджеті є незбережені зміни. Відкрити іншу чернетку та втратити їх?");
+    return (
+      !dirty ||
+      window.confirm(
+        "У чернетці є незбережені зміни. Відкрити іншу чернетку та втратити їх?",
+      )
+    );
   }
   async function select(id: string, discard = false) {
     if (!discard && selected?.id === id) return;
@@ -91,6 +178,8 @@ export function Cases({ user }: { user: User }) {
       const c = (await r.json()).case;
       setSelected(c);
       setDraft(toDraft(c.items));
+      setDetails(c.details || emptyDetails);
+      void loadReadiness(c.id);
       setConflict(false);
       setPending(null);
       setNotice("");
@@ -117,6 +206,8 @@ export function Cases({ user }: { user: User }) {
       setCases([c, ...cases]);
       setSelected(c);
       setDraft([]);
+      setDetails(c.details || emptyDetails);
+      void loadReadiness(c.id);
       setTitle("");
       setPending(null);
       setConflict(false);
@@ -128,7 +219,8 @@ export function Cases({ user }: { user: User }) {
   }
   async function save() {
     if (!selected) return;
-    let command = pending;
+    const retrying = pending?.kind === "budget";
+    let command = retrying ? pending : null;
     if (!command) {
       const items: Item[] = [];
       for (const row of draft) {
@@ -159,6 +251,7 @@ export function Cases({ user }: { user: User }) {
       }
       command = {
         id: selected.id,
+        kind: "budget",
         body: JSON.stringify({
           expectedRevision: selected.revision,
           idempotencyKey: crypto.randomUUID(),
@@ -180,7 +273,7 @@ export function Cases({ user }: { user: User }) {
         setConflict(true);
         setPending(null);
         setError(
-          "Бюджет змінився в іншій вкладці. Ваші зміни нижче збережені в цій формі. Скопіюйте їх перед завантаженням актуальної версії.",
+          "Чернетка змінилася в іншій вкладці. Ваші незбережені зміни залишилися у формі. Скопіюйте їх перед завантаженням актуальної версії.",
         );
         return;
       }
@@ -192,16 +285,114 @@ export function Cases({ user }: { user: User }) {
         return;
       }
       if (!r.ok) throw Error();
-      const c = (await r.json()).case;
+      let c: Case = (await r.json()).case;
+      // A repeated command returns its original snapshot; another tab may have
+      // saved a newer revision since then. Keep the pending command until the
+      // current version is known, so a failed refresh remains safe to retry.
+      if (retrying) {
+        const latest = await request(`/api/cases/${command.id}`);
+        if (!latest.ok) throw Error();
+        c = (await latest.json()).case;
+      }
       setSelected(c);
       setDraft(toDraft(c.items));
-      setCases(cases.map((x) => (x.id === c.id ? c : x)));
+      if (!detailsDirty) setDetails(c.details || emptyDetails);
+      setCases((old) => old.map((x) => (x.id === c.id ? c : x)));
       setPending(null);
+      void loadReadiness(c.id);
       setNotice("Бюджет збережено.");
     } catch {
       setError(
         "Не вдалося отримати відповідь. Повторіть збереження: повторна спроба перевірить результат тієї самої команди. До цього редагування недоступне.",
       );
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function saveDetails() {
+    if (!selected) return;
+    const retrying = pending?.kind === "details";
+    let command = retrying ? pending : null;
+    if (!command) {
+      command = {
+        id: selected.id,
+        kind: "details",
+        body: JSON.stringify({
+          expectedRevision: selected.revision,
+          idempotencyKey: crypto.randomUUID(),
+          details,
+        }),
+      };
+      setPending(command);
+    }
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const r = await request(`/api/cases/${command.id}/details`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: command.body,
+      });
+      if (r.status === 409) {
+        setConflict(true);
+        setPending(null);
+        setError(
+          "Чернетка змінилася в іншій вкладці. Ваші незбережені зміни залишилися у формі. Скопіюйте їх перед завантаженням актуальної версії.",
+        );
+        return;
+      }
+      if (r.status >= 400 && r.status < 500) {
+        setPending(null);
+        setError(
+          "Не вдалося зберегти опис. Перевірте введені дані та увійдіть знову за потреби.",
+        );
+        return;
+      }
+      if (!r.ok) throw Error();
+      let c: Case = (await r.json()).case;
+      if (retrying) {
+        const latest = await request(`/api/cases/${command.id}`);
+        if (!latest.ok) throw Error();
+        c = (await latest.json()).case;
+      }
+      setSelected(c);
+      setDetails(c.details || emptyDetails);
+      if (!budgetDirty) setDraft(toDraft(c.items));
+      setCases((old) => old.map((x) => (x.id === c.id ? c : x)));
+      setPending(null);
+      void loadReadiness(c.id);
+      setNotice("Опис проєкту збережено.");
+    } catch {
+      setError(
+        "Не вдалося отримати відповідь. Повторіть збереження: повторна спроба перевірить результат тієї самої команди. До цього редагування недоступне.",
+      );
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function downloadDraft() {
+    if (!selected || dirty || pending) {
+      setError("Спочатку збережіть зміни в описі та бюджеті.");
+      return;
+    }
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const response = await request(`/api/cases/${selected.id}/draft-export`);
+      if (!response.ok) throw Error();
+      const url = URL.createObjectURL(await response.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "grantfolio-project.txt";
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      setNotice("Чернетку підготовлено до завантаження.");
+    } catch {
+      setError("Не вдалося завантажити чернетку. Спробуйте ще раз.");
     } finally {
       setBusy(false);
     }
@@ -218,9 +409,7 @@ export function Cases({ user }: { user: User }) {
         <span>✳</span>
       </div>
       <h2>Ваші плани</h2>
-      <p>
-        Створіть чернетку та запишіть витрати. Грантову програму ще не обрано.
-      </p>
+      <p>Створіть чернетку, опишіть проєкт та запишіть витрати.</p>
       <form onSubmit={create}>
         <label>
           Назва чернетки
@@ -238,7 +427,11 @@ export function Cases({ user }: { user: User }) {
       </form>
       {listLoading && <p role="status">Завантаження чернеток…</p>}
       {listFailed && (
-        <button className="link" disabled={listLoading} onClick={() => void loadList()}>
+        <button
+          className="link"
+          disabled={listLoading}
+          onClick={() => void loadList()}
+        >
           Повторити завантаження
         </button>
       )}
@@ -262,9 +455,95 @@ export function Cases({ user }: { user: User }) {
       {selected && (
         <div className="budget">
           <h3>{selected.title}</h3>
-          <p>Бюджет · версія {selected.revision}</p>
+          <p>Версія чернетки: {selected.revision}</p>
+          <section
+            className="project-details"
+            aria-labelledby="details-heading"
+          >
+            <h4 id="details-heading">Опис проєкту</h4>
+            <p>
+              Запишіть відомі вам факти та плани. Ці дані вводите ви; вони не
+              створені штучним інтелектом.
+            </p>
+            {fields.map((field) => (
+              <label key={field.key}>
+                {field.label}
+                <span className="field-hint">{field.hint}</span>
+                <textarea
+                  rows={3}
+                  maxLength={3000}
+                  value={details[field.key]}
+                  disabled={busy || !!pending}
+                  onChange={(e) => {
+                    setDetails({ ...details, [field.key]: e.target.value });
+                    setNotice("");
+                  }}
+                />
+              </label>
+            ))}
+            <button
+              className="primary"
+              disabled={
+                busy || conflict || (!!pending && pending.kind !== "details")
+              }
+              onClick={() => void saveDetails()}
+            >
+              {busy && pending?.kind === "details"
+                ? "Зберігаємо…"
+                : pending?.kind === "details"
+                  ? "Повторити збереження опису"
+                  : "Зберегти опис"}{" "}
+              <span>↗</span>
+            </button>
+          </section>
+          <section className="readiness" aria-labelledby="readiness-heading">
+            <h4 id="readiness-heading">Що вже заповнено</h4>
+            <p>
+              Список показує лише збережені дані для підготовки. Це не перевірка
+              відповідності умовам гранту.
+            </p>
+            {readiness && (
+              <>
+                <p>Збережена версія у списку: {readiness.revision}</p>
+                <ul>
+                  {readiness.checks.map((check) => (
+                    <li key={check.id}>
+                      <span>{check.label}</span>
+                      <strong>
+                        {check.status === "complete"
+                          ? "Заповнено"
+                          : "Потрібно заповнити"}
+                      </strong>
+                    </li>
+                  ))}
+                </ul>
+                <p>{readiness.disclaimer}</p>
+              </>
+            )}
+            {!readiness && !readinessError && (
+              <p role="status">Завантаження списку…</p>
+            )}
+            {readinessError && (
+              <p>
+                Не вдалося завантажити список.{" "}
+                <button
+                  className="link"
+                  onClick={() => void loadReadiness(selected.id)}
+                >
+                  Повторити
+                </button>
+              </p>
+            )}
+            {dirty && <p>Незбережені зміни ще не враховані у списку.</p>}
+          </section>
+          <h4>Бюджет</h4>
           {draft.map((row, index) => (
-            <div className="budget-row" key={index} role="group" aria-label={`Витрата ${index + 1}`}>
+            <div
+              className="budget-row"
+              key={index}
+              role="group"
+              aria-label={`Витрата ${index + 1}`}
+            >
               <label>
                 Назва
                 <input
@@ -322,17 +601,46 @@ export function Cases({ user }: { user: User }) {
           </p>
           <button
             className="primary"
-            disabled={busy || conflict}
+            disabled={
+              busy || conflict || (!!pending && pending.kind !== "budget")
+            }
             onClick={() => void save()}
           >
-            Зберегти бюджет <span>↗</span>
+            {busy && pending?.kind === "budget"
+              ? "Зберігаємо…"
+              : pending?.kind === "budget"
+                ? "Повторити збереження бюджету"
+                : "Зберегти бюджет"}{" "}
+            <span>↗</span>
           </button>
+          <section aria-labelledby="export-heading">
+            <h4 id="export-heading">Завантаження чернетки</h4>
+            <p>
+              Текстовий файл містить збережений опис проєкту та бюджет. Це робоча
+              чернетка, а не офіційна форма грантової заявки.
+            </p>
+            <button
+              className="link"
+              disabled={busy || dirty || !!pending || conflict}
+              onClick={() => void downloadDraft()}
+            >
+              Завантажити чернетку (.txt)
+            </button>
+            {(dirty || pending) && (
+              <p>Перед завантаженням збережіть зміни в описі та бюджеті.</p>
+            )}
+          </section>
           {conflict && (
             <button
               className="link"
               disabled={busy}
               onClick={() => {
-                if (window.confirm("Завантажити актуальну версію? Незбережені зміни буде втрачено.")) void select(selected.id, true);
+                if (
+                  window.confirm(
+                    "Завантажити актуальну версію? Незбережені зміни буде втрачено.",
+                  )
+                )
+                  void select(selected.id, true);
               }}
             >
               Завантажити актуальну версію

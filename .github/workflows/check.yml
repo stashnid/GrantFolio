@@ -1,0 +1,45 @@
+name: Prototype checks
+on:
+  pull_request:
+  push:
+    branches: [main, 'feat/**', 'fix/**']
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: checks-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci
+      - run: cp .env.example .env
+      - run: docker compose up -d --build
+      - name: Wait for local test services
+        run: |
+          for attempt in $(seq 1 60); do
+            if docker compose exec -T postgres pg_isready -U grantfolio && curl --fail --silent http://127.0.0.1:9099/ > /dev/null; then
+              exit 0
+            fi
+            sleep 2
+          done
+          exit 1
+      - run: npm run migrate
+      - run: npm run typecheck
+      - run: npm run build
+      - run: npm test
+      - name: Service diagnostics
+        if: failure()
+        run: docker compose logs --tail=80
+      - name: Stop local test services
+        if: always()
+        run: docker compose down --volumes

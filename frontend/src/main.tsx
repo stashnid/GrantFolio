@@ -10,6 +10,7 @@ import {
 import { auth } from "./firebase";
 import "./style.css";
 import { Cases } from "./Cases";
+import { PilotProgram } from "./PilotProgram";
 type Profile = { businessName: string; region: string; description: string };
 const empty: Profile = { businessName: "", region: "", description: "" };
 function App() {
@@ -21,6 +22,8 @@ function App() {
     [email, setEmail] = useState(""),
     [password, setPassword] = useState(""),
     [profile, setProfile] = useState<Profile>(empty),
+    [savedProfile, setSavedProfile] = useState<Profile>(empty),
+    [casesDirty, setCasesDirty] = useState(false),
     [message, setMessage] = useState(""),
     [error, setError] = useState(""),
     [profileReady, setProfileReady] = useState(false),
@@ -34,6 +37,8 @@ function App() {
         setProfileReady(false);
         setLoading(false);
         setProfile(empty);
+        setSavedProfile(empty);
+        setCasesDirty(false);
         setMessage("");
         setError("");
       }),
@@ -51,6 +56,7 @@ function App() {
         const body = await response.json();
         if (active) {
           setProfile(body.profile);
+          setSavedProfile(body.profile);
           setProfileReady(true);
         }
       } catch {
@@ -64,6 +70,18 @@ function App() {
       active = false;
     };
   }, [user, retry]);
+  const profileDirty = profileReady && (profile.businessName !== savedProfile.businessName || profile.region !== savedProfile.region || profile.description !== savedProfile.description);
+  const hasUnsavedChanges = profileDirty || casesDirty;
+  useEffect(() => {
+    if (!hasUnsavedChanges) return;
+    const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = ""; };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [hasUnsavedChanges]);
+  async function logout() {
+    if (hasUnsavedChanges && !window.confirm("Є незбережені зміни. Вийти без збереження?")) return;
+    try { await signOut(auth); } catch { setError("Не вдалося вийти. Спробуйте ще раз."); }
+  }
   async function login(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
@@ -101,6 +119,7 @@ function App() {
       const result = await response.json();
       if (auth.currentUser === currentUser) {
         setProfile(result.profile);
+        setSavedProfile(result.profile);
         setMessage("Зміни збережено.");
       }
     } catch {
@@ -139,7 +158,7 @@ function App() {
           <button
             className="link"
             disabled={busy}
-            onClick={() => void signOut(auth)}
+            onClick={() => void logout()}
           >
             Вийти <span>↗</span>
           </button>
@@ -231,7 +250,7 @@ function App() {
             </div>
           ) : (
             <>
-            <div hidden={tab !== "cases"}><Cases key={user.uid} user={user} /></div>
+            <div hidden={tab !== "cases"}><PilotProgram /><Cases key={user.uid} user={user} onUnsavedChange={setCasesDirty} /></div>
             <div className="card" hidden={tab !== "profile"}>
               <div className="card-top">
                 <span>01 / ВАШ ПРОФІЛЬ</span>
