@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
+import { Assistant } from "./Assistant";
 
 type Item = { name: string; quantity: number; unitPriceKopecks: number };
 type Details = {
@@ -613,11 +614,18 @@ export function Cases({
                 : "Зберегти бюджет"}{" "}
             <span>↗</span>
           </button>
+          <Assistant
+            key={selected.id}
+            caseId={selected.id}
+            revision={selected.revision}
+            blocked={dirty || !!pending || busy || conflict}
+            request={request}
+          />
           <section aria-labelledby="export-heading">
             <h4 id="export-heading">Завантаження чернетки</h4>
             <p>
-              Текстовий файл містить збережений опис проєкту та бюджет. Це робоча
-              чернетка, а не офіційна форма грантової заявки.
+              Текстовий файл містить збережений опис проєкту та бюджет. Це
+              робоча чернетка, а не офіційна форма грантової заявки.
             </p>
             <button
               className="link"

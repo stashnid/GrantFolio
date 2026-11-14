@@ -397,10 +397,9 @@ main.workspace {
   box-shadow: inset 3px 0 #31513c;
 }
 .budget-row {
-  grid-template-columns: minmax(0, 2fr) minmax(90px, 1fr) minmax(
-      120px,
-      1fr
-    ) auto;
+  grid-template-columns:
+    minmax(0, 2fr) minmax(90px, 1fr) minmax(120px, 1fr)
+    auto;
   align-items: end;
 }
 .remove-item {
@@ -487,4 +486,33 @@ a:focus-visible {
   .readiness li strong {
     text-align: left;
   }
+}
+
+.assistant {
+  border-top: 1px solid #deded8;
+  margin-top: 24px;
+  padding-top: 20px;
+}
+.assistant p {
+  line-height: 1.5;
+}
+.assistant label {
+  display: block;
+  margin-bottom: 8px;
+}
+.assistant textarea {
+  width: 100%;
+}
+.assistant-answer {
+  margin-top: 20px;
+  padding: 16px;
+  background: #f5f5f0;
+  border-left: 3px solid #526658;
+  overflow-wrap: anywhere;
+}
+.assistant-text {
+  white-space: pre-wrap;
+}
+.assistant-stale {
+  font-weight: 600;
 }

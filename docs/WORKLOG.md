@@ -86,3 +86,7 @@ Terra використав завантажені design/ui-styling рекоме
 ## 14.11: повернення до продукту, локальна V1
 
 За запитом користувача припинено пошук нових провайдерів. Зведено результати4 агентів і попередній details/readinessзріз; створено робочий TXTexport, захистlogout, картку пілотної програми. build/typecheck/5tests/browser PASS. [Результат і наступний крок](agents/2026-11-14-v1-integration.md).
+
+## 14.11: безкоштовна черга і живий асистент
+
+Завершено OmniRoute з Gemini/Groq: реальний fallback після 429 пройшов. Terra додали backend/UI асистента, координатор перевірив 9 тестів і live browser. [Докази/межі](agents/2026-11-14-omniroute-live-assistant.md).
