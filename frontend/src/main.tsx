@@ -11,6 +11,7 @@ import { auth } from "./firebase";
 import "./style.css";
 import { Cases } from "./Cases";
 import { PilotProgram } from "./PilotProgram";
+import { GrantCatalog, type GrantProgram } from "./GrantCatalog";
 type Profile = { businessName: string; region: string; description: string };
 const empty: Profile = { businessName: "", region: "", description: "" };
 function App() {
@@ -28,7 +29,7 @@ function App() {
     [error, setError] = useState(""),
     [profileReady, setProfileReady] = useState(false),
     [retry, setRetry] = useState(0),
-    [tab, setTab] = useState<"profile" | "cases">("profile");
+    [tab, setTab] = useState<"catalog" | "cases" | "profile">("cases");
   useEffect(
     () =>
       onAuthStateChanged(auth, (u) => {
@@ -139,18 +140,25 @@ function App() {
         {user && (
           <nav aria-label="Розділи">
             <button
-              className="link"
-              aria-current={tab === "profile" ? "page" : undefined}
-              onClick={() => setTab("profile")}
-            >
-              Профіль
-            </button>
-            <button
-              className="link"
+              className="link nav-tab"
               aria-current={tab === "cases" ? "page" : undefined}
               onClick={() => setTab("cases")}
             >
               Мої плани
+            </button>
+            <button
+              className="link nav-tab"
+              aria-current={tab === "catalog" ? "page" : undefined}
+              onClick={() => setTab("catalog")}
+            >
+              Каталог грантів <span className="nav-badge">5</span>
+            </button>
+            <button
+              className="link nav-tab"
+              aria-current={tab === "profile" ? "page" : undefined}
+              onClick={() => setTab("profile")}
+            >
+              Профіль
             </button>
           </nav>
         )}
@@ -250,6 +258,13 @@ function App() {
             </div>
           ) : (
             <>
+            <div hidden={tab !== "catalog"} className="catalog-tab-content">
+              <GrantCatalog
+                onApplyProgram={() => {
+                  setTab("cases");
+                }}
+              />
+            </div>
             <div hidden={tab !== "cases"}><PilotProgram /><Cases key={user.uid} user={user} onUnsavedChange={setCasesDirty} /></div>
             <div className="card" hidden={tab !== "profile"}>
               <div className="card-top">

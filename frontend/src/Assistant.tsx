@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 
+export type SuggestedBudgetItem = { name: string; quantity: string; price: string };
+
 type Props = {
   caseId: string;
   revision: number;
@@ -7,30 +9,32 @@ type Props = {
   request: (path: string, init?: RequestInit) => Promise<Response>;
   prefilledPrompt?: string;
   onClearPrefilled?: () => void;
+  onImportBudgetItems?: (items: SuggestedBudgetItem[]) => void;
 };
 
-const QUICK_PROMPTS = [
+const STARTER_PROMPTS = [
   {
     icon: "💡",
-    label: "Запропонуй статті бюджету",
-    text: "Запропонуй перелік типових витрат та орієнтовний бюджет для мого проєкту з урахуванням дозволених напрямків програми «Власна справа» (обладнання, оренда, сировина, маркетинг).",
+    label: "Розрахувати кошторис бізнесу",
+    text: "Запропонуй конкретні статті витрат з орієнтовними цінами для мого проєкту з урахуванням дозволених напрямків програми «Власна справа» (обладнання, оренда, сировина, маркетинг).",
   },
   {
     icon: "❓",
-    label: "Що дозволено купувати?",
-    text: "На які саме цілі дозволено витрачати грант «Власна справа», які є обмеження (наприклад, по оренді чи сировині) та що суворо заборонено?",
+    label: "Що дозволено купувати за грантом?",
+    text: "На які саме цілі дозволено витрачати грант «Власна справа», які є ліміти (оренда, сировина) та що категорично заборонено?",
   },
   {
     icon: "✍️",
-    label: "Як описати клієнтів?",
-    text: "Підкажи, як чітко й переконливо описати моїх клієнтів і канали збуту для грантової комісії на основі мого проєкту.",
+    label: "Допоможи описати клієнтів",
+    text: "Підкажи, як чітко й переконливо описати цільову аудиторію та канали продажу для мого бізнесу, щоб це переконало грантову комісію.",
   },
   {
     icon: "🔍",
-    label: "Перевір готовність заявки",
-    text: "Проаналізуй збережений опис проєкту та статті бюджету. Яких важливих деталей ще бракує для сильної заявки?",
+    label: "Перевір готовність моєї заявки",
+    text: "Проаналізуй збережені дані мого проєкту. Яких важливих деталей ще бракує для сильної заявки?",
   },
 ];
+
 type Exchange = {
   id: string;
   question: string;
@@ -77,6 +81,27 @@ function mergeExchanges(first: Exchange[], second: Exchange[]) {
   });
 }
 
+function extractBudgetItemsFromText(text: string): SuggestedBudgetItem[] {
+  const items: SuggestedBudgetItem[] = [];
+  const lines = text.split("\n");
+  for (const line of lines) {
+    const match = line.match(
+      /(?:[-*•]|\d+\.)\s*(?:(?:Обладнання|Оренда|Сировина|Маркетинг|ПЗ|Послуги|Устаткування):\s*)?([^:—–-]+?)\s*[:—–-]\s*([\d\s.,]+)\s*грн/i
+    );
+    if (match) {
+      const name = match[1].replace(/[*_#]/g, "").trim();
+      const rawPrice = match[2].replace(/\s/g, "").replace(",", ".");
+      const priceNum = parseFloat(rawPrice);
+      if (name.length > 2 && !isNaN(priceNum) && priceNum > 0 && priceNum <= 10000000) {
+        const qtyMatch = line.match(/кількість:\s*(\d+)/i);
+        const qty = qtyMatch ? qtyMatch[1] : "1";
+        items.push({ name, quantity: qty, price: priceNum.toFixed(2) });
+      }
+    }
+  }
+  return items;
+}
+
 export function Assistant({
   caseId,
   revision,
@@ -84,6 +109,7 @@ export function Assistant({
   request,
   prefilledPrompt,
   onClearPrefilled,
+  onImportBudgetItems,
 }: Props) {
   const [message, setMessage] = useState("");
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
@@ -93,6 +119,8 @@ export function Assistant({
   const [historyError, setHistoryError] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [nextBefore, setNextBefore] = useState<string | null>(null);
+  const [importedNotice, setImportedNotice] = useState("");
+  const chatBottomRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef(request);
   requestRef.current = request;
   const active = useRef(false);
@@ -157,16 +185,20 @@ export function Assistant({
     };
   }, [caseId]);
 
-  async function submit(event: React.FormEvent) {
-    event.preventDefault();
-    if (blocked || submitBusy.current || !message.trim()) return;
+  useEffect(() => {
+    chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [exchanges, loading]);
+
+  async function sendQuestion(text: string) {
+    if (blocked || submitBusy.current || !text.trim()) return;
     submitBusy.current = true;
     const controller = new AbortController();
     submitController.current = controller;
     const submittedRevision = revision;
-    const submittedMessage = message.trim();
+    const submittedMessage = text.trim();
     setLoading(true);
     setError("");
+    setImportedNotice("");
     try {
       const response = await requestRef.current(
         `/api/cases/${caseId}/assistant`,
@@ -221,93 +253,193 @@ export function Assistant({
     }
   }
 
+  function handleImport(items: SuggestedBudgetItem[]) {
+    if (!onImportBudgetItems || items.length === 0) return;
+    onImportBudgetItems(items);
+    setImportedNotice(`Успішно додано ${items.length} поз. до вашого бюджету! Перевірте вкладку «Бюджет гранту».`);
+    window.setTimeout(() => setImportedNotice(""), 5000);
+  }
+
   return (
-    <section className="assistant" aria-labelledby="assistant-heading">
-      <h4 id="assistant-heading">Асистент проєкту</h4>
-      <p>
-        Поставте запитання про ваш проєкт. Асистент використовує збережений опис
-        і бюджет.
-      </p>
-      <p>
-        Відповідь є пропозицією: перевірте її перед використанням. Це не
-        юридична консультація.
-      </p>
-      <div aria-label="Історія розмови">
-        {historyLoading && <p role="status">Завантажуємо історію розмови…</p>}
-        {historyError && (
-          <p className="error" role="alert">
-            Не вдалося завантажити історію.{" "}
-            <button type="button" onClick={() => void loadHistory(nextBefore)}>
-              Спробувати ще раз
-            </button>
-          </p>
-        )}
+    <section className="live-chat-container" aria-labelledby="live-chat-heading">
+      <div className="live-chat-header">
+        <div className="chat-header-avatar">✳️</div>
+        <div className="chat-header-info">
+          <h4 id="live-chat-heading">GrantFolio AI — Ваш грантовий партнер</h4>
+          <span className="chat-status-indicator">
+            <span className="status-dot-pulse" /> На зв'язку · Веде ваш проєкт
+          </span>
+        </div>
+      </div>
+
+      <div className="chat-scroll-area" role="log" aria-live="polite">
+        {historyLoading && <p className="chat-status-msg" role="status">Завантажуємо історію розмови…</p>}
         {hasMore && !historyError && (
           <button
             type="button"
+            className="link load-more-history-btn"
             disabled={historyLoading}
             onClick={() => void loadHistory(nextBefore)}
           >
-            Показати попередні повідомлення
+            ↑ Показати попередні повідомлення
           </button>
         )}
-        {exchanges.map((exchange) => (
-          <article className="assistant-answer" key={exchange.id}>
-            <strong>Ваше запитання</strong>
-            <p className="assistant-text">{exchange.question}</p>
-            <strong>Відповідь · версія {exchange.revision}</strong>
-            {(exchange.stale || exchange.revision !== revision) && (
-              <p className="assistant-stale">
-                Відповідь стосується попередньої версії чернетки. Для актуальної
-                відповіді надішліть запит знову.
+
+        {exchanges.length === 0 && !historyLoading && (
+          <div className="chat-welcome-card">
+            <div className="welcome-avatar">👋</div>
+            <div className="welcome-content">
+              <strong>Вітаю! Я ваш проактивний консультант з грантів.</strong>
+              <p>
+                Я вже бачу збережений опис вашого проєкту. Моя мета — допомогти вам підготувати заявку так, щоб її схвалила комісія. З чого почнемо?
               </p>
-            )}
-            <p className="assistant-text">{exchange.reply}</p>
-          </article>
-        ))}
+              <div className="welcome-quick-actions">
+                {STARTER_PROMPTS.map((sp, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    className="welcome-action-chip"
+                    disabled={loading || blocked}
+                    onClick={() => void sendQuestion(sp.text)}
+                  >
+                    <span>{sp.icon}</span> {sp.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {exchanges.map((exchange) => {
+          const suggestedItems = extractBudgetItemsFromText(exchange.reply);
+          return (
+            <div className="chat-turn" key={exchange.id}>
+              {/* User message bubble */}
+              <div className="chat-bubble user-bubble">
+                <div className="bubble-text">{exchange.question}</div>
+              </div>
+
+              {/* Assistant message bubble */}
+              <div className="chat-bubble assistant-bubble">
+                <div className="assistant-bubble-author">
+                  <span className="author-name">GrantFolio AI</span>
+                  <span className="revision-badge">версія {exchange.revision}</span>
+                </div>
+                {(exchange.stale || exchange.revision !== revision) && (
+                  <div className="stale-alert">
+                    ⚠️ Ця відповідь стосується попередньої версії чернетки.
+                  </div>
+                )}
+                <div className="bubble-text assistant-text">{exchange.reply}</div>
+
+                {suggestedItems.length > 0 && onImportBudgetItems && (
+                  <div className="chat-actionable-card">
+                    <div className="actionable-card-info">
+                      <strong>📋 Знайдено статті витрат ({suggestedItems.length}):</strong>
+                      <span>Ви можете автоматично перенести їх у свій кошторис.</span>
+                    </div>
+                    <button
+                      type="button"
+                      className="primary actionable-import-btn"
+                      onClick={() => handleImport(suggestedItems)}
+                    >
+                      + Додати ці {suggestedItems.length} поз. у мій бюджет ↗
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+
+        {loading && (
+          <div className="chat-bubble assistant-bubble typing-bubble">
+            <div className="typing-dots">
+              <span /><span /><span />
+            </div>
+            <span className="typing-text">Асистент аналізує проєкт та пише відповідь…</span>
+          </div>
+        )}
+
+        <div ref={chatBottomRef} />
       </div>
-      <div className="quick-prompts-section">
-        <span className="quick-prompts-title">Швидкі запитання до асистента:</span>
-        <div className="quick-prompts-list">
-          {QUICK_PROMPTS.map((qp, index) => (
-            <button
-              key={index}
-              type="button"
-              className="quick-prompt-chip"
-              disabled={loading || blocked}
-              onClick={() => setMessage(qp.text)}
-            >
-              <span>{qp.icon}</span> {qp.label}
-            </button>
-          ))}
+
+      {importedNotice && (
+        <div className="chat-imported-banner" role="status">
+          ✓ {importedNotice}
         </div>
+      )}
+
+      {error && (
+        <div className="chat-error-banner" role="alert">
+          {error}
+        </div>
+      )}
+
+      {/* Suggested Follow-up Prompts */}
+      <div className="chat-followups-bar">
+        <span className="followups-label">Підказка:</span>
+        <button
+          type="button"
+          className="followup-chip"
+          disabled={loading || blocked}
+          onClick={() => void sendQuestion("Які ще статті витрат можна включити в межах 250 000 грн за програмою «Власна справа»?")}
+        >
+          💡 Додай ще статей витрат
+        </button>
+        <button
+          type="button"
+          className="followup-chip"
+          disabled={loading || blocked}
+          onClick={() => void sendQuestion("Які вимоги до створення робочих місць та офіційного працевлаштування?")}
+        >
+          👥 Вимоги до працевлаштування
+        </button>
+        <button
+          type="button"
+          className="followup-chip"
+          disabled={loading || blocked}
+          onClick={() => void sendQuestion("Як переконливо обґрунтувати окупність мого бізнесу в заявці?")}
+        >
+          📈 Окупність проєкту
+        </button>
       </div>
-      <form onSubmit={submit}>
-        <label htmlFor="assistant-message">Ваше запитання</label>
+
+      {/* Message input form */}
+      <form
+        className="chat-input-form"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void sendQuestion(message);
+        }}
+      >
         <textarea
-          id="assistant-message"
-          rows={3}
+          rows={2}
           maxLength={2000}
           value={message}
           disabled={loading}
           onChange={(event) => setMessage(event.target.value)}
-          placeholder="Наприклад, що варто уточнити в описі проєкту або які статті бюджету додати?"
+          placeholder={
+            blocked
+              ? "Спочатку збережіть зміни в описі та бюджеті..."
+              : "Напишіть запитання або попросіть поради..."
+          }
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void sendQuestion(message);
+            }
+          }}
         />
-        {blocked && <p>Спочатку збережіть зміни в описі та бюджеті.</p>}
         <button
-          className="primary"
+          type="submit"
+          className="primary chat-send-btn"
           disabled={blocked || loading || !message.trim()}
+          title="Надіслати повідомлення (Enter)"
         >
-          {loading ? "Готуємо відповідь…" : "Запитати асистента"}{" "}
-          <span>↗</span>
+          {loading ? "…" : "Надіслати ↗"}
         </button>
       </form>
-      {loading && <p role="status">Асистент готує відповідь…</p>}
-      {error && (
-        <p className="error" role="alert">
-          {error}
-        </p>
-      )}
     </section>
   );
 }

@@ -458,6 +458,12 @@ export function Cases({
     setAssistantPrompt(promptText);
     setActiveStep("assistant");
   }
+  function importSuggestedBudgetItems(items: { name: string; quantity: string; price: string }[]) {
+    if (draft.length + items.length > 100) return;
+    setDraft((prev) => [...prev, ...items]);
+    setPending(null);
+    setNotice(`Успішно імпортовано ${items.length} статей до бюджету. Перейдіть на Крок 3 для збереження.`);
+  }
   const liveBudgetKopecks = draft.reduce((sum, row) => {
     const price = row.price.trim().replace(",", ".");
     if (!/^\d+(\.\d{1,2})?$/.test(price) || !/^\d+$/.test(row.quantity)) return sum;
@@ -933,6 +939,7 @@ export function Cases({
                 request={request}
                 prefilledPrompt={assistantPrompt}
                 onClearPrefilled={() => setAssistantPrompt("")}
+                onImportBudgetItems={importSuggestedBudgetItems}
               />
             </section>
           )}
