@@ -452,3 +452,35 @@ test("assistant history isolates owners, paginates tied timestamps, and preserve
     assert.ok(history.exchanges.every(x => x.revision === 0 && x.stale)); assert.ok(history.exchanges.some(x => x.id === generated.exchange.id)); assert.equal(calls,1);
   } finally { await new Promise<void>((resolve,reject) => historyServer.close(e => e ? reject(e) : resolve())); }
 });
+
+
+
+test("deleting a case removes it and its related data; other users cannot delete", async () => {
+  const [a, b] = await Promise.all([signup(), signup()]);
+  const create = await fetch(`${base}/api/cases`, { method: "POST", headers: { Authorization: `Bearer ${a}`, "Content-Type": "application/json" }, body: JSON.stringify({ title: "ToDelete" }) });
+  assert.equal(create.status, 201);
+  const { case: c } = await create.json() as { case: { id: string } };
+  // save some budget so cascade is tested
+  const budget = await fetch(`${base}/api/cases/${c.id}/budget`, { method: "PUT", headers: { Authorization: `Bearer ${a}`, "Content-Type": "application/json" }, body: JSON.stringify({ expectedRevision: 0, idempotencyKey: crypto.randomUUID(), items: [{ name: "Item", quantity: 1, unitPriceKopecks: 100 }] }) });
+  assert.equal(budget.status, 200);
+  // other user cannot delete
+  const foreignDelete = await fetch(`${base}/api/cases/${c.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${b}` } });
+  assert.equal(foreignDelete.status, 404);
+  // owner deletes
+  const del = await fetch(`${base}/api/cases/${c.id}`, { method: "DELETE", headers: { Authorization: `Bearer ${a}` } });
+  assert.equal(del.status, 200);
+  assert.deepEqual(await del.json(), { deleted: true });
+  // case no longer exists
+  const after = await fetch(`${base}/api/cases/${c.id}`, { headers: { Authorization: `Bearer ${a}` } });
+  assert.equal(after.status, 404);
+  // list no longer contains deleted case
+  const list = await (await fetch(`${base}/api/cases`, { headers: { Authorization: `Bearer ${a}` } })).json() as { cases: { id: string }[] };
+  assert.ok(!list.cases.some((x) => x.id === c.id));
+});
+
+test("health endpoint checks database connectivity", async () => {
+  const response = await fetch(`${base}/api/health`);
+  assert.equal(response.status, 200);
+  const body = await response.json() as { status: string };
+  assert.equal(body.status, "ok");
+});

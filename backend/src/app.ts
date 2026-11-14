@@ -15,7 +15,14 @@ export function createApp(db: Pool) {
   const app = express();
   app.disable("x-powered-by");
   app.use(express.json({ limit: "128kb" }));
-  app.get("/api/health", (_req, res) => res.json({ status: "ok" }));
+  app.get("/api/health", async (_req, res) => {
+    try {
+      await db.query("SELECT 1");
+      res.json({ status: "ok" });
+    } catch {
+      res.status(503).json({ status: "db_unavailable" });
+    }
+  });
   app.use(["/api/me", "/api/cases"], async (req, res, next) => {
     const match = /^Bearer ([^\s]+)$/.exec(req.header("authorization") ?? "");
     if (!match) {

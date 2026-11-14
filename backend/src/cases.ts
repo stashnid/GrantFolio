@@ -81,6 +81,25 @@ export function casesRouter(db: Pool) {
       next(e);
     }
   });
+  router.delete("/:id", async (req, res, next) => {
+    if (!idSchema.safeParse(req.params.id).success) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    try {
+      const result = await db.query(
+        "DELETE FROM cases WHERE id=$1 AND owner_id=$2 RETURNING id",
+        [req.params.id, res.locals.uid],
+      );
+      if (!result.rowCount) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      res.json({ deleted: true });
+    } catch (e) {
+      next(e);
+    }
+  });
   router.get("/:id/draft-export", async (req, res, next) => {
     if (!idSchema.safeParse(req.params.id).success) {
       res.status(404).json({ error: "not_found" });

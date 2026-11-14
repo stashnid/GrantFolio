@@ -398,6 +398,29 @@ export function Cases({
       setBusy(false);
     }
   }
+  async function deleteDraft() {
+    if (!selected) return;
+    if (!window.confirm(`Видалити чернетку «${selected.title}»? Цю дію неможливо скасувати.`)) return;
+    setBusy(true);
+    setError("");
+    setNotice("");
+    try {
+      const r = await request(`/api/cases/${selected.id}`, { method: "DELETE" });
+      if (!r.ok) throw Error();
+      setCases((old) => old.filter((c) => c.id !== selected.id));
+      setSelected(null);
+      setDraft([]);
+      setDetails(emptyDetails);
+      setReadiness(null);
+      setPending(null);
+      setConflict(false);
+      setNotice("Чернетку видалено.");
+    } catch {
+      setError("Не вдалося видалити чернетку. Спробуйте ще раз.");
+    } finally {
+      setBusy(false);
+    }
+  }
   function edit(index: number, patch: Partial<DraftItem>) {
     setDraft(draft.map((r, i) => (i === index ? { ...r, ...patch } : r)));
     setPending(null);
@@ -637,6 +660,16 @@ export function Cases({
             {(dirty || pending) && (
               <p>Перед завантаженням збережіть зміни в описі та бюджеті.</p>
             )}
+          </section>
+          <section aria-labelledby="delete-heading">
+            <h4 id="delete-heading">Видалення</h4>
+            <button
+              className="link danger"
+              disabled={busy || !!pending}
+              onClick={() => void deleteDraft()}
+            >
+              Видалити чернетку
+            </button>
           </section>
           {conflict && (
             <button

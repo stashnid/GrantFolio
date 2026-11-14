@@ -101,3 +101,11 @@ Terra використав завантажені design/ui-styling рекоме
 - Typecheck/build PASS; 11 unit тестів включно з save-failure і integration history test.
 - Три звіти агентів для кожної частини.
 - Оновлено STATUS і WORKLOG; запуш на GitHub.
+
+## 14.11 (пізній вечір): видалення чернеток і health DB check
+
+- Додано `DELETE /api/cases/:id` з обов'язковою верифікацією власника `owner_id`.
+- Створено міграцію `005_cascade_deletes.sql` для каскадного видалення пов'язаних записів у `budget_commands`, `details_commands`, `budget_history`.
+- Оновлено `/api/health` для виконання `SELECT 1` до PostgreSQL (повертає 503 при збої з'єднання).
+- У фронтенді додано кнопку «Видалити чернетку» з підтвердженням дії `window.confirm`.
+- Додано тести на перевірку прав видалення, каскадного видалення та працездатності `/api/health`.

@@ -519,3 +519,9 @@ a:focus-visible {
 .assistant form {
   margin-top: 20px;
 }
+.danger {
+  color: #c0392b;
+}
+.danger:hover {
+  color: #e74c3c;
+}
