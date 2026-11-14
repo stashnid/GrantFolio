@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { User } from "firebase/auth";
 import { Assistant } from "./Assistant";
+import type { GrantProgram } from "./GrantCatalog";
 
 type Item = { name: string; quantity: number; unitPriceKopecks: number };
 type Details = {
@@ -85,9 +86,13 @@ const money = (n: number) =>
 export function Cases({
   user,
   onUnsavedChange,
+  selectedProgram,
+  onClearProgram,
 }: {
   user: User;
   onUnsavedChange?: (dirty: boolean) => void;
+  selectedProgram?: GrantProgram | null;
+  onClearProgram?: () => void;
 }) {
   const [cases, setCases] = useState<Case[]>([]),
     [selected, setSelected] = useState<Case | null>(null),
@@ -473,6 +478,15 @@ export function Cases({
     if (!Number.isSafeInteger(kopecks) || !Number.isSafeInteger(quantity)) return sum;
     return sum + kopecks * quantity;
   }, 0);
+  const programMaxKopecks = selectedProgram
+    ? selectedProgram.id === "veteran-grant"
+      ? 100000000
+      : selectedProgram.id === "processing-business"
+        ? 800000000
+        : selectedProgram.id === "agro-gardens"
+          ? 1000000000
+          : 25000000
+    : 25000000;
   return (
     <div className="card cases-card">
       <div className="card-top">
@@ -531,6 +545,37 @@ export function Cases({
               <span className="case-revision">Версія чернетки: {selected.revision}</span>
             </div>
           </div>
+
+          {selectedProgram ? (
+            <div className="applied-program-banner">
+              <div className="applied-program-info">
+                <span className="applied-program-tag">🎯 Обрана програма гранту:</span>
+                <strong>{selectedProgram.title}</strong>
+                <span className="applied-program-desc">
+                  Фінансування: <strong>{selectedProgram.amount}</strong> · Ключова умова: {selectedProgram.keyCondition}
+                </span>
+              </div>
+              {onClearProgram && (
+                <button
+                  type="button"
+                  className="link change-program-btn"
+                  onClick={onClearProgram}
+                >
+                  Змінити програму ↗
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="applied-program-banner neutral">
+              <div className="applied-program-info">
+                <span className="applied-program-tag">🎯 Базова програма:</span>
+                <strong>Державний мікрогрант «Власна справа» (до 250 000 грн)</strong>
+                <span className="applied-program-desc">
+                  Ви можете обрати іншу програму у вкладці «Каталог грантів» або готувати заявку під Власну справу.
+                </span>
+              </div>
+            </div>
+          )}
 
           <div className="case-steps-nav" role="tablist" aria-label="Етапи проєкту">
             <button
@@ -767,10 +812,14 @@ export function Cases({
                   <span className="summary-value secondary">{money(selected.totalKopecks)}</span>
                 </div>
                 <div className="summary-badge">
-                  {liveBudgetKopecks <= 25000000 ? (
-                    <span className="badge-ok">✓ Вкладається в ліміт 250 000 грн (2 робочих місця)</span>
+                  {liveBudgetKopecks <= programMaxKopecks ? (
+                    <span className="badge-ok">
+                      ✓ Вкладається в ліміт {money(programMaxKopecks)} ({selectedProgram?.keyCondition || "1-2 робочих місця"})
+                    </span>
                   ) : (
-                    <span className="badge-warn">⚠️ Перевищує 250 000 грн (потрібні власні кошти або ветеранський грант)</span>
+                    <span className="badge-warn">
+                      ⚠️ Перевищує орієнтовний ліміт {money(programMaxKopecks)} (потрібні власні кошти або більший грант)
+                    </span>
                   )}
                 </div>
               </div>
@@ -904,13 +953,23 @@ export function Cases({
                 <p>
                   Сформований файл містить структуровані відповіді та бюджет. Скопіюйте їх під час заповнення офіційної заявки на державному порталі.
                 </p>
-                <button
-                  className="primary export-btn"
-                  disabled={busy || dirty || !!pending || conflict}
-                  onClick={() => void downloadDraft()}
-                >
-                  Завантажити чернетку (.txt) <span>↗</span>
-                </button>
+                <div className="export-buttons-group">
+                  <button
+                    className="primary export-btn"
+                    disabled={busy || dirty || !!pending || conflict}
+                    onClick={() => void downloadDraft()}
+                  >
+                    Завантажити чернетку (.txt) <span>↗</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-btn print-pdf-btn"
+                    disabled={busy || dirty || !!pending || conflict}
+                    onClick={() => window.print()}
+                  >
+                    📄 Зберегти як PDF / Друк ↗
+                  </button>
+                </div>
                 {(dirty || pending) && (
                   <p className="error">Перед завантаженням збережіть зміни в описі та бюджеті.</p>
                 )}

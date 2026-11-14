@@ -29,7 +29,8 @@ function App() {
     [error, setError] = useState(""),
     [profileReady, setProfileReady] = useState(false),
     [retry, setRetry] = useState(0),
-    [tab, setTab] = useState<"catalog" | "cases" | "profile">("cases");
+    [tab, setTab] = useState<"catalog" | "cases" | "profile">("cases"),
+    [selectedProgram, setSelectedProgram] = useState<GrantProgram | null>(null);
   useEffect(
     () =>
       onAuthStateChanged(auth, (u) => {
@@ -260,12 +261,21 @@ function App() {
             <>
             <div hidden={tab !== "catalog"} className="catalog-tab-content">
               <GrantCatalog
-                onApplyProgram={() => {
+                onApplyProgram={(prog) => {
+                  setSelectedProgram(prog);
                   setTab("cases");
                 }}
               />
             </div>
-            <div hidden={tab !== "cases"}><PilotProgram /><Cases key={user.uid} user={user} onUnsavedChange={setCasesDirty} /></div>
+            <div hidden={tab !== "cases"}>
+              <Cases
+                key={user.uid}
+                user={user}
+                onUnsavedChange={setCasesDirty}
+                selectedProgram={selectedProgram}
+                onClearProgram={() => setSelectedProgram(null)}
+              />
+            </div>
             <div className="card" hidden={tab !== "profile"}>
               <div className="card-top">
                 <span>01 / ВАШ ПРОФІЛЬ</span>

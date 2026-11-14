@@ -1396,3 +1396,115 @@ a:focus-visible {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* Applied Program Banner */
+.applied-program-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #fdf6ec;
+  border: 1px solid #ecd8bd;
+  border-left: 4px solid #b87528;
+  padding: 14px 18px;
+  border-radius: 0 8px 8px 0;
+  margin-bottom: 20px;
+}
+.applied-program-banner.neutral {
+  background: #f2f6f1;
+  border-color: #d2ded0;
+  border-left-color: #3f684c;
+}
+.applied-program-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.applied-program-tag {
+  font-size: 11px;
+  font-weight: 700;
+  color: #8c572b;
+  letter-spacing: 0.5px;
+}
+.applied-program-banner.neutral .applied-program-tag {
+  color: #3b5f46;
+}
+.applied-program-info strong {
+  font-size: 15px;
+  color: #213c2b;
+}
+.applied-program-desc {
+  font-size: 13px;
+  color: #556c5c;
+}
+.change-program-btn {
+  font-size: 13px;
+  font-weight: 600;
+  color: #92531e;
+  white-space: nowrap;
+}
+
+/* Assistant Copy Button */
+.assistant-bubble-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+.bubble-copy-btn {
+  padding: 4px 10px;
+  background: #f4f7f2;
+  border: 1px solid #d4ded2;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #3f5e49;
+  transition: all 0.15s ease;
+}
+.bubble-copy-btn:hover {
+  background: #e2ede0;
+  border-color: #527a5d;
+}
+
+/* Export Buttons Group */
+.export-buttons-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+.print-pdf-btn {
+  font-size: 14px;
+}
+
+/* Print / PDF Media Styles */
+@media print {
+  header,
+  footer,
+  .case-steps-nav,
+  .case-list,
+  .export-buttons-group,
+  .delete-section,
+  .change-program-btn,
+  .step-ai-banner,
+  .link {
+    display: none !important;
+  }
+  body, main, .panel, .card {
+    background: #ffffff !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    box-shadow: none !important;
+    border: none !important;
+  }
+  .case-workspace {
+    margin: 0 !important;
+  }
+  .step-panel {
+    border: none !important;
+    padding: 0 !important;
+    background: transparent !important;
+  }
+  h2, h3, h4 {
+    color: #000000 !important;
+  }
+}

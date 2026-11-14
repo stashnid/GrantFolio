@@ -120,6 +120,7 @@ export function Assistant({
   const [hasMore, setHasMore] = useState(false);
   const [nextBefore, setNextBefore] = useState<string | null>(null);
   const [importedNotice, setImportedNotice] = useState("");
+  const [copiedId, setCopiedId] = useState<string | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const requestRef = useRef(request);
   requestRef.current = request;
@@ -331,6 +332,20 @@ export function Assistant({
                   </div>
                 )}
                 <div className="bubble-text assistant-text">{exchange.reply}</div>
+
+                <div className="assistant-bubble-actions">
+                  <button
+                    type="button"
+                    className="bubble-copy-btn"
+                    onClick={() => {
+                      void navigator.clipboard.writeText(exchange.reply);
+                      setCopiedId(exchange.id);
+                      window.setTimeout(() => setCopiedId(null), 2000);
+                    }}
+                  >
+                    {copiedId === exchange.id ? "✓ Скопійовано в буфер!" : "📋 Скопіювати текст"}
+                  </button>
+                </div>
 
                 {suggestedItems.length > 0 && onImportBudgetItems && (
                   <div className="chat-actionable-card">
