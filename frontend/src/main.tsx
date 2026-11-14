@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
   createUserWithEmailAndPassword,
@@ -13,6 +13,7 @@ import { Cases } from "./Cases";
 type Profile = { businessName: string; region: string; description: string };
 const empty: Profile = { businessName: "", region: "", description: "" };
 function App() {
+  const emailInput = useRef<HTMLInputElement>(null);
   const [user, setUser] = useState<User | null>(null),
     [loading, setLoading] = useState(true),
     [register, setRegister] = useState(false),
@@ -149,25 +150,17 @@ function App() {
           <div className="eyebrow">
             <span className="small-dot" /> GRANTFOLIO ДЛЯ БІЗНЕСУ
           </div>
-          <h1>
-            Асистент із грантів
-            <br />
-            для бізнесу
-          </h1>
-          <p>
-            Підготуйте профіль бізнесу, опишіть проєкт і розрахуйте бюджет
-            для заявки на фінансування.
-          </p>
-          <div className="intro-bottom">
-            <div className="orbit">✳</div>
-            <span>
-              ПРОФІЛЬ БІЗНЕСУ
-              <br />
-              <b>ПРОЄКТ І БЮДЖЕТ</b>
-            </span>
+          <h1>Знайдіть фінансування для свого бізнесу</h1>
+          <p className="intro-lead">ШІ-асистент для підбору грантів і підготовки заявок.</p>
+          <div className="prototype-status">
+            <strong>Зараз доступний прототип</strong>
+            <p>Створіть профіль бізнесу, чернетку проєкту та бюджет. Підбір грантів і підготовка заявок за допомогою ШІ — у планах.</p>
           </div>
+          <a className="intro-action" href="#account" onClick={(event) => { event.preventDefault(); setRegister(true); setError(""); emailInput.current?.focus(); emailInput.current?.scrollIntoView({ block: "center" }); }}>
+            Створити акаунт <span aria-hidden="true">↗</span>
+          </a>
         </section>}
-        <section className="panel">
+        <section className="panel" id="account">
           {loading ? (
             <p>Завантаження…</p>
           ) : !user ? (
@@ -186,6 +179,7 @@ function App() {
                 <label>
                   Електронна пошта
                   <input
+                    ref={emailInput}
                     type="email"
                     autoComplete="email"
                     required
