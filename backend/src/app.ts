@@ -4,6 +4,7 @@ import type { Pool } from "pg";
 import { z } from "zod";
 import { casesRouter } from "./cases.js";
 import { feedbackRouter } from "./feedback.js";
+import { donationsRouter } from "./donations.js";
 
 const profile = z
   .object({
@@ -24,7 +25,7 @@ export function createApp(db: Pool) {
       res.status(503).json({ status: "db_unavailable" });
     }
   });
-  app.use(["/api/me", "/api/cases", "/api/feedback"], async (req, res, next) => {
+  app.use(["/api/me", "/api/cases", "/api/feedback", "/api/donations"], async (req, res, next) => {
     const match = /^Bearer ([^\s]+)$/.exec(req.header("authorization") ?? "");
     if (!match) {
       res.status(401).json({ error: "unauthorized" });
@@ -73,6 +74,7 @@ export function createApp(db: Pool) {
   });
   app.use("/api/cases", casesRouter(db));
   app.use("/api/feedback", feedbackRouter(db));
+  app.use("/api/donations", donationsRouter(db));
   app.use("/api", (_req, res) => res.status(404).json({ error: "not_found" }));
   const errors: ErrorRequestHandler = (error, _req, res, _next) => {
     const status =

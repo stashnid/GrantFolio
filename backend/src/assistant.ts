@@ -4,7 +4,7 @@ import type { Pool } from "pg";
 import { z } from "zod";
 
 const input = z.object({ expectedRevision: z.number().int().min(0).max(2147483646), message: z.string().trim().min(1).max(2000) }).strict();
-type Snapshot = { title: string; revision: number; details: unknown; items: unknown; total_kopecks: string; conversation?: { question: string; reply: string; revision: number; stale: boolean; truncated: boolean }[] };
+type Snapshot = { title: string; program_id?: string; revision: number; details: unknown; items: unknown; total_kopecks: string; conversation?: { question: string; reply: string; revision: number; stale: boolean; truncated: boolean }[] };
 export type AssistantResponder = (snapshot: Snapshot, message: string, signal: AbortSignal) => Promise<string>;
 
 export function assistantRouter(db: Pool, responder: AssistantResponder | null | undefined = undefined, timeoutMs = 25000) {
@@ -38,7 +38,7 @@ export function assistantRouter(db: Pool, responder: AssistantResponder | null |
     const parsed = input.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: "invalid_assistant_request" }); return; }
     try {
-      const result = await db.query("SELECT title, revision, details, items, total_kopecks FROM cases WHERE id=$1 AND owner_id=$2", [req.params.id, res.locals.uid]);
+      const result = await db.query("SELECT title, program_id, revision, details, items, total_kopecks FROM cases WHERE id=$1 AND owner_id=$2", [req.params.id, res.locals.uid]);
       if (!result.rowCount) { res.status(404).json({ error: "not_found" }); return; }
       const snapshot: Snapshot = result.rows[0];
       if (snapshot.revision !== parsed.data.expectedRevision) { res.status(409).json({ error: "revision_conflict" }); return; }

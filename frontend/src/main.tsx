@@ -1,4 +1,5 @@
 import { Feedback } from "./Feedback";
+import { Donations } from "./Donations";
 import React, { useEffect, useRef, useState } from "react";
 import { createRoot } from "react-dom/client";
 import {
@@ -31,13 +32,13 @@ function App() {
     [error, setError] = useState(""),
     [profileReady, setProfileReady] = useState(false),
     [retry, setRetry] = useState(0),
-    [tab, setTab] = useState<"catalog" | "cases" | "profile">("cases"),
+    [tab, setTab] = useState<"catalog" | "cases" | "profile" | "donations" | "feedback">("cases"),
     [selectedProgram, setSelectedProgram] = useState<GrantProgram | null>(null);
   useEffect(
     () =>
       onAuthStateChanged(auth, (u) => {
         setUser(u);
-        setTab("profile");
+        setTab("cases");
         setProfileReady(false);
         setLoading(false);
         setProfile(empty);
@@ -175,6 +176,20 @@ function App() {
               onClick={() => setTab("catalog")}
             >
               Каталог грантів <span className="nav-badge">{GRANT_PROGRAMS.length}</span>
+            </button>
+            <button
+              className="link nav-tab donation-nav-btn"
+              aria-current={tab === "donations" ? "page" : undefined}
+              onClick={() => setTab("donations")}
+            >
+              💙💛 Донат / ЗСУ
+            </button>
+            <button
+              className="link nav-tab"
+              aria-current={tab === "feedback" ? "page" : undefined}
+              onClick={() => setTab("feedback")}
+            >
+              Відгуки
             </button>
             <button
               className="link nav-tab"
@@ -375,7 +390,12 @@ function App() {
               </form>
               <div className="switch">Ви увійшли як {user.email}</div>
             </div>
-            {profileReady && <Feedback user={user} />}
+            <div hidden={tab !== "donations"}>
+              <Donations user={user} />
+            </div>
+            <div hidden={tab !== "feedback"}>
+              <Feedback user={user} />
+            </div>
             </>
           )}
         </section>

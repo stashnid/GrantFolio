@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { User } from "firebase/auth";
 import { Assistant } from "./Assistant";
-import type { GrantProgram } from "./GrantCatalog";
+import { GRANT_PROGRAMS, type GrantProgram } from "./GrantCatalog";
 
 type Item = { name: string; quantity: number; unitPriceKopecks: number };
 type Details = {
@@ -60,16 +60,46 @@ const planFields = [
   },
 ];
 
-const BUDGET_TEMPLATES = [
-  { label: "⚙️ Обладнання / техніка", name: "Виробниче або торгове обладнання", price: "80000.00" },
-  { label: "🏢 Оренда", name: "Оренда нежитлового приміщення", price: "25000.00" },
-  { label: "📦 Сировина", name: "Сировина та витратні матеріали", price: "35000.00" },
-  { label: "📢 Маркетинг і реклама", name: "Маркетингові послуги та реклама", price: "15000.00" },
-  { label: "💻 ПРРО / Каса / ПЗ", name: "Програмне забезпечення та термінал ПРРО", price: "10000.00" },
-];
+const PROGRAM_BUDGET_TEMPLATES: Record<string, { label: string; name: string; price: string }[]> = {
+  "vlasna-sprava": [
+    { label: "⚙️ Обладнання / техніка", name: "Виробниче або торгове обладнання", price: "80000.00" },
+    { label: "🏢 Оренда (до 25%)", name: "Оренда нежитлового приміщення", price: "25000.00" },
+    { label: "📦 Сировина (до 50%)", name: "Сировина та витратні матеріали", price: "35000.00" },
+    { label: "📢 Маркетинг і реклама", name: "Маркетингові послуги та реклама", price: "15000.00" },
+    { label: "💻 ПРРО / Каса / ПЗ", name: "Програмне забезпечення та термінал ПРРО", price: "10000.00" },
+  ],
+  "veteran-grant": [
+    { label: "⚙️ Виробниче обладнання", name: "Технологічне та виробниче обладнання", price: "250000.00" },
+    { label: "🏢 Оренда приміщення", name: "Оренда виробничого/торгового приміщення", price: "40000.00" },
+    { label: "📦 Сировина та матеріали", name: "Партія сировини та витратних матеріалів", price: "80000.00" },
+    { label: "📢 Маркетинг і веб-сайт", name: "Розробка сайту та маркетингова кампанія", price: "30000.00" },
+    { label: "🤝 Франшиза / ліцензія", name: "Франшиза або ліцензійні права", price: "100000.00" },
+  ],
+  "processing-business": [
+    { label: "🏭 Виробнича лінія", name: "Автоматизована виробнича лінія", price: "2000000.00" },
+    { label: "🚚 Доставка обладнання", name: "Транспортування виробничого устаткування", price: "150000.00" },
+    { label: "🔧 Монтаж та запуск", name: "Введення виробничої лінії в експлуатацію", price: "250000.00" },
+    { label: "⚙️ Допоміжне обладнання", name: "Верстати обробки та пакування", price: "600000.00" },
+  ],
+  "agro-gardens": [
+    { label: "🌱 Саджанці насаджень", name: "Сертифікований садивний матеріал", price: "300000.00" },
+    { label: "💧 Крапельне зрошення", name: "Система крапельного поливу та автоматики", price: "180000.00" },
+    { label: "🏗️ Опорні конструкції", name: "Шпалери та опорні стовпи", price: "120000.00" },
+    { label: "🧪 Добрива та ЗЗР", name: "Комплекс первинного живлення та захисту", price: "50000.00" },
+  ],
+};
+
+const PROGRAM_LIMITS: Record<string, number> = {
+  "vlasna-sprava": 25000000,
+  "veteran-grant": 100000000,
+  "processing-business": 800000000,
+  "agro-gardens": 1000000000,
+};
+
 type Case = {
   id: string;
   title: string;
+  programId?: string;
   revision: number;
   items: Item[];
   details: Details;
@@ -102,6 +132,7 @@ export function Cases({
     [readiness, setReadiness] = useState<Readiness | null>(null),
     [readinessError, setReadinessError] = useState(false),
     [title, setTitle] = useState(""),
+    [newProgramId, setNewProgramId] = useState<string>("vlasna-sprava"),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false),
@@ -216,6 +247,12 @@ export function Cases({
       setBusy(false);
     }
   }
+  useEffect(() => {
+    if (selectedProgram) {
+      setNewProgramId(selectedProgram.id);
+    }
+  }, [selectedProgram]);
+
   async function create(e: React.FormEvent) {
     e.preventDefault();
     if (!mayLeaveDraft()) return;
@@ -226,7 +263,7 @@ export function Cases({
       const r = await request("/api/cases", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title }),
+        body: JSON.stringify({ title, programId: newProgramId }),
       });
       if (!r.ok) throw Error();
       const c = (await r.json()).case;
@@ -242,6 +279,28 @@ export function Cases({
       setConflict(false);
     } catch {
       setError("Не вдалося створити чернетку.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function changeSelectedProgram(progId: string) {
+    if (!selected || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const r = await request(`/api/cases/${selected.id}/program`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ programId: progId }),
+      });
+      if (!r.ok) throw Error();
+      const updated: Case = (await r.json()).case;
+      setSelected(updated);
+      setCases((old) => old.map((x) => (x.id === updated.id ? updated : x)));
+      setNotice(`Цільову програму змінено на «${GRANT_PROGRAMS.find((p) => p.id === progId)?.title}».`);
+    } catch {
+      setError("Не вдалося змінити програму для цієї чернетки.");
     } finally {
       setBusy(false);
     }
@@ -480,12 +539,21 @@ export function Cases({
     const total = sum + kopecks * quantity;
     return Number.isSafeInteger(total) ? total : Number.NaN;
   }, 0);
+
+  const activeProgram =
+    GRANT_PROGRAMS.find((p) => p.id === (selected?.programId ?? selectedProgram?.id)) ??
+    GRANT_PROGRAMS[0];
+  const activeLimitKopecks = PROGRAM_LIMITS[activeProgram.id] ?? 25000000;
+  const activeTemplates =
+    PROGRAM_BUDGET_TEMPLATES[activeProgram.id] ?? PROGRAM_BUDGET_TEMPLATES["vlasna-sprava"];
+
   return (
     <div className="card cases-card">
       {selected && createPortal(
         <article className="print-document" aria-label="Чернетка проєкту для друку">
           <p>GrantFolio · Робоча чернетка</p>
           <h1>{selected.title}</h1>
+          <p>Цільова програма: {activeProgram.title} ({activeProgram.provider})</p>
           <p>Збережена версія: {selected.revision}. Документ не замінює офіційної форми заявки.</p>
           {[...basicsFields, ...planFields].map((field) => (
             <section key={field.key}>
@@ -508,7 +576,7 @@ export function Cases({
       </div>
       <h2>Ваші плани</h2>
       <p>Створіть чернетку, опишіть проєкт та запишіть витрати.</p>
-      <form onSubmit={create}>
+      <form onSubmit={create} className="create-case-form">
         <label>
           Назва чернетки
           <input
@@ -518,6 +586,20 @@ export function Cases({
             maxLength={160}
             placeholder="Наприклад, обладнання для майстерні"
           />
+        </label>
+        <label>
+          Цільова грантова програма
+          <select
+            value={newProgramId}
+            onChange={(e) => setNewProgramId(e.target.value)}
+            disabled={busy || !ready}
+          >
+            {GRANT_PROGRAMS.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.title} ({p.amount})
+              </option>
+            ))}
+          </select>
         </label>
         <button className="primary" disabled={busy || !ready}>
           Створити чернетку <span>↗</span>
@@ -559,36 +641,31 @@ export function Cases({
             </div>
           </div>
 
-          {selectedProgram ? (
-            <div className="applied-program-banner">
-              <div className="applied-program-info">
-                <span className="applied-program-tag">Довідкова програма:</span>
-                <strong>{selectedProgram.title}</strong>
-                <span className="applied-program-desc">
-                  Фінансування: <strong>{selectedProgram.amount}</strong> · Ключова умова: {selectedProgram.keyCondition}
-                </span>
-              </div>
-              {onClearProgram && (
-                <button
-                  type="button"
-                  className="link change-program-btn"
-                  onClick={onClearProgram}
-                >
-                  Змінити програму ↗
-                </button>
-              )}
+          <div className="applied-program-banner">
+            <div className="applied-program-info">
+              <span className="applied-program-tag">Цільова грантова програма:</span>
+              <strong>{activeProgram.title}</strong>
+              <span className="applied-program-desc">
+                Фінансування: <strong>{activeProgram.amount}</strong> · Ключова умова: {activeProgram.keyCondition}
+              </span>
             </div>
-          ) : (
-            <div className="applied-program-banner neutral">
-              <div className="applied-program-info">
-                <span className="applied-program-tag">Пілотна програма:</span>
-                <strong>Програма «Власна справа»</strong>
-                <span className="applied-program-desc">
-                  Ви можете обрати іншу програму у вкладці «Каталог грантів» або готувати заявку під Власну справу.
-                </span>
-              </div>
+            <div className="program-change-selector">
+              <label htmlFor="change-prog-inline" className="program-change-label">Змінити:</label>
+              <select
+                id="change-prog-inline"
+                className="program-inline-select"
+                value={activeProgram.id}
+                disabled={busy}
+                onChange={(e) => void changeSelectedProgram(e.target.value)}
+              >
+                {GRANT_PROGRAMS.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                  </option>
+                ))}
+              </select>
             </div>
-          )}
+          </div>
 
           <div className="case-steps-nav" role="tablist" aria-label="Етапи проєкту">
             <button
@@ -790,9 +867,9 @@ export function Cases({
               </div>
 
               <div className="budget-templates-section">
-                <span className="templates-label">Приклади витрат — перевірте ціни та умови:</span>
+                <span className="templates-label">Рекомендовані напрями для програми «{activeProgram.title}»:</span>
                 <div className="templates-list">
-                  {BUDGET_TEMPLATES.map((tmpl, idx) => (
+                  {activeTemplates.map((tmpl, idx) => (
                     <button
                       key={idx}
                       type="button"
@@ -824,9 +901,15 @@ export function Cases({
                   <span className="summary-label">Збережено в базі:</span>
                   <span className="summary-value secondary">{money(selected.totalKopecks)}</span>
                 </div>
-                <div className="summary-badge">
-                  <span className="badge-warn">Сума кошторису не визначає відповідність умовам гранту.</span>
+                <div className="summary-col">
+                  <span className="summary-label">Ліміт програми:</span>
+                  <span className="summary-value limit-highlight">{money(activeLimitKopecks)}</span>
                 </div>
+                {Number.isFinite(liveBudgetKopecks) && liveBudgetKopecks > activeLimitKopecks && (
+                  <div className="summary-badge warning">
+                    ⚠️ Сума ({money(liveBudgetKopecks)}) перевищує базовий ліміт ({money(activeLimitKopecks)}). Перевірте вимоги співфінансування.
+                  </div>
+                )}
               </div>
 
               {draft.length === 0 && (
@@ -1004,6 +1087,7 @@ export function Cases({
                 prefilledPrompt={assistantPrompt}
                 onClearPrefilled={() => setAssistantPrompt("")}
                 onImportBudgetItems={importSuggestedBudgetItems}
+                programTitle={activeProgram.title}
               />
             </section>
           )}

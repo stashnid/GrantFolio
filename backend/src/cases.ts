@@ -8,12 +8,30 @@ import { draftExport } from "./draft-export.js";
 import { assistantRouter } from "./assistant.js";
 import { configuredGeminiResponder } from "./gemini.js";
 const idSchema = z.string().uuid();
-const titleSchema = z
-  .object({ title: z.string().trim().min(1).max(160) })
+const ALLOWED_PROGRAMS = [
+  "vlasna-sprava",
+  "veteran-grant",
+  "processing-business",
+  "agro-gardens",
+] as const;
+
+const createCaseSchema = z
+  .object({
+    title: z.string().trim().min(1).max(160),
+    programId: z.enum(ALLOWED_PROGRAMS).optional().default("vlasna-sprava"),
+  })
   .strict();
+
+const updateProgramSchema = z
+  .object({
+    programId: z.enum(ALLOWED_PROGRAMS),
+  })
+  .strict();
+
 type CaseRow = {
   id: string;
   title: string;
+  program_id?: string;
   revision: number;
   items: unknown;
   total_kopecks: string;
@@ -23,6 +41,7 @@ function view(row: CaseRow) {
   return {
     id: row.id,
     title: row.title,
+    programId: row.program_id ?? "vlasna-sprava",
     revision: row.revision,
     items: row.items,
     details: row.details,
@@ -48,17 +67,41 @@ export function casesRouter(db: Pool) {
     }
   });
   router.post("/", async (req, res, next) => {
-    const parsed = titleSchema.safeParse(req.body);
+    const parsed = createCaseSchema.safeParse(req.body);
     if (!parsed.success) {
       res.status(400).json({ error: "invalid_case" });
       return;
     }
     try {
       const result = await db.query(
-        "INSERT INTO cases(id,owner_id,title) VALUES($1,$2,$3) RETURNING *",
-        [randomUUID(), res.locals.uid, parsed.data.title],
+        "INSERT INTO cases(id,owner_id,title,program_id) VALUES($1,$2,$3,$4) RETURNING *",
+        [randomUUID(), res.locals.uid, parsed.data.title, parsed.data.programId],
       );
       res.status(201).json({ case: view(result.rows[0]) });
+    } catch (e) {
+      next(e);
+    }
+  });
+  router.put("/:id/program", async (req, res, next) => {
+    if (!idSchema.safeParse(req.params.id).success) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    const parsed = updateProgramSchema.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "invalid_program" });
+      return;
+    }
+    try {
+      const result = await db.query(
+        "UPDATE cases SET program_id=$1 WHERE id=$2 AND owner_id=$3 RETURNING *",
+        [parsed.data.programId, req.params.id, res.locals.uid],
+      );
+      if (!result.rowCount) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      res.json({ case: view(result.rows[0]) });
     } catch (e) {
       next(e);
     }
@@ -108,7 +151,7 @@ export function casesRouter(db: Pool) {
     }
     try {
       const result = await db.query(
-        "SELECT title, revision, details, items, total_kopecks FROM cases WHERE id=$1 AND owner_id=$2",
+        "SELECT title, program_id, revision, details, items, total_kopecks FROM cases WHERE id=$1 AND owner_id=$2",
         [req.params.id, res.locals.uid],
       );
       if (!result.rowCount) {

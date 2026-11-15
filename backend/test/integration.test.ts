@@ -478,6 +478,64 @@ test("deleting a case removes it and its related data; other users cannot delete
   assert.ok(!list.cases.some((x) => x.id === c.id));
 });
 
+test("case preserves programId, allows updating program and validates allowed programs", async () => {
+  const [a, b] = await Promise.all([signup(), signup()]);
+
+  // Create case with default programId
+  const createDefault = await fetch(`${base}/api/cases`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${a}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ title: "Проєкт 1" }),
+  });
+  assert.equal(createDefault.status, 201);
+  const caseDefault = ((await createDefault.json()) as { case: { id: string; programId: string } }).case;
+  assert.equal(caseDefault.programId, "vlasna-sprava");
+
+  // Create case with explicit programId
+  const createVeteran = await fetch(`${base}/api/cases`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${a}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ title: "Ветеранський бізнес", programId: "veteran-grant" }),
+  });
+  assert.equal(createVeteran.status, 201);
+  const caseVeteran = ((await createVeteran.json()) as { case: { id: string; programId: string } }).case;
+  assert.equal(caseVeteran.programId, "veteran-grant");
+
+  // Invalid programId rejected
+  const createInvalid = await fetch(`${base}/api/cases`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${a}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ title: "Невірний", programId: "unknown-grant" }),
+  });
+  assert.equal(createInvalid.status, 400);
+
+  // Update programId
+  const updateProgram = await fetch(`${base}/api/cases/${caseDefault.id}/program`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${a}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ programId: "processing-business" }),
+  });
+  assert.equal(updateProgram.status, 200);
+  const updated = ((await updateProgram.json()) as { case: { id: string; programId: string } }).case;
+  assert.equal(updated.programId, "processing-business");
+
+  // Another user cannot update program
+  const foreignUpdate = await fetch(`${base}/api/cases/${caseDefault.id}/program`, {
+    method: "PUT",
+    headers: { Authorization: `Bearer ${b}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ programId: "veteran-grant" }),
+  });
+  assert.equal(foreignUpdate.status, 404);
+
+  // Program details reflected in draft export
+  const exportRes = await fetch(`${base}/api/cases/${caseDefault.id}/draft-export`, {
+    headers: { Authorization: `Bearer ${a}` },
+  });
+  assert.equal(exportRes.status, 200);
+  const exportText = await exportRes.text();
+  assert.match(exportText, /Грант на переробне підприємство/);
+});
+
 test("health endpoint checks database connectivity", async () => {
   const response = await fetch(`${base}/api/health`);
   assert.equal(response.status, 200);
