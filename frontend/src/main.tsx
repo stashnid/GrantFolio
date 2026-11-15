@@ -157,8 +157,7 @@ function App() {
     <>
       <header>
         <a className="brand" href="/" aria-label="GrantFolio, головна">
-          <span className="mark">✳</span> grantfolio
-          <span className="dot">.</span>
+          GrantFolio
         </a>
         <span className="header-note">Гранти та фінансова підтримка бізнесу</span>
         {user && (
@@ -213,7 +212,7 @@ function App() {
       <main className={user ? "workspace" : undefined}>
         {!user && <section className="intro">
           <div className="eyebrow">
-            <span className="small-dot" /> GRANTFOLIO ДЛЯ БІЗНЕСУ
+            <span className="small-dot" /> GrantFolio для бізнесу
           </div>
           <h1>Знайдіть фінансування для свого бізнесу</h1>
           <p className="intro-lead">ШІ-асистент для підбору грантів і підготовки заявок.</p>

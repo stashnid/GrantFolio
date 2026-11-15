@@ -269,9 +269,9 @@ export function Assistant({
   return (
     <section className="live-chat-container" aria-labelledby="live-chat-heading">
       <div className="live-chat-header">
-        <div className="chat-header-avatar">✳️</div>
+        <div className="chat-header-avatar">🤖</div>
         <div className="chat-header-info">
-          <h4 id="live-chat-heading">Асистент із грантів</h4>
+          <h4 id="live-chat-heading">GrantFolio Асистент</h4>
           <span className="chat-status-indicator">
             <span className="status-dot-pulse" /> Працює зі збереженою версією проєкту
           </span>

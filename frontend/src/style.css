@@ -89,28 +89,17 @@ header {
 .brand {
   text-decoration: none;
   color: var(--color-primary);
-  font-weight: 700;
-  letter-spacing: -0.8px;
-  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.6px;
+  font-size: 24px;
   display: inline-flex;
   align-items: center;
+  font-family: var(--font-heading);
+  transition: opacity 0.15s ease;
 }
 
-.mark {
-  display: inline-grid;
-  place-items: center;
-  background: var(--color-primary);
-  color: #f3f7d2;
-  border-radius: var(--radius-sm);
-  width: 32px;
-  height: 32px;
-  font-size: 18px;
-  margin-right: 8px;
-  box-shadow: 0 2px 6px rgba(24, 62, 43, 0.2);
-}
-
-.dot {
-  color: var(--color-accent);
+.brand:hover {
+  opacity: 0.9;
 }
 
 .header-note {
