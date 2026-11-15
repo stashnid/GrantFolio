@@ -358,6 +358,16 @@ export function Assistant({
                       <strong>📋 Знайдено статті витрат ({suggestedItems.length}):</strong>
                       <span>Ви можете автоматично перенести їх у свій кошторис.</span>
                     </div>
+                    <div className="suggested-items-preview">
+                      {suggestedItems.map((item, idx) => (
+                        <div key={idx} className="suggested-item-chip">
+                          <span className="item-chip-name">⚙️ {item.name}</span>
+                          <span className="item-chip-price">
+                            {Number(item.price).toLocaleString("uk-UA")} грн
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                     <button
                       type="button"
                       className="primary actionable-import-btn"

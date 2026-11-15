@@ -148,7 +148,7 @@ export function GrantCatalog({ onApplyProgram }: Props) {
                 className="primary apply-grant-btn"
                 onClick={() => onApplyProgram?.(item)}
               >
-                Використати як орієнтир <span>↗</span>
+                Приміряти цей грант <span>↗</span>
               </button>
               <a
                 href={item.officialUrl}

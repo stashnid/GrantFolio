@@ -547,6 +547,17 @@ export function Cases({
   const activeTemplates =
     PROGRAM_BUDGET_TEMPLATES[activeProgram.id] ?? PROGRAM_BUDGET_TEMPLATES["vlasna-sprava"];
 
+  const isStep1Done = Boolean(details.projectDescription.trim() && details.customers.trim());
+  const isStep2Done = Boolean(details.implementationPlan.trim());
+  const isStep3Done = draft.length > 0;
+  const stepsDoneCount = (isStep1Done ? 1 : 0) + (isStep2Done ? 1 : 0) + (isStep3Done ? 1 : 0);
+  const overallProgressPercent = Math.round((stepsDoneCount / 3) * 100);
+
+  const budgetUsagePercent =
+    Number.isFinite(liveBudgetKopecks) && activeLimitKopecks > 0
+      ? Math.round((liveBudgetKopecks / activeLimitKopecks) * 100)
+      : 0;
+
   return (
     <div className="card cases-card">
       {selected && createPortal(
@@ -617,19 +628,29 @@ export function Cases({
       )}
       {cases.length > 0 && (
         <div className="case-list" role="group" aria-label="Ваші чернетки">
-          {cases.map((c) => (
-            <button
-              className={
-                selected?.id === c.id ? "case-button active" : "case-button"
-              }
-              key={c.id}
-              disabled={busy}
-              aria-pressed={selected?.id === c.id}
-              onClick={() => void select(c.id)}
-            >
-              {c.title} <span>↗</span>
-            </button>
-          ))}
+          {cases.map((c) => {
+            const prog = GRANT_PROGRAMS.find((p) => p.id === c.programId) ?? GRANT_PROGRAMS[0];
+            return (
+              <button
+                className={
+                  selected?.id === c.id ? "case-card-btn active" : "case-card-btn"
+                }
+                key={c.id}
+                disabled={busy}
+                aria-pressed={selected?.id === c.id}
+                onClick={() => void select(c.id)}
+              >
+                <div className="case-card-header">
+                  <span className="case-card-title">{c.title}</span>
+                  <span className="case-card-rev">v{c.revision}</span>
+                </div>
+                <div className="case-card-meta">
+                  <span className="case-card-prog">{prog.title}</span>
+                  <span className="case-card-sum">{money(c.totalKopecks)}</span>
+                </div>
+              </button>
+            );
+          })}
         </div>
       )}
       {selected && (
@@ -667,13 +688,29 @@ export function Cases({
             </div>
           </div>
 
+          {/* Overall Wizard Completion Progress */}
+          <div className="wizard-progress-card">
+            <div className="wizard-progress-info">
+              <span className="wizard-progress-label">Готовність бізнес-плану:</span>
+              <strong className="wizard-progress-val">
+                {stepsDoneCount} з 3 блоків заповнено ({overallProgressPercent}%)
+              </strong>
+            </div>
+            <div className="wizard-progress-track">
+              <div
+                className="wizard-progress-bar"
+                style={{ width: `${overallProgressPercent}%` }}
+              />
+            </div>
+          </div>
+
           <div className="case-steps-nav" role="tablist" aria-label="Етапи проєкту">
             <button
               type="button"
               className={activeStep === "basics" ? "step-tab active" : "step-tab"}
               onClick={() => setActiveStep("basics")}
             >
-              <span className="step-num">1</span>
+              <span className="step-num">{isStep1Done ? "✓" : "1"}</span>
               <span>Ідея та клієнти</span>
             </button>
             <button
@@ -681,7 +718,7 @@ export function Cases({
               className={activeStep === "plan" ? "step-tab active" : "step-tab"}
               onClick={() => setActiveStep("plan")}
             >
-              <span className="step-num">2</span>
+              <span className="step-num">{isStep2Done ? "✓" : "2"}</span>
               <span>План запуску</span>
             </button>
             <button
@@ -689,7 +726,7 @@ export function Cases({
               className={activeStep === "budget" ? "step-tab active" : "step-tab"}
               onClick={() => setActiveStep("budget")}
             >
-              <span className="step-num">3</span>
+              <span className="step-num">{isStep3Done ? "✓" : "3"}</span>
               <span>Бюджет гранту</span>
             </button>
             <button
@@ -812,6 +849,13 @@ export function Cases({
               ))}
               <div className="step-actions">
                 <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => setActiveStep("basics")}
+                >
+                  ← Назад: Ідея
+                </button>
+                <button
                   className="primary"
                   disabled={busy || conflict || (!!pending && pending.kind !== "details")}
                   onClick={() => void saveDetails()}
@@ -889,6 +933,22 @@ export function Cases({
                   >
                     + Додати свою витрату
                   </button>
+                </div>
+              </div>
+
+              {/* Visual Budget Meter */}
+              <div className="budget-meter-card">
+                <div className="meter-header">
+                  <span className="meter-title">Заповнення бюджету відносно ліміту програми:</span>
+                  <span className="meter-values">
+                    <strong>{Number.isFinite(liveBudgetKopecks) ? money(liveBudgetKopecks) : "0,00 грн"}</strong> / {money(activeLimitKopecks)} ({budgetUsagePercent}%)
+                  </span>
+                </div>
+                <div className="meter-track">
+                  <div
+                    className={`meter-bar ${budgetUsagePercent > 100 ? "exceeded" : ""}`}
+                    style={{ width: `${Math.min(100, budgetUsagePercent)}%` }}
+                  />
                 </div>
               </div>
 
@@ -970,6 +1030,13 @@ export function Cases({
 
               <div className="step-actions">
                 <button
+                  type="button"
+                  className="secondary-btn"
+                  onClick={() => setActiveStep("plan")}
+                >
+                  ← Назад: План запуску
+                </button>
+                <button
                   className="primary"
                   disabled={busy || conflict || (!!pending && pending.kind !== "budget")}
                   onClick={() => void save()}
@@ -1042,6 +1109,13 @@ export function Cases({
                   Сформований файл містить структуровані відповіді та бюджет. Скопіюйте їх під час заповнення офіційної заявки на державному порталі.
                 </p>
                 <div className="export-buttons-group">
+                  <button
+                    type="button"
+                    className="secondary-btn"
+                    onClick={() => setActiveStep("budget")}
+                  >
+                    ← Назад: Бюджет
+                  </button>
                   <button
                     className="primary export-btn"
                     disabled={busy || dirty || !!pending || conflict}
