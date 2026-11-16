@@ -45,22 +45,33 @@
   margin: 18px 0;
 }
 .grant-filters button {
-  border: 1px solid #cbd6cc;
-  border-radius: 6px;
+  border: 1px solid #c9d6cb;
+  border-radius: var(--radius-pill);
   background: white;
-  color: #34483a;
-  padding: 8px 12px;
+  color: #314636;
+  padding: 8px 16px;
+  font-size: 13.5px;
+  font-weight: 600;
   cursor: pointer;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s var(--ease-spring);
+}
+.grant-filters button:hover {
+  background: #f1f6f2;
+  border-color: #9cbda3;
+  transform: translateY(-1px);
 }
 .grant-filters button[aria-pressed="true"] {
-  background: #dcebdc;
-  border-color: #699471;
-  color: #173d23;
+  background: #183e2b;
+  border-color: #183e2b;
+  color: #ffffff;
+  box-shadow: 0 4px 12px var(--color-primary-glow);
 }
 .grant-count {
   color: #59685d;
-  font-size: 0.9rem;
-  margin: 28px 0 8px;
+  font-size: 0.92rem;
+  font-weight: 550;
+  margin: 28px 0 10px;
 }
 .grant-list {
   border-top: 1px solid #d5ded6;
@@ -69,40 +80,59 @@
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(180px, 260px);
   gap: 28px;
-  padding: 24px 0;
-  border-bottom: 1px solid #d5ded6;
+  padding: 26px 14px;
+  border-bottom: 1px solid #e1ebe2;
+  border-radius: var(--radius-sm);
+  transition: background 0.2s ease, transform 0.2s var(--ease-spring);
+}
+.grant-list-item:hover {
+  background: #f8faf8;
+  transform: translateX(3px);
 }
 .grant-list-item h3 {
-  font-size: 1.2rem;
+  font-size: 1.25rem;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+  color: var(--color-primary);
   margin: 7px 0;
 }
 .grant-list-item p {
   margin: 8px 0;
+  line-height: 1.55;
+  color: #4a5c50;
 }
 .grant-category {
-  color: #506b55;
+  color: #1e5c36;
   font-size: 0.88rem;
-  font-weight: 600;
+  font-weight: 700;
+  letter-spacing: 0.2px;
 }
 .grant-status {
-  color: #58665b;
+  color: #55675a;
   font-size: 0.9rem;
 }
 .grant-list-action {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
-  gap: 18px;
+  gap: 16px;
 }
 .grant-list-action button,
 .catalog-back {
   border: 0;
   background: transparent;
   padding: 0;
-  color: #1a6034;
-  font-weight: 700;
+  color: #164f2a;
+  font-weight: 750;
+  font-size: 13.5px;
   cursor: pointer;
   text-align: left;
+  transition: all 0.15s ease;
+}
+.grant-list-action button:hover,
+.catalog-back:hover {
+  color: #0b3319;
+  transform: translateX(2px);
 }
 .grant-list-action button span {
   margin-left: 6px;
