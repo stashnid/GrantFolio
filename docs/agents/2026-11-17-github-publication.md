@@ -8,3 +8,8 @@
 - Локальна перевірка 135 кандидатів до додавання цього звіту: приблизно1.1MB; за вбудованими шаблонами секретів збігів0, несподіваних binary/великих файлів0. Це перевірка обмеженим набором правил, не універсальна гарантія відсутності секретів. Файл списку й audit script залишені в `/private/tmp/`.
 - Перевірки коду з фінальної інтеграції: 66/66 tests, typecheck/build, Chrome desktop/mobile, новий flow та recovery regression PASS. Після них змінюються тільки записи передачі. [Поточна реалізація й фактичні межі](2026-11-16-modern-chat-integration.md).
 - Публікація: окрема гілка й pull request до main; без автоматичного merge, deployment, live AI або billing changes. Факт прийнятого remote commit і стан GitHub checks перевіряється після push.
+
+
+## Результат публікації
+
+GitHub прийняв commit `d98bba8ee841ab019138d897f581ff238485b16f` у [feat/conversation-workspace](https://github.com/stashnid/GrantFolio/tree/feat/conversation-workspace); свіжий `ls-remote` підтвердив збіг SHA. Відкрито [PR №3](https://github.com/stashnid/GrantFolio/pull/3) до `main`, без merge. GitHub Actions запустив перевірки; на момент запису вони ще виконуються, тому remote PASS не заявляється. Локальні66 tests/typecheck/build/browser QA мають PASS у попередньому інтеграційному звіті. Цей запис результату передається окремим документаційним комітом.
