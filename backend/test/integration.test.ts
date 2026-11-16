@@ -44,10 +44,12 @@ async function signup() {
   return ((await response.json()) as { idToken: string }).idToken;
 }
 async function api(token?: string, method = "GET", data?: unknown) {
+  const version = method === "PUT" && token ? (await fetch(`${base}/api/me`, { headers: { Authorization: `Bearer ${token}` } })).headers.get("etag") : null;
   return fetch(`${base}/api/me`, {
     method,
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(version ? { "If-Match": version } : {}),
       ...(data ? { "Content-Type": "application/json" } : {}),
     },
     ...(data ? { body: JSON.stringify(data) } : {}),
@@ -91,6 +93,25 @@ test("real emulator identities can only read and update their own SQL profile", 
     headers: { Authorization: `Basic ${a}` },
   });
   assert.equal(wrongScheme.status, 401);
+});
+
+test("structured profiles round-trip, preserve omitted details, isolate owners, and reject invalid fields", async () => {
+  const [a, b] = await Promise.all([signup(), signup()]);
+  const base = { businessName: "Business", description: "Description", region: "Kyiv" };
+  const details = { contactName: "Name", phone: "+380501234567", website: "https://example.com", legalForm: "fop", registrationYear: "2020", industry: "Food", kved: "10.10", city: "Kyiv", teamSize: "5", teamExperience: "Experience", grantExperience: "None", fundingPurpose: "Equipment", requestedAmount: "1000.50", ownContribution: "100" };
+  const response = await api(a, "PUT", { ...base, details: { ...details, contactName: " Name " } });
+  assert.equal(response.status, 200);
+  assert.deepEqual((await response.json() as { profile: unknown }).profile, { ...base, details });
+  assert.deepEqual((await (await api(a)).json() as { profile: unknown }).profile, { ...base, details });
+  assert.deepEqual((await (await api(b)).json() as { profile: unknown }).profile, { businessName: "", description: "", region: "" });
+  assert.equal((await api(b, "PUT", { ...base, details: { city: "Lviv" } })).status, 200);
+  assert.deepEqual((await (await api(a, "PUT", { ...base, businessName: "Updated" })).json() as { profile: unknown }).profile, { ...base, businessName: "Updated", details });
+  assert.deepEqual((await (await api(b)).json() as { profile: unknown }).profile, { ...base, details: { city: "Lviv" } });
+  for (const invalid of [{ secret: "x" }, { website: "javascript:alert(1)" }, { legalForm: "other" }, { registrationYear: "1899" }, { registrationYear: String(new Date().getFullYear() + 1) }, { teamSize: "1.2" }, { teamSize: "1000001" }, { requestedAmount: "1000000000.01" }, { ownContribution: "1.234" }, { phone: "x".repeat(41) }, { industry: 42 }]) {
+    assert.equal((await api(a, "PUT", { ...base, details: invalid })).status, 400);
+  }
+  assert.equal((await api(a, "PUT", { ...base, details: {} })).status, 200);
+  assert.deepEqual((await (await api(a)).json() as { profile: unknown }).profile, base);
 });
 
 test("production refuses emulator configuration", () => {
@@ -428,7 +449,7 @@ test("assistant history isolates owners, paginates tied timestamps, and preserve
   const owner = (await getAuth().verifyIdToken(a)).uid;
   const otherOwner = (await getAuth().verifyIdToken(b)).uid;
   const ids = Array.from({ length: 21 }, () => crypto.randomUUID()).sort();
-  for (const exchangeId of ids) await db.query("INSERT INTO assistant_exchanges(id,case_id,owner_id,question,reply,revision,created_at) VALUES($1,$2,$3,'Q','A',0,'2026-01-01T00:00:00Z')", [exchangeId,id,owner]);
+  for (const exchangeId of ids) await db.query("INSERT INTO assistant_exchanges(id,case_id,owner_id,question,reply,revision,profile_revision,created_at) VALUES($1,$2,$3,'Q','A',0,0,'2026-01-01T00:00:00Z')", [exchangeId,id,owner]);
   const foreignId = crypto.randomUUID();
   await db.query("INSERT INTO assistant_exchanges(id,case_id,owner_id,question,reply,revision) VALUES($1,$2,$3,'private','private',0)", [foreignId,otherId,otherOwner]);
   let calls = 0;
@@ -454,6 +475,44 @@ test("assistant history isolates owners, paginates tied timestamps, and preserve
 });
 
 
+
+test("assistant detects profile edits, legacy context and profile creation during generation", async () => {
+  const token = await signup();
+  const owner = (await getAuth().verifyIdToken(token)).uid;
+  const id = crypto.randomUUID();
+  await db.query("INSERT INTO cases(id,owner_id,title) VALUES($1,$2,'Profile context')", [id, owner]);
+  const legacyId = crypto.randomUUID();
+  await db.query("INSERT INTO assistant_exchanges(id,case_id,owner_id,question,reply,revision) VALUES($1,$2,$3,'legacy','old',0)", [legacyId, id, owner]);
+  const app = express(); app.use(express.json());
+  app.use((_req, res, next) => { res.locals.uid = owner; next(); });
+  app.use(assistantRouter(db, async (snapshot) => {
+    assert.equal(snapshot.profileRevision, 0);
+    assert.equal(snapshot.conversation?.[0].stale, true);
+    const created = await fetch(`${base}/api/me`, { method: "PUT", headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json", "If-Match": '"0"' }, body: JSON.stringify({businessName:"New",region:"Kyiv",description:"Business"}) });
+    assert.equal(created.status, 200);
+    return "Answer before profile creation";
+  }));
+  const local = app.listen(0, "127.0.0.1"); await once(local, "listening");
+  const port = (local.address() as {port:number}).port;
+  const endpoint = `http://127.0.0.1:${port}/${id}/assistant`;
+  try {
+    const response = await fetch(endpoint, {method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({expectedRevision:0,message:"Question"})});
+    assert.equal(response.status, 200);
+    assert.equal(((await response.json()) as {stale:boolean}).stale, true);
+    const history = await (await fetch(`${endpoint}/history`)).json() as {exchanges:{id:string;stale:boolean}[]};
+    assert.equal(history.exchanges.find((exchange) => exchange.id === legacyId)?.stale, true);
+    assert.ok(history.exchanges.every((exchange) => exchange.stale));
+    // A reply using the current profile becomes stale after a later real profile edit.
+    const currentId = crypto.randomUUID();
+    await db.query("INSERT INTO assistant_exchanges(id,case_id,owner_id,question,reply,revision,profile_revision) VALUES($1,$2,$3,'current','answer',0,1)", [currentId,id,owner]);
+    const before = await (await fetch(`${endpoint}/history`)).json() as {exchanges:{id:string;stale:boolean}[]};
+    assert.equal(before.exchanges.find((exchange) => exchange.id === currentId)?.stale, false);
+    const edited = await fetch(`${base}/api/me`, { method:"PUT", headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json","If-Match":'"1"'}, body:JSON.stringify({businessName:"Edited",region:"Kyiv",description:"Business"}) });
+    assert.equal(edited.status, 200);
+    const after = await (await fetch(`${endpoint}/history`)).json() as {exchanges:{id:string;stale:boolean}[]};
+    assert.equal(after.exchanges.find((exchange) => exchange.id === currentId)?.stale, true);
+  } finally { await new Promise<void>((resolve, reject) => local.close((error) => error ? reject(error) : resolve())); }
+});
 
 test("deleting a case removes it and its related data; other users cannot delete", async () => {
   const [a, b] = await Promise.all([signup(), signup()]);
@@ -481,7 +540,7 @@ test("deleting a case removes it and its related data; other users cannot delete
 test("case preserves programId, allows updating program and validates allowed programs", async () => {
   const [a, b] = await Promise.all([signup(), signup()]);
 
-  // Create case with default programId
+  // Create case without a program
   const createDefault = await fetch(`${base}/api/cases`, {
     method: "POST",
     headers: { Authorization: `Bearer ${a}`, "Content-Type": "application/json" },
@@ -489,7 +548,10 @@ test("case preserves programId, allows updating program and validates allowed pr
   });
   assert.equal(createDefault.status, 201);
   const caseDefault = ((await createDefault.json()) as { case: { id: string; programId: string } }).case;
-  assert.equal(caseDefault.programId, "vlasna-sprava");
+  assert.equal(caseDefault.programId, null);
+  const genericExport = await (await fetch(`${base}/api/cases/${caseDefault.id}/draft-export`, {headers: {Authorization: `Bearer ${a}`}})).text();
+  assert.match(genericExport, /Фінансування: підберемо далі/);
+  assert.doesNotMatch(genericExport, /Власна справа/);
 
   // Create case with explicit programId
   const createVeteran = await fetch(`${base}/api/cases`, {
@@ -508,22 +570,60 @@ test("case preserves programId, allows updating program and validates allowed pr
     body: JSON.stringify({ title: "Невірний", programId: "unknown-grant" }),
   });
   assert.equal(createInvalid.status, 400);
+  for (const programId of ["erasmus-study", "erasmus-mundus"]) {
+    const createOutsideScope = await fetch(`${base}/api/cases`, {
+      method: "POST", headers: { Authorization: `Bearer ${a}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ title: "Outside business scope", programId }),
+    });
+    assert.equal(createOutsideScope.status, 400);
+    const changeOutsideScope = await fetch(`${base}/api/cases/${caseDefault.id}/program`, {
+      method: "PUT", headers: { Authorization: `Bearer ${a}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ programId, expectedRevision: 0 }),
+    });
+    assert.equal(changeOutsideScope.status, 400);
+  }
 
   // Update programId
   const updateProgram = await fetch(`${base}/api/cases/${caseDefault.id}/program`, {
     method: "PUT",
     headers: { Authorization: `Bearer ${a}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ programId: "processing-business" }),
+    body: JSON.stringify({ programId: "processing-business", expectedRevision: 0 }),
   });
   assert.equal(updateProgram.status, 200);
-  const updated = ((await updateProgram.json()) as { case: { id: string; programId: string } }).case;
+  const updated = ((await updateProgram.json()) as { case: { id: string; programId: string; revision: number } }).case;
   assert.equal(updated.programId, "processing-business");
+  assert.equal(updated.revision, 1);
+  const programCall = (programId: string | null, expectedRevision: number) => fetch(`${base}/api/cases/${caseDefault.id}/program`, {
+    method: "PUT", headers: { Authorization: `Bearer ${a}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ programId, expectedRevision }),
+  });
+  const noop = await programCall("processing-business", 1);
+  assert.equal(noop.status, 200);
+  assert.equal(((await noop.json()) as {case:{revision:number}}).case.revision, 1);
+  assert.equal((await programCall("veteran-grant", 0)).status, 409);
+  const oldBudget = await fetch(`${base}/api/cases/${caseDefault.id}/budget`, {
+    method: "PUT", headers: { Authorization: `Bearer ${a}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ expectedRevision: 0, idempotencyKey: crypto.randomUUID(), items: [] }),
+  });
+  assert.equal(oldBudget.status, 409);
+  const owner = (await getAuth().verifyIdToken(a)).uid;
+  await db.query("INSERT INTO assistant_exchanges(id,case_id,owner_id,question,reply,revision) VALUES($1,$2,$3,'Q','A',0)", [crypto.randomUUID(), caseDefault.id, owner]);
+  const history = await fetch(`${base}/api/cases/${caseDefault.id}/assistant/history`, { headers: { Authorization: `Bearer ${a}` } });
+  assert.equal(history.status, 200);
+  assert.equal(((await history.json()) as {exchanges:{stale:boolean}[]}).exchanges[0].stale, true);
+
+  const removeProgram = await fetch(`${base}/api/cases/${caseVeteran.id}/program`, {
+    method: "PUT", headers: { Authorization: `Bearer ${a}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ programId: null, expectedRevision: 0 }),
+  });
+  assert.equal(removeProgram.status, 200);
+  assert.equal(((await removeProgram.json()) as {case:{programId:string|null}}).case.programId, null);
 
   // Another user cannot update program
   const foreignUpdate = await fetch(`${base}/api/cases/${caseDefault.id}/program`, {
     method: "PUT",
     headers: { Authorization: `Bearer ${b}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ programId: "veteran-grant" }),
+    body: JSON.stringify({ programId: "veteran-grant", expectedRevision: 1 }),
   });
   assert.equal(foreignUpdate.status, 404);
 
@@ -534,6 +634,10 @@ test("case preserves programId, allows updating program and validates allowed pr
   assert.equal(exportRes.status, 200);
   const exportText = await exportRes.text();
   assert.match(exportText, /Грант на переробне підприємство/);
+  const concurrent = await Promise.all([programCall("veteran-grant", 1), programCall("agro-gardens", 1)]);
+  assert.deepEqual(concurrent.map((response) => response.status).sort(), [200, 409]);
+  const winner = concurrent.find((response) => response.status === 200)!;
+  assert.equal(((await winner.json()) as {case:{revision:number}}).case.revision, 2);
 });
 
 test("health endpoint checks database connectivity", async () => {
@@ -541,4 +645,16 @@ test("health endpoint checks database connectivity", async () => {
   assert.equal(response.status, 200);
   const body = await response.json() as { status: string };
   assert.equal(body.status, "ok");
+});
+
+// Regression: retrying a creation after a lost response must not create a duplicate project.
+test("case creation reuses its request identity safely under concurrent retries", async () => {
+  const [owner,foreign]=await Promise.all([signup(),signup()]);
+  const body={id:crypto.randomUUID(),title:"Creation replay test",programId:"vlasna-sprava"};
+  const call=(token:string,payload=body)=>fetch(`${base}/api/cases`,{method:"POST",headers:{Authorization:`Bearer ${token}`,"Content-Type":"application/json"},body:JSON.stringify(payload)});
+  const replies=await Promise.all([call(owner),call(owner)]);
+  assert.deepEqual(replies.map(r=>r.status).sort(),[200,201]);
+  for(const reply of replies)assert.equal((await reply.json() as {case:{id:string}}).case.id,body.id);
+  assert.equal((await call(owner,{...body,title:"Changed request"})).status,409);
+  assert.equal((await call(foreign)).status,409);
 });

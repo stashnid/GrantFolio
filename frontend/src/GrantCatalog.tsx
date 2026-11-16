@@ -1,163 +1,427 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { GRANT_PROGRAMS, type GrantProgram } from "./grants";
+import "./GrantCatalog.css";
+import { useGrantPrograms } from "./GrantPrograms";
+import { isGrantAvailable } from "../../backend/src/grant-availability";
+import { searchGrants, friendlyTitle } from "../../backend/src/grant-discovery";
 
-export type GrantProgram = {
-  id: string; title: string; provider: string; amount: string; deadline: string;
-  category: "erobota" | "veteran" | "production" | "agro";
-  categoryLabel: string; targetAudience: string; keyCondition: string;
-  summary: string; eligibleCosts: string[]; officialUrl: string;
-  checkedAt: string; intakeStatus: "unconfirmed" | "paused";
-};
-
-// Reviewed official-page summaries. These are references, not eligibility decisions.
-export const GRANT_PROGRAMS: GrantProgram[] = [
-  {
-    id: "vlasna-sprava", title: "Власна справа", provider: "Дія / Державний центр зайнятості",
-    amount: "Старт — до 500 тис. грн; масштабування — до 2,5 млн грн",
-    deadline: "На сторінці зазначено завершення етапу 27.10.2026; новий прийом не підтверджено",
-    category: "erobota", categoryLabel: "єРобота", targetAudience: "Повнолітні громадяни України, ФОП та юридичні особи — за умовами відповідного напряму",
-    keyCondition: "Бізнес-план, перевірка заявника та виконання зобов’язань за договором",
-    summary: "Державна підтримка започаткування та масштабування бізнесу. Вибір напряму впливає на суму й умови. Відкритий прийом потрібно перевірити перед поданням.",
-    eligibleCosts: ["Напрями витрат і повні обмеження — на офіційній сторінці"],
-    officialUrl: "https://diia.gov.ua/services/zapochatkuvannia-ta-masshtabuvannia-vlasnoi-spravy",
-    checkedAt: "15.11.2026", intakeStatus: "unconfirmed",
-  },
-  {
-    id: "veteran-grant", title: "Грант для ветеранів та членів їхніх сімей", provider: "е-Ветеран / Державний центр зайнятості",
-    amount: "Залежить від категорії заявника та умов програми", deadline: "Чинний етап прийому не підтверджено",
-    category: "veteran", categoryLabel: "Ветеранський бізнес", targetAudience: "Ветерани та члени сімей, які відповідають чинному Порядку",
-    keyCondition: "Бізнес-план обов’язковий; право участі визначається умовами програми",
-    summary: "Підтримка створення або розвитку ветеранського бізнесу. Офіційний портал описує категорії заявників, документи та порядок звернення; це не підтвердження відкритого конкурсу.",
-    eligibleCosts: ["Перевірте чинний Порядок на офіційному порталі"],
-    officialUrl: "https://eveteran.gov.ua/benefits/yerobota-grant-dlya-veteraniv-ta-chleniv-yihnih-simej-dlya-stvorennya-abo-rozvitku-veteranskogo-biznesu",
-    checkedAt: "15.11.2026", intakeStatus: "unconfirmed",
-  },
-  {
-    id: "processing-business", title: "Грант на переробне виробництво", provider: "Дія / Міністерство економіки",
-    amount: "До 8 млн грн; для відновлення пошкодженого виробництва — до 16 млн грн",
-    deadline: "Дія повідомляє про призупинення прийому", category: "production", categoryLabel: "Виробництво",
-    targetAudience: "Заявники у сфері переробного виробництва, які відповідають умовам програми",
-    keyCondition: "Для напряму до 8 млн грн сторінка вказує щонайменше 5 робочих місць; інші вимоги залежать від напряму",
-    summary: "Підтримка створення, розвитку й відновлення виробництва. На перевіреній сторінці прийом заяв призупинено. Можна підготувати проєкт і перевіряти офіційні оновлення.",
-    eligibleCosts: ["Придбання виробничих основних засобів — за умовами обраного напряму"],
-    officialUrl: "https://diia.gov.ua/services/grant-na-pererobne-pidpriyemstvo",
-    checkedAt: "15.11.2026", intakeStatus: "paused",
-  },
-  {
-    id: "agro-gardens", title: "Грант на сад, ягідник або виноградник", provider: "Дія",
-    amount: "До 400 тис. грн за гектар — залежно від умов", deadline: "Дія повідомляє про призупинення прийому",
-    category: "agro", categoryLabel: "Садівництво", targetAudience: "ФОП та юридичні особи у сфері сільського господарства",
-    keyCondition: "Потрібен проєкт висадки насаджень та виконання вимог до ділянки й культури",
-    summary: "Програма для садівництва, ягідництва та виноградарства. На перевіреній сторінці прийом призупинено. Теплиці є окремою програмою й не включені в цю картку.",
-    eligibleCosts: ["Витрати за проєктом висадки й чинними умовами програми"],
-    officialUrl: "https://diia.gov.ua/services/grant-na-sad", checkedAt: "15.11.2026", intakeStatus: "paused",
-  },
-];
+export { GRANT_PROGRAMS, type GrantProgram } from "./grants";
 
 type Props = {
-  onApplyProgram?: (program: GrantProgram) => void;
+  active: boolean;
+  onApplyProgram?: (program: GrantProgram, query?: string) => void;
+  onDiscussQuery?: (query: string) => void;
 };
+const catalogId = () => {
+  if (!window.location.hash.startsWith("#grants/")) return null;
+  try {
+    return decodeURIComponent(window.location.hash.slice(8));
+  } catch {
+    return window.location.hash.slice(8);
+  }
+};
+const formatDate = (value: string) =>
+  value.replace(/^(\d{4})-(\d{2})-(\d{2})$/, "$3.$2.$1");
+const deadlineText = (p: GrantProgram) =>
+  p.availability?.rolling
+    ? "Постійний прийом"
+    : p.availability?.deadlineAt
+      ? `Подати до ${new Date(p.availability.deadlineAt).toLocaleString("uk-UA", { dateStyle: "medium", ...(p.availability?.deadlinePrecision === "minute" ? { timeStyle: "short" as const } : {}), timeZone: "Europe/Kyiv" })} (Київ)`
+      : "Строк прийому уточнюється";
+const intakeLabel = (p: GrantProgram) =>
+  p.availability?.basis === "calendar"
+    ? "Період подання за календарем"
+    : "Прийом відкрито";
+const checkTime = (p: GrantProgram) =>
+  p.availability?.checkedAt
+    ? new Date(p.availability.checkedAt).toLocaleString("uk-UA", {
+        dateStyle: "short",
+        timeStyle: "short",
+        timeZone: "Europe/Kyiv",
+      })
+    : p.checkedAt;
+const urgent = (p: GrantProgram) =>
+  !!p.availability?.deadlineAt &&
+  Date.parse(p.availability.deadlineAt) - Date.now() <= 7 * 86400000;
 
-export function GrantCatalog({ onApplyProgram }: Props) {
-  const [filter, setFilter] = useState<string>("all");
-  const [search, setSearch] = useState<string>("");
-
-  const filtered = GRANT_PROGRAMS.filter((p) => {
-    const matchesFilter = filter === "all" || p.category === filter;
-    const matchesSearch =
-      !search.trim() ||
-      p.title.toLowerCase().includes(search.toLowerCase()) ||
-      p.summary.toLowerCase().includes(search.toLowerCase()) ||
-      p.targetAudience.toLowerCase().includes(search.toLowerCase());
-    return matchesFilter && matchesSearch;
-  });
-
-  return (
-    <div className="grant-catalog-container">
-      <div className="catalog-header">
-        <div className="catalog-eyebrow">ПРОГРАМИ ФІНАНСУВАННЯ</div>
-        <h2>Каталог грантів для бізнесу</h2>
-        <p className="catalog-lead">
-          Порівняйте напрями підтримки та перевірте прийом заяв на офіційній сторінці. Каталог допомагає зорієнтуватися; відповідність вашого бізнесу умовам ще не оцінюється.
-        </p>
-
-        <div className="catalog-controls">
-          <input
-            type="search"
-            className="catalog-search"
-            aria-label="Пошук грантових програм"
-            placeholder="Пошук за назвою чи сферою (кав'ярня, виробництво, ветерани, агро)..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-          <div className="catalog-filters">
-            {[
-              { id: "all", label: "Всі програми" },
-              { id: "erobota", label: "Власна справа" },
-              { id: "veteran", label: "Для ветеранів" },
-              { id: "production", label: "Виробництво" },
-              { id: "agro", label: "Агро & Сади" },
-            ].map((f) => (
-              <button
-                key={f.id}
-                type="button"
-                aria-pressed={filter === f.id}
-                className={filter === f.id ? "filter-chip active" : "filter-chip"}
-                onClick={() => setFilter(f.id)}
-              >
-                {f.label}
-              </button>
-            ))}
-          </div>
+export function GrantCatalog({
+  active,
+  onApplyProgram,
+  onDiscussQuery,
+}: Props) {
+  const { programs, availablePrograms, loading, error, reload, sources } =
+    useGrantPrograms();
+  const [search, setSearch] = useState("");
+  const [selectedId, setSelectedId] = useState<string | null>(catalogId);
+  const lastCard = useRef<string | null>(null);
+  const heading = useRef<HTMLHeadingElement>(null);
+  const resultsHeading = useRef<HTMLParagraphElement>(null);
+  useEffect(() => {
+    if (!active) return;
+    const sync = () => setSelectedId(catalogId());
+    sync();
+    window.addEventListener("hashchange", sync);
+    return () => window.removeEventListener("hashchange", sync);
+  }, [active]);
+  useEffect(() => {
+    if (!active || selectedId !== catalogId()) return;
+    if (selectedId) heading.current?.focus();
+    else if (lastCard.current) {
+      document.getElementById(`grant-${lastCard.current}`)?.focus();
+      lastCard.current = null;
+    }
+  }, [active, selectedId]);
+  const open = (id: string) => {
+    lastCard.current = id;
+    if (window.location.hash !== "#grants")
+      window.history.replaceState(null, "", "#grants");
+    window.location.hash = `grants/${encodeURIComponent(id)}`;
+  };
+  const back = () => {
+    window.location.hash = "grants";
+  };
+  const selected = programs.find((p) => p.id === selectedId);
+  const result = searchGrants(search, availablePrograms);
+  const candidates = search.trim()
+    ? result.matches.map((match) => ({
+        program: availablePrograms.find((p) => p.id === match.programId)!,
+        match,
+      }))
+    : availablePrograms.map((program) => ({ program, match: undefined }));
+  const filtered = candidates.filter(({program}) => !!program);
+  const list = (items: readonly string[]) => (
+    <ul>
+      {items.map((item, i) => (
+        <li key={i}>{item}</li>
+      ))}
+    </ul>
+  );
+  if (selectedId) {
+    if (!selected)
+      return (
+        <div className="grant-catalog">
+          <button type="button" className="catalog-back" onClick={back}>
+            ← Каталог грантів
+          </button>
+          <h2 ref={heading} tabIndex={-1}>
+            Програму не знайдено
+          </h2>
+          <p>Поверніться до каталогу та виберіть програму.</p>
         </div>
-      </div>
-
-      <p role="status">Знайдено програм: {filtered.length}</p>
-      {filtered.length === 0 && <p>За цим запитом програм немає. Змініть пошук або категорію.</p>}
-      <div className="catalog-grid">
-        {filtered.map((item) => (
-          <article className="grant-card" key={item.id}>
-            <div className="grant-card-top">
-              <span className="grant-badge">{item.categoryLabel}</span>
-              <span className="grant-amount">{item.amount}</span>
-            </div>
-
-            <h3 className="grant-card-title">{item.title}</h3>
-            <div className="grant-provider">{item.provider}</div>
-            <p className="grant-intake-status"><strong>{item.intakeStatus === "paused" ? "Прийом призупинено" : "Прийом не підтверджено"}</strong> · Перевірено {item.checkedAt}</p>
-
-            <p className="grant-card-desc">{item.summary}</p>
-
-            <div className="grant-details-box">
-              <div className="grant-detail-row">
-                <strong>Ключова умова:</strong>
-                <span>{item.keyCondition}</span>
-              </div>
-              <div className="grant-detail-row">
-                <strong>Для кого:</strong>
-                <span>{item.targetAudience}</span>
-              </div>
-              <div className="grant-detail-row">
-                <strong>Дедлайн:</strong>
-                <span>{item.deadline}</span>
-              </div>
-            </div>
-
-            <div className="grant-card-footer">
+      );
+    const d = selected.details;
+    const available = isGrantAvailable(selected);
+    const sectionId = (section: string) =>
+      `grant-section-${selected.id}-${section}`;
+    const jumpTo = (section: string) => {
+      const target = document.getElementById(sectionId(section));
+      target?.scrollIntoView({ block: "start" });
+      target?.focus({ preventScroll: true });
+    };
+    return (
+      <div className="grant-catalog grant-page">
+        <nav aria-label="Навігація каталогом">
+          <button type="button" className="catalog-back" onClick={back}>
+            ← Каталог грантів
+          </button>
+          <span aria-hidden="true"> / </span>
+          <span>Деталі програми</span>
+        </nav>
+        <header className="grant-page-header">
+          <p className="grant-category">
+            {selected.categoryLabel} · {selected.provider}
+          </p>
+          <h2 ref={heading} tabIndex={-1}>
+            {friendlyTitle(selected)}
+          </h2>
+          <p className="grant-official-name">
+            Офіційна програма: {selected.title}
+          </p>
+          <p className="grant-page-amount">{selected.amount}</p>
+          <p className="grant-official-name">
+            Умови й суми опрацьовано {formatDate(selected.checkedAt)}.
+            Автоматично перевіряємо статус прийому та дедлайн.
+          </p>
+          <p className="grant-status">
+            <strong>
+              {available
+                ? intakeLabel(selected)
+                : "Прийом зараз не підтверджено або завершено"}
+            </strong>{" "}
+            · Статус перевірено {checkTime(selected)}
+          </p>
+          <p>{available ? deadlineText(selected) : selected.deadline}</p>
+          {available ? (
+            <>
               <button
                 type="button"
-                className="primary apply-grant-btn"
-                onClick={() => onApplyProgram?.(item)}
+                className="primary grant-prepare"
+                onClick={() => {
+                  if (isGrantAvailable(selected))
+                    onApplyProgram?.(selected, search.trim());
+                }}
               >
-                Приміряти цей грант <span>↗</span>
+                Підготувати проєкт
               </button>
-              <a
-                href={item.officialUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="link official-link"
+              <p className="grant-action-note">
+                Перед поданням перевірте умови в офіційному джерелі.
+              </p>
+            </>
+          ) : (
+            <p className="grant-action-note">
+              Підготовка нової заявки недоступна, доки актуальний прийом не
+              підтверджено.
+            </p>
+          )}
+        </header>
+        <nav className="grant-section-index" aria-label="Розділи програми">
+          {[
+            ["eligibility", "Умови участі"],
+            ["funding", "Фінансування"],
+            ["costs", "Витрати"],
+            ["documents", "Документи"],
+            ["steps", "Порядок подання"],
+          ].map(([id, label]) => (
+            <button type="button" key={id} onClick={() => jumpTo(id)}>
+              {label}
+            </button>
+          ))}
+        </nav>
+        <div className="grant-content">
+          <section>
+            <h3>Про програму</h3>
+            <p>{d.overview}</p>
+          </section>
+          <section>
+            <h3 id={sectionId("eligibility")} tabIndex={-1}>
+              Хто може подати заявку
+            </h3>
+            {list(d.eligibility)}
+            {d.exclusions.length > 0 && (
+              <>
+                <h4>Обмеження</h4>
+                {list(d.exclusions)}
+              </>
+            )}
+          </section>
+          <section>
+            <h3 id={sectionId("funding")} tabIndex={-1}>
+              Фінансування та власний внесок
+            </h3>
+            {list(d.funding)}
+          </section>
+          <section>
+            <h3 id={sectionId("costs")} tabIndex={-1}>
+              На що можна витратити кошти
+            </h3>
+            {list(d.costs)}
+          </section>
+          <section>
+            <h3>Зобов’язання</h3>
+            {list(d.obligations)}
+          </section>
+          <section>
+            <h3 id={sectionId("documents")} tabIndex={-1}>
+              Документи
+            </h3>
+            {list(d.documents)}
+          </section>
+          <section>
+            <h3 id={sectionId("steps")} tabIndex={-1}>
+              Кроки підготовки та подання
+            </h3>
+            {list(d.steps)}
+          </section>
+          <section>
+            <h3>Строки та прийом</h3>
+            {list(d.timing)}
+          </section>
+          <section>
+            <h3>На що звернути увагу</h3>
+            {list(d.pitfalls)}
+          </section>
+          <section>
+            <h3>Що потрібно уточнити</h3>
+            {list(d.unresolved)}
+          </section>
+          <section>
+            <h3>Офіційні джерела</h3>
+            <ul>
+              {d.sources.map((source) => (
+                <li key={source.url}>
+                  <a
+                    href={source.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {source.title} ↗
+                  </a>{" "}
+                  <span>· перевірено {formatDate(source.checkedAt)}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
+        {available && (
+          <div className="grant-bottom-action">
+            <h3>Готові почати?</h3>
+            <p>Підготуйте матеріали для цієї програми.</p>
+            <button
+              type="button"
+              className="primary grant-prepare"
+              onClick={() => {
+                if (isGrantAvailable(selected))
+                  onApplyProgram?.(selected, search.trim());
+              }}
+            >
+              Підготувати проєкт
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  }
+  return (
+    <div className="grant-catalog">
+      <header className="grant-list-header">
+        <h2>Знайдіть фінансування під свою потребу</h2>
+        <p>
+          Опишіть потребу своїми словами. Назву програми знати не потрібно.
+        </p>
+        <form className="catalog-search-form" role="search" onSubmit={(event) => { event.preventDefault(); resultsHeading.current?.focus(); }}>
+          <label className="grant-search-label" htmlFor="grant-search">Що ви хочете профінансувати?</label>
+          <div className="catalog-search-controls">
+            <input id="grant-search" maxLength={500} type="search" placeholder="Наприклад: обладнання для кав’ярні" value={search} onChange={(event) => setSearch(event.target.value)} />
+            {search && <button type="button" className="catalog-clear" onClick={() => setSearch("")}>Очистити</button>}
+            <button type="submit" className="catalog-search-submit">Знайти</button>
+          </div>
+          <p>Результати оновлюються під час введення.</p>
+        </form>
+      </header>
+      {loading && <p role="status">Оновлюємо програми…</p>}
+      {error && (
+        <p role="alert">
+          {error}{" "}
+          <button type="button" className="catalog-back" onClick={reload}>
+            Повторити
+          </button>
+        </p>
+      )}
+      {sources.some(
+        (s) => s.error && availablePrograms.some((p) => p.id === s.programId),
+      ) && (
+        <p role="status" className="grant-query-explanation">
+          Повторна перевірка деяких джерел тимчасово недоступна. Час останнього
+          успішного підтвердження показано біля програми; прострочені
+          підтвердження не потрапляють до каталогу.
+        </p>
+      )}
+      {!search.trim() && <div className="grant-search-help">
+        {[
+          "Авто для роботи",
+          "Бізнес для молоді",
+          "Кав’ярня",
+          "Виробництво",
+        ].map((q) => (
+          <button
+            type="button"
+            key={q}
+            onClick={() => {
+              setSearch(q);
+            }}
+          >
+            {q}
+          </button>
+        ))}
+      </div>}
+      {search.trim() && filtered.length === 0 && (
+        <p className="grant-query-explanation">{result.explanation}</p>
+      )}
+      {search.trim() && (
+        <button
+          type="button"
+          className="catalog-discuss"
+          onClick={() => onDiscussQuery?.(search)}
+        >
+          Обговорити потребу з асистентом
+        </button>
+      )}
+      <p ref={resultsHeading} tabIndex={-1} role="status" className="grant-count">
+        Можливих напрямів: {filtered.length}
+      </p>
+      {filtered.length === 0 && (
+        <p>
+          Зараз немає підтверджених відкритих програм за цим запитом. Це не означає, що фінансування взагалі не існує.{" "}
+          <button
+            type="button"
+            className="catalog-back"
+            onClick={() => {
+              setSearch("");
+            }}
+          >
+            Показати весь каталог
+          </button>
+        </p>
+      )}
+      <div className="grant-list">
+        {filtered.map(({ program: p, match }) => (
+          <article className="grant-list-item" key={p.id}>
+            <div>
+              <p className="grant-category">
+                {p.categoryLabel} · {p.provider}
+              </p>
+              <h3>{friendlyTitle(p)}</h3>
+              <p>{p.summary}</p>
+              <p>
+                <strong>Для кого:</strong> {p.targetAudience}
+              </p>
+              <p>
+                <strong>На що:</strong> {p.eligibleCosts.join(", ")}
+              </p>
+              {search.trim() && match && (
+                <div className="grant-match-reason">
+                  <strong>Чому це може підійти</strong>
+                  <p>{match.reason}</p>
+                  <small>{match.caution}</small>
+                  <a
+                    href={match.evidenceUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    Підстава у джерелі ↗
+                  </a>
+                </div>
+              )}
+              <p className="grant-status">
+                <strong>{intakeLabel(p)}</strong> · Статус перевірено{" "}
+                {checkTime(p)} ·{" "}
+                <a
+                  href={p.availability?.sourceUrl ?? p.officialUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  Джерело ↗
+                </a>
+              </p>
+            </div>
+            <div className="grant-list-action">
+              <strong>{p.amount}</strong>
+              <p
+                className={
+                  urgent(p)
+                    ? "grant-deadline grant-deadline-urgent"
+                    : "grant-deadline"
+                }
               >
-                Офіційні умови ↗
-              </a>
+                {deadlineText(p)}
+              </p>
+              <button
+                id={`grant-${p.id}`}
+                type="button"
+                onClick={() => open(p.id)}
+              >
+                Деталі програми <span aria-hidden="true">→</span>
+              </button>
             </div>
           </article>
         ))}

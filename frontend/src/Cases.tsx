@@ -1,8 +1,14 @@
+import {isGrantAvailable} from "../../backend/src/grant-availability";
+import {useGrantPrograms} from "./GrantPrograms";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { User } from "firebase/auth";
 import { Assistant } from "./Assistant";
-import { GRANT_PROGRAMS, type GrantProgram } from "./GrantCatalog";
+import { useSessionDraft } from "./useSessionDraft";
+import "./SessionRecovery.css";
+import { authenticatedRequest, readableApiError } from "./api";
+import type { GrantProgram } from "./grants";
+import { friendlyTitle } from "../../backend/src/grant-discovery";
 
 type Item = { name: string; quantity: number; unitPriceKopecks: number };
 type Details = {
@@ -24,7 +30,7 @@ const emptyDetails: Details = {
   implementationPlan: "",
   expectedResults: "",
 };
-const basicsFields = [
+const businessBasicsFields = [
   {
     key: "projectDescription" as const,
     label: "Опис проєкту / ідеї",
@@ -45,7 +51,7 @@ const basicsFields = [
   },
 ];
 
-const planFields = [
+const businessPlanFields = [
   {
     key: "implementationPlan" as const,
     label: "Покроковий план реалізації",
@@ -54,17 +60,17 @@ const planFields = [
   },
   {
     key: "expectedResults" as const,
-    label: "Очікувані результати та робочі місця",
-    hint: "Яких фінансових показників плануєте досягти та скільки людей працевлаштуєте?",
-    placeholder: "Наприклад: Створення 2 офіційних робочих місць (бариста). Вихід на самоокупність на 3-й місяць роботи з прогнозованим доходом від 120 000 грн на місяць...",
+    label: "Очікувані результати",
+    hint: "Поясніть вимірювані результати; робочі місця додавайте, якщо це передбачає ваш план або конкретний напрям.",
+    placeholder: "Наприклад: Запуск продажів, кількість клієнтів та обґрунтований прогноз доходу...",
   },
 ];
 
 const PROGRAM_BUDGET_TEMPLATES: Record<string, { label: string; name: string; price: string }[]> = {
   "vlasna-sprava": [
     { label: "⚙️ Обладнання / техніка", name: "Виробниче або торгове обладнання", price: "80000.00" },
-    { label: "🏢 Оренда (до 25%)", name: "Оренда нежитлового приміщення", price: "25000.00" },
-    { label: "📦 Сировина (до 50%)", name: "Сировина та витратні матеріали", price: "35000.00" },
+    { label: "🏢 Оренда", name: "Оренда нежитлового приміщення", price: "25000.00" },
+    { label: "📦 Сировина", name: "Сировина та витратні матеріали", price: "35000.00" },
     { label: "📢 Маркетинг і реклама", name: "Маркетингові послуги та реклама", price: "15000.00" },
     { label: "💻 ПРРО / Каса / ПЗ", name: "Програмне забезпечення та термінал ПРРО", price: "10000.00" },
   ],
@@ -89,22 +95,28 @@ const PROGRAM_BUDGET_TEMPLATES: Record<string, { label: string; name: string; pr
   ],
 };
 
-const PROGRAM_LIMITS: Record<string, number> = {
-  "vlasna-sprava": 25000000,
-  "veteran-grant": 100000000,
-  "processing-business": 800000000,
-  "agro-gardens": 1000000000,
-};
 
 type Case = {
   id: string;
   title: string;
-  programId?: string;
+  programId: string | null;
   revision: number;
   items: Item[];
   details: Details;
   totalKopecks: number;
 };
+function readCase(value: unknown): Case {
+  if (!value || typeof value !== "object") throw Error("invalid_case_response");
+  const c = value as Record<string, unknown>;
+  const integer = (v: unknown) => typeof v === "number" && Number.isSafeInteger(v) && v >= 0;
+  if (typeof c.id !== "string" || !c.id || typeof c.title !== "string" || !integer(c.revision) || !integer(c.totalKopecks) ||
+      !Array.isArray(c.items) || !c.items.every((item: unknown) => {
+        if (!item || typeof item !== "object") return false;
+        const i = item as Record<string, unknown>;
+        return typeof i.name === "string" && integer(i.quantity) && Number(i.quantity) > 0 && integer(i.unitPriceKopecks);
+      }) || !c.details || typeof c.details !== "object" || Array.isArray(c.details)) throw Error("invalid_case_response");
+  return value as Case;
+}
 type DraftItem = { name: string; quantity: string; price: string };
 const toDraft = (items: Item[]): DraftItem[] =>
   items.map((i) => ({
@@ -118,13 +130,29 @@ export function Cases({
   user,
   onUnsavedChange,
   selectedProgram,
+  programTarget,
   onClearProgram,
+  onBrowsePrograms,
+  onFindFunding,
+  businessName,
+  profileRevision = 0,
+  preparationSeed = "",
+  preparationId = "",
 }: {
   user: User;
   onUnsavedChange?: (dirty: boolean) => void;
   selectedProgram?: GrantProgram | null;
+  programTarget?: { id: string; title: string; revision: number } | null;
   onClearProgram?: () => void;
+  onBrowsePrograms?: () => void;
+  onFindFunding?: (need: string, project: { id: string; title: string; revision: number }) => void;
+  onOpenProfile?: () => void;
+  businessName?: string;
+  profileRevision?: number;
+  preparationSeed?: string;
+  preparationId?: string;
 }) {
+  const {programs: GRANT_PROGRAMS} = useGrantPrograms();
   const [cases, setCases] = useState<Case[]>([]),
     [selected, setSelected] = useState<Case | null>(null),
     [draft, setDraft] = useState<DraftItem[]>([]),
@@ -132,43 +160,57 @@ export function Cases({
     [readiness, setReadiness] = useState<Readiness | null>(null),
     [readinessError, setReadinessError] = useState(false),
     [title, setTitle] = useState(""),
-    [newProgramId, setNewProgramId] = useState<string>("vlasna-sprava"),
+    [initialNeed, setInitialNeed] = useState(""),
     [error, setError] = useState(""),
     [notice, setNotice] = useState(""),
     [busy, setBusy] = useState(false),
     [ready, setReady] = useState(false),
-    [listLoading, setListLoading] = useState(false),
-    [listFailed, setListFailed] = useState(false),
+    [listLoading, setListLoading] = useState(true),
+    [listError, setListError] = useState(""),
     [conflict, setConflict] = useState(false),
-    [activeStep, setActiveStep] = useState<"basics" | "plan" | "budget" | "review" | "assistant">("basics"),
-    [assistantPrompt, setAssistantPrompt] = useState<string>("");
+    [activeStep, setActiveStep] = useState<"basics" | "plan" | "budget" | "review" | "assistant">("assistant"),
+    [assistantPrompt, setAssistantPrompt] = useState<string>(""),
+    [chatDraft, setChatDraft] = useState(false),
+    [showCreate, setShowCreate] = useState(false);
   const [pending, setPending] = useState<{
     id: string;
     body: string;
     kind: "budget" | "details";
   } | null>(null);
   async function request(path: string, init: RequestInit = {}) {
-    const token = await user.getIdToken();
-    return fetch(path, {
-      ...init,
-      headers: { ...init.headers, Authorization: `Bearer ${token}` },
-    });
+    const timeoutMs = path.endsWith("/assistant") && init.method === "POST" ? 40000 : 15000;
+    return authenticatedRequest(user, path, init, timeoutMs);
   }
+  const lastCaseKey = `grantfolio:last-case:${encodeURIComponent(user.uid)}`;
+  function rememberCase(id: string) { try { sessionStorage.setItem(lastCaseKey, id); } catch {} }
+  function lastCaseId() { try { return sessionStorage.getItem(lastCaseKey); } catch { return null; } }
+  const createTitleInput = useRef<HTMLInputElement>(null);
+  const createAttempt = useRef<{ body: string; id: string } | null>(null);
   const listRequest = useRef(false);
   async function loadList() {
     if (listRequest.current) return;
     listRequest.current = true;
     setListLoading(true);
-    setListFailed(false);
-    setError("");
+    setListError("");
     try {
       const r = await request("/api/cases");
-      if (!r.ok) throw Error();
-      setCases((await r.json()).cases);
+      if (!r.ok) {
+        setListError(r.status === 401 || r.status === 403
+          ? "Не вдалося підтвердити вхід. Спробуйте ще раз. Якщо помилка повториться, вийдіть з акаунта й увійдіть знову."
+          : "Список тимчасово недоступний. Спробуйте ще раз за мить.");
+        return;
+      }
+      const payload = await r.json();
+      if (!Array.isArray(payload?.cases)) throw Error("invalid_case_list");
+      const loaded: Case[] = payload.cases.map(readCase);
+      setCases(loaded);
       setReady(true);
-    } catch {
-      setListFailed(true);
-      setError("Не вдалося завантажити чернетки.");
+      if (!selected && loaded.length > 0) {
+        const remembered = lastCaseId();
+        void select(loaded.find(c => c.id === remembered)?.id ?? loaded[0].id);
+      }
+    } catch (error) {
+      setListError(readableApiError(error, "Не вдалося завантажити список проєктів. Спробуйте ще раз."));
     } finally {
       listRequest.current = false;
       setListLoading(false);
@@ -185,9 +227,10 @@ export function Cases({
     JSON.stringify(details) !==
       JSON.stringify(selected.details || emptyDetails);
   const dirty = budgetDirty || detailsDirty;
+  const sessionDraft = useSessionDraft(user.uid, selected, details, draft, dirty, !!pending);
   useEffect(() => {
-    onUnsavedChange?.(dirty || !!pending);
-  }, [dirty, pending, onUnsavedChange]);
+    onUnsavedChange?.(dirty || !!pending || chatDraft);
+  }, [dirty, pending, chatDraft, onUnsavedChange]);
   const readinessRequest = useRef(0);
   async function loadReadiness(id: string) {
     const sequence = ++readinessRequest.current;
@@ -203,23 +246,23 @@ export function Cases({
     }
   }
   useEffect(() => {
-    if (!dirty && !pending) return;
+    if (!dirty && !pending && !chatDraft) return;
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
       event.returnValue = "";
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [dirty, pending]);
+  }, [dirty, pending, chatDraft]);
   function mayLeaveDraft() {
     if (pending) {
       setError("Спочатку повторіть збереження, щоб дізнатися його результат.");
       return false;
     }
     return (
-      !dirty ||
+      (!dirty && !chatDraft) ||
       window.confirm(
-        "У чернетці є незбережені зміни. Відкрити іншу чернетку та втратити їх?",
+        "Є незбережені зміни або ненадіслане запитання. Відкрити інший проєкт і втратити їх?",
       )
     );
   }
@@ -231,31 +274,41 @@ export function Cases({
     try {
       const r = await request(`/api/cases/${id}`);
       if (!r.ok) throw Error();
-      const c = (await r.json()).case;
+      const c = readCase((await r.json()).case);
+      rememberCase(c.id);
       setSelected(c);
       setDraft(toDraft(c.items));
       setDetails(c.details || emptyDetails);
-      setActiveStep("basics");
+      setActiveStep("assistant");
       setAssistantPrompt("");
       void loadReadiness(c.id);
       setConflict(false);
       setPending(null);
       setNotice("");
-    } catch {
-      setError("Не вдалося завантажити чернетку.");
+    } catch (error) {
+      setError(readableApiError(error, "Не вдалося завантажити чернетку."));
     } finally {
       setBusy(false);
     }
   }
   useEffect(() => {
+    if (selectedProgram && programTarget) { setShowCreate(false); return; }
     if (selectedProgram) {
-      setNewProgramId(selectedProgram.id);
+      setShowCreate(true);
+      setTitle((current) => (!preparationId && current) || `${preparationSeed ? preparationSeed.slice(0,80) : businessName || "Мій проєкт"} — ${friendlyTitle(selectedProgram)}`.slice(0, 160));
+      requestAnimationFrame(() => createTitleInput.current?.focus());
     }
-  }, [selectedProgram]);
+  }, [selectedProgram, programTarget, businessName, preparationSeed, preparationId]);
 
-  async function create(e: React.FormEvent) {
-    e.preventDefault();
-    if (!mayLeaveDraft()) return;
+  async function create(e?: React.FormEvent, preparation?: { title: string; programId: string; initialDescription: string }) {
+    e?.preventDefault();
+    if (programTarget || busy || !ready || (!preparation && !mayLeaveDraft())) return;
+    const targetId = preparation?.programId ?? selectedProgram?.id ?? null;
+    const target = targetId ? GRANT_PROGRAMS.find(p => p.id === targetId) : null;
+    if (targetId && (!target || !isGrantAvailable(target))) { setError("Прийом за цією програмою зараз не підтверджено. Виберіть актуальну програму в каталозі."); return; }
+    const values = preparation ?? { title, programId: target?.id ?? null, initialDescription: initialNeed };
+    const body = JSON.stringify(values);
+    if (!createAttempt.current || createAttempt.current.body !== body) createAttempt.current = { body, id: crypto.randomUUID() };
     setBusy(true);
     setError("");
     setNotice("");
@@ -263,50 +316,74 @@ export function Cases({
       const r = await request("/api/cases", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ title, programId: newProgramId }),
+        body: JSON.stringify({ ...values, id: createAttempt.current.id }),
       });
       if (!r.ok) throw Error();
-      const c = (await r.json()).case;
-      setCases([c, ...cases]);
+      const c = readCase((await r.json()).case);
+      createAttempt.current = null;
+      rememberCase(c.id);
+      setCases([c, ...cases.filter(existing => existing.id !== c.id)]);
       setSelected(c);
       setDraft([]);
       setDetails(c.details || emptyDetails);
-      setActiveStep("basics");
+      setActiveStep("assistant");
       setAssistantPrompt("");
       void loadReadiness(c.id);
       setTitle("");
+      setInitialNeed("");
+      setShowCreate(false);
+      onClearProgram?.();
       setPending(null);
       setConflict(false);
-    } catch {
-      setError("Не вдалося створити чернетку.");
+    } catch (error) {
+      setError(`${readableApiError(error, "Не вдалося підтвердити створення.")} Можна повторити створення без дублювання, не змінюючи назву й програму.`);
     } finally {
       setBusy(false);
     }
   }
 
-  async function changeSelectedProgram(progId: string) {
-    if (!selected || busy) return;
+  const handledPreparation = useRef("");
+  useEffect(() => {
+    if (programTarget || !preparationId || handledPreparation.current === preparationId || !selectedProgram || !ready || busy) return;
+    handledPreparation.current = preparationId;
+    if (!mayLeaveDraft()) { setShowCreate(false); onClearProgram?.(); return; }
+    void create(undefined, {
+      title: `${preparationSeed ? preparationSeed.slice(0, 80) : businessName || "Мій проєкт"} — ${friendlyTitle(selectedProgram)}`.slice(0, 160),
+      programId: selectedProgram.id,
+      initialDescription: preparationSeed,
+    });
+  }, [preparationId, selectedProgram, programTarget, ready, busy, preparationSeed, businessName]);
+
+  async function attachProgram() {
+    if (!programTarget || !selectedProgram || !selected || selected.id !== programTarget.id || selected.revision !== programTarget.revision || busy || dirty || pending || conflict || sessionDraft.recovery) return;
+    const currentProgram = GRANT_PROGRAMS.find(p => p.id === selectedProgram.id);
+    if (!currentProgram || !isGrantAvailable(currentProgram)) { setError("Прийом за цією програмою зараз не підтверджено. Перевірте актуальні умови."); return; }
     setBusy(true);
     setError("");
     try {
-      const r = await request(`/api/cases/${selected.id}/program`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ programId: progId }),
+      const r = await request(`/api/cases/${programTarget.id}/program`, {
+        method: "PUT", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ programId: selectedProgram.id, expectedRevision: programTarget.revision }),
       });
+      if (r.status === 409) {
+        setConflict(true);
+        setError("Проєкт змінився після вибору фінансування. Завантажте актуальну версію та виберіть програму знову.");
+        return;
+      }
       if (!r.ok) throw Error();
-      const updated: Case = (await r.json()).case;
+      const updated = readCase((await r.json()).case);
       setSelected(updated);
-      setCases((old) => old.map((x) => (x.id === updated.id ? updated : x)));
-      setNotice(`Цільову програму змінено на «${GRANT_PROGRAMS.find((p) => p.id === progId)?.title}».`);
+      setCases(old => old.map(c => c.id === updated.id ? updated : c));
+      void loadReadiness(updated.id);
+      onClearProgram?.();
+      setNotice(`Програму «${friendlyTitle(selectedProgram)}» обрано для проєкту.`);
     } catch {
-      setError("Не вдалося змінити програму для цієї чернетки.");
-    } finally {
-      setBusy(false);
-    }
+      setConflict(true);
+      setError("Не вдалося підтвердити вибір програми. Завантажте актуальну версію проєкту та перевірте результат.");
+    } finally { setBusy(false); }
   }
   async function save() {
-    if (!selected) return;
+    if (!selected || sessionDraft.recovery) return;
     const retrying = pending?.kind === "budget";
     let command = retrying ? pending : null;
     if (!command) {
@@ -373,15 +450,23 @@ export function Cases({
         return;
       }
       if (!r.ok) throw Error();
-      let c: Case = (await r.json()).case;
+      let c = readCase((await r.json()).case);
       // A repeated command returns its original snapshot; another tab may have
       // saved a newer revision since then. Keep the pending command until the
       // current version is known, so a failed refresh remains safe to retry.
       if (retrying) {
         const latest = await request(`/api/cases/${command.id}`);
         if (!latest.ok) throw Error();
-        c = (await latest.json()).case;
+        const current = readCase((await latest.json()).case);
+        if (current.revision !== c.revision && detailsDirty) {
+          setPending(null);
+          setConflict(true);
+          setError("Бюджет збережено, але проєкт пізніше змінився в іншій вкладці. Скопіюйте незбережений опис перед завантаженням актуальної версії.");
+          return;
+        }
+        c = current;
       }
+      if (!detailsDirty) sessionDraft.discard();
       setSelected(c);
       setDraft(toDraft(c.items));
       if (!detailsDirty) setDetails(c.details || emptyDetails);
@@ -398,7 +483,7 @@ export function Cases({
     }
   }
   async function saveDetails() {
-    if (!selected) return;
+    if (!selected || sessionDraft.recovery) return;
     const retrying = pending?.kind === "details";
     let command = retrying ? pending : null;
     if (!command) {
@@ -438,12 +523,20 @@ export function Cases({
         return;
       }
       if (!r.ok) throw Error();
-      let c: Case = (await r.json()).case;
+      let c = readCase((await r.json()).case);
       if (retrying) {
         const latest = await request(`/api/cases/${command.id}`);
         if (!latest.ok) throw Error();
-        c = (await latest.json()).case;
+        const current = readCase((await latest.json()).case);
+        if (current.revision !== c.revision && budgetDirty) {
+          setPending(null);
+          setConflict(true);
+          setError("Опис збережено, але проєкт пізніше змінився в іншій вкладці. Скопіюйте незбережений бюджет перед завантаженням актуальної версії.");
+          return;
+        }
+        c = current;
       }
+      if (!budgetDirty) sessionDraft.discard();
       setSelected(c);
       setDetails(c.details || emptyDetails);
       if (!budgetDirty) setDraft(toDraft(c.items));
@@ -479,21 +572,21 @@ export function Cases({
       link.remove();
       window.setTimeout(() => URL.revokeObjectURL(url), 1000);
       setNotice("Чернетку підготовлено до завантаження.");
-    } catch {
-      setError("Не вдалося завантажити чернетку. Спробуйте ще раз.");
+    } catch (error) {
+      setError(readableApiError(error, "Не вдалося завантажити чернетку. Спробуйте ще раз."));
     } finally {
       setBusy(false);
     }
   }
   async function deleteDraft() {
-    if (!selected) return;
+    if (!selected || sessionDraft.recovery) return;
     if (!window.confirm(`Видалити чернетку «${selected.title}»? Цю дію неможливо скасувати.`)) return;
     setBusy(true);
     setError("");
     setNotice("");
     try {
       const r = await request(`/api/cases/${selected.id}`, { method: "DELETE" });
-      if (!r.ok) throw Error();
+      if (!r.ok && r.status !== 404) throw Error();
       setCases((old) => old.filter((c) => c.id !== selected.id));
       setSelected(null);
       setDraft([]);
@@ -501,20 +594,22 @@ export function Cases({
       setReadiness(null);
       setPending(null);
       setConflict(false);
+      setChatDraft(false);
       setNotice("Чернетку видалено.");
-    } catch {
-      setError("Не вдалося видалити чернетку. Спробуйте ще раз.");
+    } catch (error) {
+      setError(`${readableApiError(error, "Не вдалося підтвердити видалення.")} Оновіть сторінку та перевірте список проєктів перед повторною спробою.`);
     } finally {
       setBusy(false);
     }
   }
   function edit(index: number, patch: Partial<DraftItem>) {
+    if (sessionDraft.recovery) return;
     setDraft(draft.map((r, i) => (i === index ? { ...r, ...patch } : r)));
     setPending(null);
     setNotice("");
   }
   function addBudgetItem(name = "", price = "0.00", quantity = "1") {
-    if (draft.length >= 100) return;
+    if (sessionDraft.recovery || draft.length >= 100) return;
     setDraft([...draft, { name, quantity, price }]);
     setPending(null);
     setNotice("");
@@ -524,10 +619,21 @@ export function Cases({
     setActiveStep("assistant");
   }
   function importSuggestedBudgetItems(items: { name: string; quantity: string; price: string }[]) {
-    if (draft.length + items.length > 100) return;
+    if (!selected || busy || pending || conflict || sessionDraft.recovery || draft.length + items.length > 100) return false;
     setDraft((prev) => [...prev, ...items]);
     setPending(null);
     setNotice(`Успішно імпортовано ${items.length} статей до бюджету. Перейдіть на Крок 3 для збереження.`);
+    return true;
+  }
+  function applySuggestion(suggestion: { field: keyof Details; text: string }, mode: "replace" | "append", expectedCurrent: string) {
+    const fields: (keyof Details)[] = ["projectDescription", "customers", "salesChannels", "implementationPlan", "expectedResults"];
+    if (!selected || busy || pending || conflict || sessionDraft.recovery || !fields.includes(suggestion.field) || typeof suggestion.text !== "string" || !suggestion.text.trim() || suggestion.text.length > 3000 || details[suggestion.field] !== expectedCurrent || (mode !== "replace" && mode !== "append")) return false;
+    const text = suggestion.text.trim();
+    const next = mode === "append" && expectedCurrent ? `${expectedCurrent}\n\n${text}` : text;
+    if (next.length > 3000) return false;
+    setDetails({ ...details, [suggestion.field]: next });
+    setNotice("Текст додано до форми. Перевірте й збережіть зміни.");
+    return true;
   }
   const liveBudgetKopecks = draft.reduce((sum, row) => {
     const price = row.price.trim().replace(",", ".");
@@ -540,23 +646,24 @@ export function Cases({
     return Number.isSafeInteger(total) ? total : Number.NaN;
   }, 0);
 
-  const activeProgram =
-    GRANT_PROGRAMS.find((p) => p.id === (selected?.programId ?? selectedProgram?.id)) ??
-    GRANT_PROGRAMS[0];
-  const activeLimitKopecks = PROGRAM_LIMITS[activeProgram.id] ?? 25000000;
-  const activeTemplates =
-    PROGRAM_BUDGET_TEMPLATES[activeProgram.id] ?? PROGRAM_BUDGET_TEMPLATES["vlasna-sprava"];
+  const activeProgram = GRANT_PROGRAMS.find((p) => p.id === selected?.programId) ?? null;
+  const activeTemplates = activeProgram ? (PROGRAM_BUDGET_TEMPLATES[activeProgram.id] ?? []) : [];
+  const basicsFields = businessBasicsFields;
+  const planFields = businessPlanFields;
+  function openField(key: keyof Details) {
+    setActiveStep(["implementationPlan", "expectedResults"].includes(key) ? "plan" : "basics");
+    requestAnimationFrame(() => document.getElementById(`preparation-${key}`)?.focus());
+  }
+  function openDocuments() { setActiveStep("review"); requestAnimationFrame(() => document.getElementById("preparation-documents")?.scrollIntoView({block:"start"})); }
+  const missingField = [...basicsFields, ...planFields].find(field => !details[field.key]?.trim());
+  const nextStep = missingField ? { label: `Заповнити: ${missingField.label.toLocaleLowerCase("uk")}`, description: "Перенесіть підтверджені факти в матеріали заявки. Асистент допоможе сформулювати текст; збережіть його після перевірки.", onOpen: () => openField(missingField.key) }
+    : !draft.length ? { label: "Скласти кошторис", description: "Додайте потрібні витрати й підтвердьте суми перед переходом до документів.", onOpen: () => setActiveStep("budget") }
+    : { label: "Перевірити документи та подання", description: "Звірте офіційну форму, перелік додатків і строки обраного конкурсу.", onOpen: openDocuments };
 
   const isStep1Done = Boolean(details.projectDescription.trim() && details.customers.trim());
   const isStep2Done = Boolean(details.implementationPlan.trim());
   const isStep3Done = draft.length > 0;
-  const stepsDoneCount = (isStep1Done ? 1 : 0) + (isStep2Done ? 1 : 0) + (isStep3Done ? 1 : 0);
-  const overallProgressPercent = Math.round((stepsDoneCount / 3) * 100);
 
-  const budgetUsagePercent =
-    Number.isFinite(liveBudgetKopecks) && activeLimitKopecks > 0
-      ? Math.round((liveBudgetKopecks / activeLimitKopecks) * 100)
-      : 0;
 
   return (
     <div className="card cases-card">
@@ -564,7 +671,7 @@ export function Cases({
         <article className="print-document" aria-label="Чернетка проєкту для друку">
           <p>GrantFolio · Робоча чернетка</p>
           <h1>{selected.title}</h1>
-          <p>Цільова програма: {activeProgram.title} ({activeProgram.provider})</p>
+          <p>{activeProgram ? `Цільова програма: ${activeProgram.title} (${activeProgram.provider})` : "Фінансування підберемо далі"}</p>
           <p>Збережена версія: {selected.revision}. Документ не замінює офіційної форми заявки.</p>
           {[...basicsFields, ...planFields].map((field) => (
             <section key={field.key}>
@@ -572,25 +679,82 @@ export function Cases({
               <p className="print-paragraph">{selected.details[field.key] || "Не заповнено"}</p>
             </section>
           ))}
-          <h2>Бюджет</h2>
+          <h2>{"Бюджет"}</h2>
           <table>
             <thead><tr><th>Витрата</th><th>Кількість</th><th>Ціна за одиницю</th><th>Сума</th></tr></thead>
             <tbody>{selected.items.map((item, index) => <tr key={index}><td>{item.name}</td><td>{item.quantity}</td><td>{money(item.unitPriceKopecks)}</td><td>{money(item.quantity * item.unitPriceKopecks)}</td></tr>)}</tbody>
           </table>
           <p><strong>Разом: {money(selected.totalKopecks)}</strong></p>
-          <p>Умови участі, актуальний прийом і дозволені витрати перевіряйте на офіційній сторінці програми.</p>
+          {activeProgram && <><h2>Документи та наступні кроки</h2>
+          <ul>{activeProgram.details.documents.map(document => <li key={document}>{document}</li>)}</ul>
+          <ol>{activeProgram.details.steps.map(step => <li key={step}>{step}</li>)}</ol>
+          <h2>Офіційні джерела</h2>
+          {activeProgram.details.sources.map(source => <p key={source.url}>{source.title}: {source.url} (перевірено {source.checkedAt})</p>)}</>}
+          <p>Умови участі, актуальний прийом, формат документів і дозволені витрати перевіряйте у конкретному конкурсі. Це робоча чернетка, не підтвердження офіційного подання.</p>
         </article>, document.body
       )}
-      <div className="card-top">
-        <span>02 / ЧЕРНЕТКИ ПЛАНУ</span>
-        <span>✳</span>
+      <div className="cases-toolbar">
+        <div><h2>Мої проєкти</h2><p>Підготовка матеріалів з асистентом</p></div>
+        <button type="button" className="secondary-btn" disabled={!ready || !!programTarget} onClick={() => { setShowCreate((open) => !open); if (showCreate) onClearProgram?.(); else requestAnimationFrame(() => createTitleInput.current?.focus()); }} aria-expanded={showCreate}>
+          {showCreate ? "Закрити" : "+ Новий проєкт"}
+        </button>
       </div>
-      <h2>Ваші плани</h2>
-      <p>Створіть чернетку, опишіть проєкт та запишіть витрати.</p>
+      {selectedProgram && programTarget && <section className="create-case-disclosure" aria-label="Вибір програми для проєкту">
+        <h3>Обрати «{friendlyTitle(selectedProgram)}» для «{programTarget.title}»</h3>
+        <p>Програма буде додана до цього проєкту, а його матеріали залишаться на місці.</p>
+        {selected?.id !== programTarget.id && <p>Спочатку відкрийте потрібний проєкт. <button type="button" disabled={busy} onClick={() => void select(programTarget.id)}>Відкрити проєкт</button></p>}
+        {selected?.id === programTarget.id && (dirty || pending || sessionDraft.recovery) && <p>Спочатку збережіть зміни та вирішіть питання відновлення копії.</p>}
+        {selected?.id === programTarget.id && selected.revision !== programTarget.revision && <p>Версія проєкту змінилася. Виберіть фінансування знову для актуальної версії.</p>}
+        <button type="button" className="primary" disabled={busy || !selected || selected.id !== programTarget.id || selected.revision !== programTarget.revision || dirty || !!pending || conflict || !!sessionDraft.recovery} onClick={() => void attachProgram()}>Обрати для цього проєкту</button>
+        <button type="button" className="secondary-btn" disabled={busy} onClick={() => { onClearProgram?.(); setError(""); }}>Скасувати</button>
+      </section>}
+      {(listLoading || listError) && (
+        <div className={`case-load-region${ready || showCreate ? " case-load-region--compact" : ""}`}>
+          <section className="case-load-state" aria-labelledby="case-load-title" aria-busy={listLoading}>
+            <div className={`case-load-icon${listLoading ? " case-load-icon--loading" : ""}`} aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                {listLoading ? <path d="M20 12a8 8 0 1 1-5.5-7.6" /> : <><path d="M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-6l-2-2H9Z" /><path d="M12 10v4m0 3h.01" /></>}
+              </svg>
+            </div>
+            <div role={listLoading ? "status" : "alert"}>
+              <h3 id="case-load-title">{listLoading ? "Завантажуємо ваші проєкти" : "Не вдалося завантажити проєкти"}</h3>
+              <p>{listLoading ? "Ще мить — і можна продовжувати роботу з асистентом." : listError}</p>
+            </div>
+            {!listLoading && <>
+              <div className="case-load-actions">
+                <button type="button" className="primary" onClick={() => void loadList()}>
+                  <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M20 7v5h-5M4 17v-5h5" /><path d="M6.1 7a7 7 0 0 1 11.6-.8L20 9M4 15l2.3 2.8A7 7 0 0 0 17.9 17" /></svg>
+                  Спробувати ще раз
+                </button>
+                <button type="button" className="secondary-btn" onClick={onBrowsePrograms}>Переглянути каталог</button>
+              </div>
+              <p className="case-load-hint">Поки відновлюється доступ, можна переглянути умови грантів.</p>
+            </>}
+          </section>
+        </div>
+      )}
+      {ready && !listLoading && !listError && cases.length === 0 && !showCreate && (
+        <div className="case-load-region">
+          <section className="case-load-state case-empty-state" aria-labelledby="case-empty-title">
+            <div className="case-load-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"><path d="M9 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-6l-2-2H9Z" /><path d="M12 10v6m-3-3h6" /></svg>
+            </div>
+            <h3 id="case-empty-title">У вас ще немає проєктів</h3>
+            <p>Тут з’являться ваші чернетки. Почніть з розмови в розділі «Асистент» або створіть проєкт самостійно.</p>
+            <div className="case-load-actions">
+              <button type="button" className="primary" onClick={() => { setShowCreate(true); requestAnimationFrame(() => createTitleInput.current?.focus()); }}>Створити проєкт</button>
+            </div>
+          </section>
+        </div>
+      )}
+      <div hidden={!showCreate} className="create-case-disclosure">
+        <h3>Новий проєкт</h3>
+        <p>{selectedProgram ? `Готуємо новий проєкт для програми «${selectedProgram.title}». Перевірте назву й почніть роботу з асистентом.` : "Назвіть проєкт і, за бажанням, опишіть потребу. Фінансування можна підібрати пізніше."}</p>
       <form onSubmit={create} className="create-case-form">
         <label>
           Назва чернетки
           <input
+            ref={createTitleInput}
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             required
@@ -598,172 +762,136 @@ export function Cases({
             placeholder="Наприклад, обладнання для майстерні"
           />
         </label>
-        <label>
-          Цільова грантова програма
-          <select
-            value={newProgramId}
-            onChange={(e) => setNewProgramId(e.target.value)}
-            disabled={busy || !ready}
-          >
-            {GRANT_PROGRAMS.map((p) => (
-              <option key={p.id} value={p.id}>
-                {p.title} ({p.amount})
-              </option>
-            ))}
-          </select>
+        <label>Потреба або ідея (необов’язково)
+          <textarea value={initialNeed} onChange={e => setInitialNeed(e.target.value)} maxLength={2000} placeholder="Наприклад, обладнання для майстерні" />
         </label>
+        {selectedProgram && <p>Обрана програма: {friendlyTitle(selectedProgram)}</p>}
         <button className="primary" disabled={busy || !ready}>
           Створити чернетку <span>↗</span>
         </button>
       </form>
-      {listLoading && <p role="status">Завантаження чернеток…</p>}
-      {listFailed && (
-        <button
-          className="link"
-          disabled={listLoading}
-          onClick={() => void loadList()}
-        >
-          Повторити завантаження
-        </button>
-      )}
+      </div>
       {cases.length > 0 && (
-        <div className="case-list" role="group" aria-label="Ваші чернетки">
-          {cases.map((c) => {
-            const prog = GRANT_PROGRAMS.find((p) => p.id === c.programId) ?? GRANT_PROGRAMS[0];
-            return (
-              <button
-                className={
-                  selected?.id === c.id ? "case-card-btn active" : "case-card-btn"
-                }
-                key={c.id}
-                disabled={busy}
-                aria-pressed={selected?.id === c.id}
-                onClick={() => void select(c.id)}
-              >
-                <div className="case-card-header">
-                  <span className="case-card-title">{c.title}</span>
-                  <span className="case-card-rev">v{c.revision}</span>
-                </div>
-                <div className="case-card-meta">
-                  <span className="case-card-prog">{prog.title}</span>
-                  <span className="case-card-sum">{money(c.totalKopecks)}</span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
+        <label className="case-switcher" hidden={showCreate}>Проєкт
+          <select value={selected?.id ?? ""} disabled={busy} onChange={(event) => void select(event.target.value)}>
+            {!selected && <option value="">Оберіть проєкт</option>}
+            {cases.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
+          </select>
+        </label>
       )}
       {selected && (
-        <div className="case-workspace">
-          <div className="case-header">
-            <div>
-              <h3>{selected.title}</h3>
-              <span className="case-revision">Версія чернетки: {selected.revision}</span>
+        <div className="case-workspace" hidden={showCreate}>
+          <aside className="case-context" aria-label="Дані проєкту">
+            <h3>Проєкт</h3>
+            <strong>{selected.title}</strong>
+            <span className="case-revision">Збережена версія {selected.revision}</span>
+            <div className="context-item"><span>Програма</span><strong>{activeProgram ? friendlyTitle(activeProgram) : "Фінансування підберемо далі"}</strong></div>
+            {onFindFunding && <button type="button" onClick={() => onFindFunding(details.projectDescription, { id: selected.id, title: selected.title, revision: selected.revision })}>Підібрати фінансування</button>}
+            <div className="context-item"><span>Збережений бюджет</span><strong>{money(selected.totalKopecks)}</strong></div>
+            <div className="context-item"><span>Готовність</span><strong>{readiness ? `${readiness.checks.filter((check) => check.status === "complete").length} з ${readiness.checks.length} перевірок` : readinessError ? "Не вдалося завантажити" : "Завантаження…"}</strong></div>
+            {(dirty || pending) && <p className="context-unsaved">Є незбережені зміни</p>}
+            <div className="context-actions">
+              <button type="button" onClick={() => setActiveStep("basics")}>{"Редагувати опис"}</button>
+              <button type="button" onClick={() => setActiveStep("budget")}>Редагувати бюджет</button>
+              <button type="button" onClick={() => setActiveStep("review")}>Перевірка та експорт</button>
             </div>
-          </div>
+          </aside>
+          <div className="case-main">
+          {sessionDraft.recovery && (
+            <section className="session-recovery" role="region" aria-label="Відновлення незбережених змін">
+              <h3>Знайдено незбережені зміни в цій вкладці</h3>
+              <p>Копія від {new Date(sessionDraft.recovery.timestamp).toLocaleString("uk-UA")}.</p>
+              <p>Щоб редагувати або зберігати проєкт, спочатку відновіть або видаліть цю копію.</p>
+              {sessionDraft.recovery.pendingUnknown && <p>Результат попереднього збереження невідомий. Перевірте актуальну версію; повторне збереження не запускається автоматично.</p>}
+              {sessionDraft.recovery.baseRevision === selected.revision && !sessionDraft.recovery.pendingUnknown ? (
+                <button type="button" disabled={busy || !!pending || conflict} onClick={() => {
+                  if (dirty && !window.confirm("Замінити поточні незбережені зміни знайденою копією?")) return;
+                  setDetails(sessionDraft.recovery!.details);
+                  setDraft(sessionDraft.recovery!.budget);
+                  sessionDraft.resolved();
+                  setNotice("Зміни відновлено у формі. Перевірте й збережіть їх.");
+                }}>Відновити зміни</button>
+              ) : <p>Версія проєкту могла змінитися. Порівняйте актуальні дані з копією та перенесіть потрібний текст вручну.</p>}
+              <details><summary>Переглянути та скопіювати копію</summary>
+                {[...businessBasicsFields, ...businessPlanFields].map(field => <label key={field.key}>{field.label}<textarea readOnly value={sessionDraft.recovery!.details[field.key]} /></label>)}
+                <label>Бюджет<textarea readOnly value={sessionDraft.recovery.budget.map(row => `${row.name} | ${row.quantity} | ${row.price}`).join("\n")} /></label>
+              </details>
+              <button type="button" onClick={sessionDraft.discard}>Видалити копію</button>
+            </section>
+          )}
+          {sessionDraft.storageFailed && <p className="session-recovery-warning" role="status">Не вдалося зберегти резервну копію в цій вкладці. Щоб не втратити зміни, збережіть проєкт або скопіюйте текст.</p>}
+          <label className="mobile-case-step">Розділ проєкту
+            <select aria-label="Розділ проєкту" value={activeStep} onChange={event => setActiveStep(event.target.value as typeof activeStep)}>
+              <option value="assistant">Асистент</option><option value="basics">{"Ідея та клієнти"}</option><option value="plan">{"План запуску"}</option><option value="budget">{"Бюджет проєкту"}</option><option value="review">Готовність та експорт</option>
+            </select>
+          </label>
+          {activeProgram?.currency && activeProgram.currency!=="UAH" && <p className="currency-note" role="note">Фінансування програми зазначене в {activeProgram.currency}. Робочий кошторис нижче ведеться у гривнях; автоматичної конвертації немає. Узгодьте валюту та формат офіційної заявки з організатором.</p>}
+          {activeProgram?.fundingType==="reimbursement" && <p className="currency-note" role="note">Ця програма відшкодовує вже понесені витрати. Підготуйте документи про фактичні покупки; план майбутніх витрат не є заявою на компенсацію.</p>}
+          <div className="case-steps-nav" role="group" aria-label="Розділи проєкту">
+            <button
+              type="button"
+              className={activeStep === "assistant" ? "step-tab active assistant-tab" : "step-tab assistant-tab"}
+              onClick={() => setActiveStep("assistant")}
+              aria-pressed={activeStep === "assistant"}
+            >
 
-          <div className="applied-program-banner">
-            <div className="applied-program-info">
-              <span className="applied-program-tag">Цільова грантова програма:</span>
-              <strong>{activeProgram.title}</strong>
-              <span className="applied-program-desc">
-                Фінансування: <strong>{activeProgram.amount}</strong> · Ключова умова: {activeProgram.keyCondition}
-              </span>
-            </div>
-            <div className="program-change-selector">
-              <label htmlFor="change-prog-inline" className="program-change-label">Змінити:</label>
-              <select
-                id="change-prog-inline"
-                className="program-inline-select"
-                value={activeProgram.id}
-                disabled={busy}
-                onChange={(e) => void changeSelectedProgram(e.target.value)}
-              >
-                {GRANT_PROGRAMS.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.title}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          {/* Overall Wizard Completion Progress */}
-          <div className="wizard-progress-card">
-            <div className="wizard-progress-info">
-              <span className="wizard-progress-label">Готовність бізнес-плану:</span>
-              <strong className="wizard-progress-val">
-                {stepsDoneCount} з 3 блоків заповнено ({overallProgressPercent}%)
-              </strong>
-            </div>
-            <div className="wizard-progress-track">
-              <div
-                className="wizard-progress-bar"
-                style={{ width: `${overallProgressPercent}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="case-steps-nav" role="tablist" aria-label="Етапи проєкту">
+              <span>Асистент</span>
+            </button>
             <button
               type="button"
               className={activeStep === "basics" ? "step-tab active" : "step-tab"}
               onClick={() => setActiveStep("basics")}
+              aria-pressed={activeStep === "basics"}
             >
               <span className="step-num">{isStep1Done ? "✓" : "1"}</span>
-              <span>Ідея та клієнти</span>
+              <span>{"Ідея та клієнти"}</span>
             </button>
             <button
               type="button"
               className={activeStep === "plan" ? "step-tab active" : "step-tab"}
               onClick={() => setActiveStep("plan")}
+              aria-pressed={activeStep === "plan"}
             >
               <span className="step-num">{isStep2Done ? "✓" : "2"}</span>
-              <span>План запуску</span>
+              <span>{"План запуску"}</span>
             </button>
             <button
               type="button"
               className={activeStep === "budget" ? "step-tab active" : "step-tab"}
               onClick={() => setActiveStep("budget")}
+              aria-pressed={activeStep === "budget"}
             >
               <span className="step-num">{isStep3Done ? "✓" : "3"}</span>
-              <span>Бюджет гранту</span>
+              <span>{"Бюджет проєкту"}</span>
             </button>
             <button
               type="button"
               className={activeStep === "review" ? "step-tab active" : "step-tab"}
               onClick={() => setActiveStep("review")}
+              aria-pressed={activeStep === "review"}
             >
               <span className="step-num">4</span>
               <span>Готовність та експорт</span>
-            </button>
-            <button
-              type="button"
-              className={activeStep === "assistant" ? "step-tab active assistant-tab" : "step-tab assistant-tab"}
-              onClick={() => setActiveStep("assistant")}
-            >
-              <span className="step-icon">🤖</span>
-              <span>ШІ-Асистент</span>
             </button>
           </div>
 
           {activeStep === "basics" && (
             <section className="step-panel" aria-labelledby="step1-heading">
               <div className="step-panel-header">
-                <h4 id="step1-heading">Крок 1: Ідея бізнесу та цільові клієнти</h4>
+                <h4 id="step1-heading">{"Крок 1: Ідея бізнесу та цільові клієнти"}</h4>
                 <p>
-                  Опишіть вашу ідею, клієнтів та як ви будете продавати. Грантова комісія оцінює розуміння ринку та цінність продукту.
+                  {"Опишіть вашу ідею, клієнтів та як ви будете продавати. Це допоможе пояснити цінність проєкту та підготувати заявку."}
                 </p>
               </div>
               <div className="step-ai-banner">
                 <div className="step-ai-banner-text">
                   <strong>💡 Потрібна порада ШІ для формулювання?</strong>
-                  <span>Асистент допоможе чітко розписати цільову аудиторію та переваги вашого продукту.</span>
+                  <span>{"Асистент допоможе чітко розписати цільову аудиторію та переваги вашого продукту."}</span>
                 </div>
                 <button
                   type="button"
                   className="link ai-call-btn"
-                  onClick={() => askAssistant("Допоможи мені сформулювати та переконливо описати ідею бізнесу, цільових клієнтів та канали продажу для грантової заявки.")}
+                  onClick={() => askAssistant("Допоможи сформулювати мету заявки та підтверджені факти. Врахуй обрану програму й постав доречні уточнення, не вигадуючи досвід чи досягнення.")}
                 >
                   Запитати ШІ-асистента ↗
                 </button>
@@ -773,11 +901,12 @@ export function Cases({
                   {field.label}
                   <span className="field-hint">{field.hint}</span>
                   <textarea
+                    id={`preparation-${field.key}`}
                     rows={4}
                     maxLength={3000}
                     placeholder={field.placeholder}
                     value={details[field.key]}
-                    disabled={busy || !!pending}
+                    disabled={busy || !!pending || !!sessionDraft.recovery}
                     onChange={(e) => {
                       setDetails({ ...details, [field.key]: e.target.value });
                       setNotice("");
@@ -788,7 +917,7 @@ export function Cases({
               <div className="step-actions">
                 <button
                   className="primary"
-                  disabled={busy || conflict || (!!pending && pending.kind !== "details")}
+                  disabled={busy || conflict || !!sessionDraft.recovery || (!!pending && pending.kind !== "details")}
                   onClick={() => void saveDetails()}
                 >
                   {busy && pending?.kind === "details"
@@ -803,7 +932,7 @@ export function Cases({
                   className="secondary-btn"
                   onClick={() => setActiveStep("plan")}
                 >
-                  Далі: План запуску ➡️
+                  {"Далі: План запуску ➡️"}
                 </button>
               </div>
             </section>
@@ -812,20 +941,20 @@ export function Cases({
           {activeStep === "plan" && (
             <section className="step-panel" aria-labelledby="step2-heading">
               <div className="step-panel-header">
-                <h4 id="step2-heading">Крок 2: План реалізації та очікувані результати</h4>
+                <h4 id="step2-heading">{"Крок 2: План реалізації та очікувані результати"}</h4>
                 <p>
-                  Зазначте основні кроки запуску (графік) та ключові результати: плановий дохід та робочі місця, якщо вони передбачені вашим планом і умовами програми.
+                  {"Зазначте основні кроки запуску (графік) та ключові результати: плановий дохід та робочі місця, якщо вони передбачені вашим планом і умовами програми."}
                 </p>
               </div>
               <div className="step-ai-banner">
                 <div className="step-ai-banner-text">
-                  <strong>💡 Скласти графік запуску разом із ШІ?</strong>
-                  <span>Асистент підкаже помісячні етапи запуску та вимоги до працевлаштування за грантом.</span>
+                  <strong>{"💡 Скласти графік запуску разом із ШІ?"}</strong>
+                  <span>{"Асистент допоможе скласти етапи реалізації та перевірити вимоги обраного напряму."}</span>
                 </div>
                 <button
                   type="button"
                   className="link ai-call-btn"
-                  onClick={() => askAssistant("Запропонуй помісячний план реалізації (етапи запуску) та очікувані результати (включаючи створення робочих місць) для мого проєкту.")}
+                  onClick={() => askAssistant("Допоможи скласти план підготовки та очікувані результати за обраною програмою. Робочі місця враховуй лише якщо їх вимагає конкретний напрям; для навчання зосередься на навчальному плані.")}
                 >
                   Запитати ШІ-асистента ↗
                 </button>
@@ -835,11 +964,12 @@ export function Cases({
                   {field.label}
                   <span className="field-hint">{field.hint}</span>
                   <textarea
+                    id={`preparation-${field.key}`}
                     rows={4}
                     maxLength={3000}
                     placeholder={field.placeholder}
                     value={details[field.key]}
-                    disabled={busy || !!pending}
+                    disabled={busy || !!pending || !!sessionDraft.recovery}
                     onChange={(e) => {
                       setDetails({ ...details, [field.key]: e.target.value });
                       setNotice("");
@@ -857,7 +987,7 @@ export function Cases({
                 </button>
                 <button
                   className="primary"
-                  disabled={busy || conflict || (!!pending && pending.kind !== "details")}
+                  disabled={busy || conflict || !!sessionDraft.recovery || (!!pending && pending.kind !== "details")}
                   onClick={() => void saveDetails()}
                 >
                   {busy && pending?.kind === "details"
@@ -872,7 +1002,7 @@ export function Cases({
                   className="secondary-btn"
                   onClick={() => setActiveStep("budget")}
                 >
-                  Далі: Бюджет гранту ➡️
+                  {"Далі: Бюджет проєкту ➡️"}
                 </button>
               </div>
             </section>
@@ -881,9 +1011,9 @@ export function Cases({
           {activeStep === "budget" && (
             <section className="step-panel" aria-labelledby="step3-heading">
               <div className="step-panel-header">
-                <h4 id="step3-heading">Крок 3: Бюджет грантової заявки</h4>
+                <h4 id="step3-heading">{"Крок 3: Бюджет грантової заявки"}</h4>
                 <p>
-                  Вкажіть конкретні витрати, на які ви плануєте залучити грант. Держава фінансує лише безготівкову оплату затверджених цільових статей.
+                  {"Вкажіть витрати, для яких потрібне фінансування. Дозволені статті й порядок оплати визначають умови конкретної програми."}
                 </p>
               </div>
 
@@ -911,14 +1041,14 @@ export function Cases({
               </div>
 
               <div className="budget-templates-section">
-                <span className="templates-label">Рекомендовані напрями для програми «{activeProgram.title}»:</span>
+                <span className="templates-label">{activeProgram ? `Приклади витрат для планування «${activeProgram.title}»:` : "Додайте витрати для свого проєкту:"}</span>
                 <div className="templates-list">
                   {activeTemplates.map((tmpl, idx) => (
                     <button
                       key={idx}
                       type="button"
                       className="template-chip"
-                      disabled={busy || !!pending || draft.length >= 100}
+                      disabled={busy || !!pending || !!sessionDraft.recovery || draft.length >= 100}
                       onClick={() => addBudgetItem(tmpl.name, tmpl.price, "1")}
                     >
                       {tmpl.label}
@@ -928,27 +1058,11 @@ export function Cases({
                     key="custom"
                     type="button"
                     className="template-chip custom"
-                    disabled={busy || !!pending || draft.length >= 100}
+                    disabled={busy || !!pending || !!sessionDraft.recovery || draft.length >= 100}
                     onClick={() => addBudgetItem("", "0.00", "1")}
                   >
                     + Додати свою витрату
                   </button>
-                </div>
-              </div>
-
-              {/* Visual Budget Meter */}
-              <div className="budget-meter-card">
-                <div className="meter-header">
-                  <span className="meter-title">Заповнення бюджету відносно ліміту програми:</span>
-                  <span className="meter-values">
-                    <strong>{Number.isFinite(liveBudgetKopecks) ? money(liveBudgetKopecks) : "0,00 грн"}</strong> / {money(activeLimitKopecks)} ({budgetUsagePercent}%)
-                  </span>
-                </div>
-                <div className="meter-track">
-                  <div
-                    className={`meter-bar ${budgetUsagePercent > 100 ? "exceeded" : ""}`}
-                    style={{ width: `${Math.min(100, budgetUsagePercent)}%` }}
-                  />
                 </div>
               </div>
 
@@ -961,15 +1075,6 @@ export function Cases({
                   <span className="summary-label">Збережено в базі:</span>
                   <span className="summary-value secondary">{money(selected.totalKopecks)}</span>
                 </div>
-                <div className="summary-col">
-                  <span className="summary-label">Ліміт програми:</span>
-                  <span className="summary-value limit-highlight">{money(activeLimitKopecks)}</span>
-                </div>
-                {Number.isFinite(liveBudgetKopecks) && liveBudgetKopecks > activeLimitKopecks && (
-                  <div className="summary-badge warning">
-                    ⚠️ Сума ({money(liveBudgetKopecks)}) перевищує базовий ліміт ({money(activeLimitKopecks)}). Перевірте вимоги співфінансування.
-                  </div>
-                )}
               </div>
 
               {draft.length === 0 && (
@@ -991,7 +1096,7 @@ export function Cases({
                       maxLength={160}
                       value={row.name}
                       placeholder="Наприклад: Професійна кавомашина"
-                      disabled={busy || !!pending}
+                      disabled={busy || !!pending || !!sessionDraft.recovery}
                       onChange={(e) => edit(index, { name: e.target.value })}
                     />
                   </label>
@@ -999,8 +1104,9 @@ export function Cases({
                     Кількість
                     <input
                       inputMode="numeric"
+                      maxLength={32}
                       value={row.quantity}
-                      disabled={busy || !!pending}
+                      disabled={busy || !!pending || !!sessionDraft.recovery}
                       onChange={(e) => edit(index, { quantity: e.target.value })}
                     />
                   </label>
@@ -1008,15 +1114,16 @@ export function Cases({
                     Ціна за од., грн
                     <input
                       inputMode="decimal"
+                      maxLength={32}
                       value={row.price}
-                      disabled={busy || !!pending}
+                      disabled={busy || !!pending || !!sessionDraft.recovery}
                       onChange={(e) => edit(index, { price: e.target.value })}
                     />
                   </label>
                   <button
                     className="link remove-item"
                     aria-label={`Видалити витрату ${row.name || index + 1}`}
-                    disabled={busy || !!pending}
+                    disabled={busy || !!pending || !!sessionDraft.recovery}
                     onClick={() => {
                       setDraft(draft.filter((_, i) => i !== index));
                       setPending(null);
@@ -1034,11 +1141,11 @@ export function Cases({
                   className="secondary-btn"
                   onClick={() => setActiveStep("plan")}
                 >
-                  ← Назад: План запуску
+                  {"← Назад: План запуску"}
                 </button>
                 <button
                   className="primary"
-                  disabled={busy || conflict || (!!pending && pending.kind !== "budget")}
+                  disabled={busy || conflict || !!sessionDraft.recovery || (!!pending && pending.kind !== "budget")}
                   onClick={() => void save()}
                 >
                   {busy && pending?.kind === "budget"
@@ -1069,14 +1176,14 @@ export function Cases({
               </div>
 
               <section className="readiness" aria-labelledby="readiness-heading">
-                <h4 id="readiness-heading">Чек-лист заповненості проєкту</h4>
+                <h4 id="readiness-heading">Заповненість чернетки проєкту</h4>
                 {readiness && (
                   <>
                     <p>Збережена версія у списку: {readiness.revision}</p>
                     <ul>
                       {readiness.checks.map((check) => (
                         <li key={check.id}>
-                          <span>{check.label}</span>
+                          <button type="button" className="link" onClick={() => check.id === "budget" ? setActiveStep("budget") : openField(check.id as keyof Details)}>{check.label}</button>
                           <strong className={check.status === "complete" ? "check-complete" : "check-missing"}>
                             {check.status === "complete" ? "✓ Заповнено" : "Потрібно заповнити"}
                           </strong>
@@ -1103,10 +1210,21 @@ export function Cases({
                 {dirty && <p className="readiness-dirty">Незбережені зміни ще не враховані у списку.</p>}
               </section>
 
+              <section className="preparation-documents" id="preparation-documents" aria-labelledby="preparation-documents-title">
+                <h4 id="preparation-documents-title">Документи та офіційне подання</h4>
+                <p>{"Підготовлені тут текст і кошторис допоможуть оформити заявку. Остаточний перелік і формат документів визначає обраний конкурс."}</p>
+                {activeProgram ? <ol className="preparation-route">
+                  <li><strong>Звірте конкурс та вимоги</strong><p>{activeProgram.keyCondition}</p><button type="button" className="link" onClick={() => { window.location.hash = `grants/${activeProgram.id}`; }}>Відкрити умови в GrantFolio</button></li>
+                  <li><strong>Зберіть потрібні матеріали</strong><ul>{activeProgram.details.documents.map(document => <li key={document}>{document}</li>)}</ul><button type="button" className="link" onClick={() => askAssistant("Допоможи перевірити, які матеріали ще потрібні до офіційної форми. Не оголошуй їх готовими без перевірки й допоможи підготувати наступний розділ.")}>Допоможи підготувати документи</button></li>
+                  <li><strong>Зіставте чернетку з офіційною формою</strong><p>Завантажте збережені матеріали нижче та перенесіть їх у форму організатора. Перевірте зміст, мову, формат файлів і потрібний підпис.</p></li>
+                  <li><strong>Подайте за правилами організатора</strong><ol>{activeProgram.details.steps.map(step => <li key={step}>{step}</li>)}</ol><a href={activeProgram.officialUrl} target="_blank" rel="noopener noreferrer">{"Відкрити офіційне подання ↗"}</a><p>Статус «подано» підтверджує організатор; GrantFolio не надсилає заявку від вашого імені.</p></li>
+                </ol> : <p>Фінансування підберемо далі. Перелік документів і правила подання залежать від обраної програми.</p>}
+              </section>
+
               <section className="export-section" aria-labelledby="export-heading">
                 <h4 id="export-heading">Експорт робочої чернетки</h4>
                 <p>
-                  Сформований файл містить структуровані відповіді та бюджет. Скопіюйте їх під час заповнення офіційної заявки на державному порталі.
+                  Сформований файл містить структуровані відповіді та бюджет. Перенесіть перевірений текст у форму обраного організатора.
                 </p>
                 <div className="export-buttons-group">
                   <button
@@ -1114,7 +1232,7 @@ export function Cases({
                     className="secondary-btn"
                     onClick={() => setActiveStep("budget")}
                   >
-                    ← Назад: Бюджет
+                    {"← Назад: Бюджет"}
                   </button>
                   <button
                     className="primary export-btn"
@@ -1141,7 +1259,7 @@ export function Cases({
                 <h4 id="delete-heading">Керування чернеткою</h4>
                 <button
                   className="link danger"
-                  disabled={busy || !!pending}
+                  disabled={busy || !!pending || !!sessionDraft.recovery}
                   onClick={() => void deleteDraft()}
                 >
                   Видалити чернетку
@@ -1150,21 +1268,30 @@ export function Cases({
             </section>
           )}
 
-          {activeStep === "assistant" && (
-            <section className="step-panel" aria-labelledby="assistant-tab-heading">
+          <section className="step-panel" hidden={activeStep !== "assistant"} aria-label="Асистент">
               <Assistant
                 key={selected.id}
                 caseId={selected.id}
+                profileRevision={profileRevision}
                 revision={selected.revision}
                 blocked={dirty || !!pending || busy || conflict}
+                blockedReason={conflict ? "Проєкт змінився в іншій вкладці. Завантажте актуальну версію, щоб продовжити." : pending ? "Потрібно повторити попереднє збереження й підтвердити його результат." : busy ? "Зачекайте завершення поточної дії." : undefined}
+                onRevisionConflict={() => setConflict(true)}
                 request={request}
                 prefilledPrompt={assistantPrompt}
                 onClearPrefilled={() => setAssistantPrompt("")}
+                onDraftChange={setChatDraft}
                 onImportBudgetItems={importSuggestedBudgetItems}
-                programTitle={activeProgram.title}
+                projectDetails={details}
+                canApplySuggestions={!busy && !pending && !conflict && !sessionDraft.recovery}
+                onApplySuggestion={applySuggestion}
+                programTitle={activeProgram ? friendlyTitle(activeProgram) : "Фінансування підберемо далі"}
+                programSelected={!!activeProgram}
+                goalText={selected.details.projectDescription}
+                nextStep={nextStep}
+                onReviewDocuments={openDocuments}
               />
-            </section>
-          )}
+          </section>
 
           {conflict && (
             <button
@@ -1182,6 +1309,7 @@ export function Cases({
               Завантажити актуальну версію
             </button>
           )}
+          </div>
         </div>
       )}
       {error && (

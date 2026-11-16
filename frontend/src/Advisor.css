@@ -1,0 +1,180 @@
+.advisor-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 20px 32px;
+  border-bottom: 1px solid #e6ebe6;
+}
+.advisor-toolbar h2 {
+  margin: 0;
+  font-size: 20px;
+}
+.advisor-toolbar p {
+  margin: 4px 0 0;
+  color: #6b786f;
+  font-size: 13px;
+}
+.advisor-conversation {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 32px;
+  color: #657168;
+  font-size: 13px;
+}
+.advisor-conversation select {
+  max-width: 450px;
+  margin: 0;
+}
+.advisor-page {
+  display: flex;
+  flex-direction: column;
+  height: 100dvh;
+  min-height: 0;
+}
+.advisor-toolbar,
+.advisor-conversation {
+  flex: none;
+}
+.advisor-page .live-chat-container {
+  flex: 1;
+  height: auto;
+  min-height: 0;
+}
+.advisor-page .welcome-content h1 {
+  font-size: clamp(26px, 3vw, 36px);
+  line-height: 1.2;
+  margin: 0 0 16px;
+}
+.advisor-page .assistant-bubble-author {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.advisor-page .assistant-bubble-author small {
+  font-size: 11px;
+  color: #768278;
+}
+.advisor-recommendations {
+  display: grid;
+  gap: 12px;
+  margin-top: 20px;
+}
+.advisor-grant {
+  border: 1px solid #dde6de;
+  border-radius: 12px;
+  padding: 18px;
+  background: #fbfcfa;
+}
+.advisor-grant h3 {
+  margin: 0 0 8px;
+  font-size: 17px;
+}
+.advisor-grant p {
+  margin: 0 0 8px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.advisor-grant small {
+  display: block;
+  color: #7a6847;
+  line-height: 1.6;
+}
+.advisor-grant > div {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  margin-top: 16px;
+}
+.advisor-grant button {
+  font-size: 13px;
+}
+.advisor-followups {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+}
+.advisor-followups button {
+  text-align: left;
+  font-size: 12px;
+}
+@media (max-width: 900px) {
+  .advisor-page {
+    height: calc(100dvh - 72px);
+  }
+}
+@media (max-width: 520px) {
+  .advisor-toolbar {
+    padding: 16px;
+  }
+  .advisor-toolbar h2 {
+    font-size: 18px;
+  }
+  .advisor-toolbar p {
+    max-width: 180px;
+  }
+  .advisor-toolbar > button {
+    padding: 10px;
+    font-size: 12px;
+  }
+  .advisor-conversation {
+    margin: 12px 16px;
+  }
+  .advisor-conversation select {
+    min-width: 0;
+  }
+  .advisor-page .chat-scroll-area {
+    padding: 22px 16px;
+  }
+  .advisor-page .welcome-quick-actions {
+    grid-template-columns: 1fr;
+  }
+  .advisor-page .chat-composer-area {
+    padding-inline: 16px;
+  }
+  .advisor-grant {
+    padding: 14px;
+  }
+}
+
+/* Conversation rail stays inside the assistant workspace. */
+.advisor-layout { display: flex; height: 100dvh; min-height: 0; background: #fff; }
+.advisor-layout .advisor-page { flex: 1; min-width: 0; }
+.advisor-history { flex: 0 0 250px; width: 250px; min-height: 0; display: flex; flex-direction: column; gap: 14px; padding: 22px 14px; border-right: 1px solid #e6ebe6; background: #f8faf7; }
+.advisor-history-heading { display: flex; align-items: center; justify-content: space-between; padding: 0 4px; }
+.advisor-history-heading h2 { font-size: 16px; margin: 0; color: #263b2e; }
+.advisor-new-chat { padding: 11px 13px; border: 1px solid #b8cbbb; border-radius: 9px; background: #fff; color: #274e35; text-align: left; font: inherit; font-weight: 700; cursor: pointer; }
+.advisor-history-search { display: flex; flex-direction: column; gap: 6px; font-size: 12px; color: #68766c; }
+.advisor-history-search input { width: 100%; min-width: 0; margin: 0; padding: 9px 10px; border: 1px solid #d6dfd6; border-radius: 8px; background: white; font: inherit; font-size: 14px; }
+.advisor-history-list { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+.advisor-history-list > p { color: #68766c; font-size: 13px; padding: 0 6px; }
+.advisor-history-item { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; padding: 10px; border: 0; border-radius: 8px; background: transparent; color: #33463a; font: inherit; font-size: 14px; text-align: left; cursor: pointer; }
+.advisor-history-item span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.advisor-history-item:hover { background: #eaf1e9; }
+.advisor-history-item.is-active { background: #dfece0; color: #173d26; font-weight: 700; }
+.advisor-history-item small { flex: none; font-size: 10px; color: #6d6042; background: #f6edd8; border-radius: 10px; padding: 3px 6px; }
+.advisor-history-toggle, .advisor-history-close, .advisor-history-scrim { display: none; }
+.advisor-history button:focus-visible, .advisor-history input:focus-visible, .advisor-history-toggle:focus-visible { outline: 3px solid #66a875; outline-offset: 2px; }
+.advisor-history button:disabled { opacity: .5; cursor: not-allowed; }
+@media (max-width: 900px) {
+  .advisor-layout { height: calc(100dvh - 72px); }
+  .advisor-history { display: none; position: fixed; z-index: 1002; inset: 0 auto 0 0; width: min(300px, 85vw); box-shadow: 8px 0 32px #0003; }
+  .advisor-history.is-open { display: flex; }
+  .advisor-history-scrim { display: block; position: fixed; z-index: 1001; inset: 0; padding: 0; border: 0; background: #10201788; }
+  .advisor-history-close { display: inline-flex; align-items: center; justify-content: center; border: 0; background: transparent; font-size: 26px; line-height: 1; color: #34533d; cursor: pointer; }
+  .advisor-history-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid #d8e2d9; border-radius: 8px; background: #fff; color: #274e35; font: inherit; font-size: 13px; cursor: pointer; }
+  .advisor-toolbar { justify-content: flex-start; }
+}
+
+/* Desktop history shares the application sidebar; mobile uses the drawer. */
+.advisor-history-mobile { display: none; }
+#advisor-history-slot { flex: 1; min-height: 0; overflow: hidden; }
+#advisor-history-slot[hidden] { display: none; }
+#advisor-history-slot .advisor-history-desktop { width: 100%; height: 100%; border-right: 0; border-top: 1px solid #e6ebe6; background: transparent; padding: 16px 10px; }
+@media (max-width: 900px) {
+  .advisor-history-desktop { display: none; }
+  .advisor-history-mobile.is-open { display: flex; }
+}

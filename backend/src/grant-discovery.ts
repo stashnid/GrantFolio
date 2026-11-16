@@ -1,0 +1,307 @@
+import {isGrantAvailable} from "./grant-availability.js";
+import { GRANT_CATALOG, type GrantCatalogEntry } from "./grant-catalog-data.js";
+
+export const friendlyTitles: Record<string, string> = {
+  "vlasna-sprava": "Гроші на відкриття або розвиток бізнесу",
+  "veteran-grant": "Підтримка ветеранського бізнесу — попередня програма",
+  "uvf-reimbursement":"Повернення до 20 тисяч за покупки ветеранського бізнесу",
+  "bloom-sme":"Обладнання для бізнесу з соціальним впливом",
+  "eit-sme-expansion":"Нові ринки для технологій міської мобільності",
+  "govtech-pilots":"Цифрові пілоти для держави",
+  "processing-business": "Обладнання для виробництва та переробки",
+  "agro-gardens": "Фінансування саду, ягідника або виноградника",
+};
+export const friendlyTitle = (p: GrantCatalogEntry) =>
+  friendlyTitles[p.id] ?? p.title;
+export const normalize = (s: string) =>
+  s
+    .toLocaleLowerCase("uk")
+    .normalize("NFKC")
+    .replace(/[’ʼ'`]/g, "")
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+const groups: Record<string, string[]> = {
+  transport: [
+    "автомоб", "грузов", "достав", "перевоз", "доставка",
+    "машин",
+    "фургон",
+    "мікроавтобус",
+    "транспорт",
+    "доставк",
+    "логіст",
+    "vehicle",
+    "truck",
+    "van",
+    "car",
+  ],
+  study: [
+    "навчан",
+    "навчат",
+    "університет",
+    "освіт",
+    "стипенд",
+    "вчит",
+    "магістр",
+    "бакалавр", "стипенди", "обучен", "учеб", "учиться",
+    "ерasmus",
+    "erasmus",
+    "study",
+    "scholarship",
+    "university",
+  ],
+  applicant: ["студент", "молод", "молодь", "молодеж", "молодёж", "student", "youth"],
+  business: [
+    "стартап",
+    "startup",
+    "інновац",
+    "бізнес",
+    "справ",
+    "відкрит",
+    "відкриття",
+    "кавяр",
+    "кафе",
+    "кав",
+    "салон",
+    "перукар",
+    "манікюр",
+    "магазин",
+    "пекар",
+    "майстерн",
+    "фоп",
+    "підприєм",
+    "business",
+    "entrepreneur", "предприним", "открыть", "бизнес", "кофейн", "пекарн", "питани", "франшиз", "собствен", "кафетер", "ресторан", "харчув", "столов", "ательє", "ателье", "sewing", "restaurant", "bakery", "coffee", "cafe",
+  ],
+  production: [
+    "виробниц",
+    "перероб",
+    "фабрик",
+    "цех",
+    "завод",
+    "верстат",
+    "швей",
+    "пошит", "швейн", "производств", "переработ", "manufactur", "sewing",
+  ],
+  garden: ["сад", "ягід", "виноград", "саджан", "насаджен"],
+  equipment: [
+    "обладнан",
+    "інструмент",
+    "устаткуван",
+    "технік",
+    "ремонт",
+    "компютер",
+    "станок", "оборудован", "оборудов", "equipment", "machinery",
+  ],
+  veteran: ["ветеран", "військов", "убд", "ветеран", "военн", "veteran"],
+};
+function distance(a: string, b: string) {
+  let row = Array.from({ length: b.length + 1 }, (_, i) => i);
+  for (let i = 1; i <= a.length; i++) {
+    const next = [i];
+    for (let j = 1; j <= b.length; j++)
+      next[j] = Math.min(
+        next[j - 1] + 1,
+        row[j] + 1,
+        row[j - 1] + Number(a[i - 1] !== b[j - 1]),
+      );
+    row = next;
+  }
+  return row[b.length];
+}
+function match(word: string, term: string) {
+  return (
+    word === term ||
+    (term.length >= 3 && word.startsWith(term)) ||
+    (word.length >= 4 &&
+      term.length >= 4 &&
+      Math.abs(word.length - term.length) <= 1 &&
+      distance(word, term) <= 1)
+  );
+}
+export type GrantMatch = {
+  programId: string;
+  title: string;
+  reason: string;
+  caution: string;
+  score: number;
+  evidenceUrl: string;
+};
+export type SearchResult = {
+  query: string;
+  intents: string[];
+  matches: GrantMatch[];
+  questions: string[];
+  explanation: string;
+};
+export function searchGrants(query: string, programs: readonly GrantCatalogEntry[] = GRANT_CATALOG, now = new Date()): SearchResult {
+  const cleaned = normalize(query).slice(-1500);
+  const words = cleaned.split(" ").filter(Boolean);
+  const from = "qwertyuiop[]asdfghjkl;'zxcvbnm,.";
+  const to =   "йцукенгшщзхїфівапролджєячсмитьбю";
+  const layout = (value: string) => [...value].map(ch => {const i=from.indexOf(ch);return i<0?ch:to[i];}).join("");
+  // Limit negation to its clause so another need in the request remains searchable.
+  const clauses = query
+    .slice(-1500)
+    .split(/[,.!?;\n]|\s+(?:а|але|but)\s+/iu)
+    .map(normalize);
+  const positiveWords = clauses.flatMap((clause) => {
+    const tokens = clause.split(" ").filter(Boolean);
+    return tokens.filter((w, i) => {
+      const needWord =
+        Object.values(groups).some((terms) => terms.some((t) => match(w, t))) ||
+        ["авто", "автмо", "бус"].includes(w);
+      if (!needWord) return true;
+      const before = tokens.slice(Math.max(0, i - 3), i).join(" ");
+      const after = tokens.slice(i + 1, i + 5).join(" ");
+      const negated =
+        /(?:^| )(?:не|без|not|no|without)(?: (?:для|на|хочу|потрібне|потрібна|потрібні|need|want)){0,2}$/.test(
+          before,
+        ) || /^(?:гроші |кошти |фінансування )?не (?:потрібн|хочу)/.test(after);
+      return !negated;
+    });
+  });
+  const searchableWords = [...positiveWords, ...positiveWords.filter(w => /^[a-z]{4,}$/i.test(w)).map(layout)];
+  const intents = Object.entries(groups)
+    .filter(([, terms]) =>
+      searchableWords.some((w) => terms.some((t) => match(w, t))),
+    )
+    .map(([key]) => key);
+  // «авто» is a complete word, not a prefix for автоклав, автоматизація or автосервіс.
+  if (positiveWords.some((w) => ["авто", "автмо", "бус"].includes(w)))
+    intents.push("transport");
+  if (
+    positiveWords.some(
+      (w) => w.startsWith("автосервіс") || w.startsWith("автомайстерн"),
+    )
+  )
+    intents.push("business", "equipment");
+  const personal =
+    /(особист|для себе|власного користування|личн|для себя|personal|for myself)/.test(cleaned) &&
+    intents.includes("transport");
+  const meaningfulBusiness = intents.some(i => ["business", "production", "garden", "equipment", "veteran"].includes(i));
+  const personalOnly = personal && !meaningfulBusiness;
+  const studyOnly = intents.includes("study") && !meaningfulBusiness && !intents.includes("transport");
+  const stop = /^(?:грант|гранти|потріб|хочу|мені|для|який|кошти|допом|програма|фінанс|бізнес|справ|відкрит|підприєм|студент|молод|україн|україна|україні|що|how|grant|funding|need|business|бизнес)/;
+  const useful = searchableWords.filter(w=>w.length>=4&&!stop.test(w));
+  const matches: GrantMatch[] = [];
+  for (const p of programs) {
+    if (!isGrantAvailable(p, now) || personalOnly || studyOnly) continue;
+    let score = 0,
+      reason = "";
+    const add = (n: number, text: string) => {
+      score += n;
+      if (!reason) reason = text;
+    };
+    if (p.id === "vlasna-sprava") {
+      if (intents.includes("transport") && !personal)
+        add(
+          100,
+          "У перевіреному джерелі передбачений комерційний і виробничий транспорт. Потрібно пояснити, як авто працюватиме у вашому бізнесі.",
+        );
+      if (intents.some((i) => ["business", "equipment", "veteran"].includes(i)))
+        add(
+          60,
+          intents.includes("applicant")
+            ? "Можливий напрям для започаткування або розвитку бізнесу. Уточніть бізнес-ідею та стадію її розвитку; вік може впливати на окремі умови."
+            : "Може допомогти зі стартом або розвитком бізнесу, обладнанням і дозволеними витратами.",
+        );
+      if (
+        intents.includes("applicant") &&
+        !intents.includes("study") &&
+        !intents.some((i) =>
+          [
+            "business",
+            "equipment",
+            "veteran",
+            "transport",
+            "production",
+            "garden",
+          ].includes(i),
+        )
+      )
+        add(
+          60,
+          "Можливий напрям для започаткування бізнесу. Уточніть бізнес-ідею та стадію її розвитку; вік може впливати на окремі умови.",
+        );
+    }
+    if (p.id === "processing-business" && intents.includes("production"))
+      add(
+        100,
+        "Програма стосується обладнання та розвитку переробного виробництва.",
+      );
+    if (p.id === "agro-gardens" && intents.includes("garden"))
+      add(
+        100,
+        "Програма для закладання багаторічних насаджень; потрібні земельна ділянка та проєкт висадки.",
+      );
+    if (p.id === "vlasna-sprava" && intents.includes("production")) add(60,"Може покрити дозволені витрати малого виробничого бізнесу; перевірте обраний напрям і кошторис.");
+    if (p.id === "uvf-reimbursement" && intents.includes("veteran")) add(110,"Ветеранський фонд відшкодовує підтверджені минулі покупки для справи. Це не аванс на майбутні витрати.");
+    if (p.id === "bloom-sme" && intents.some(i => ["production","equipment","business"].includes(i))) add(55,"Підтримка зареєстрованих МСП із соціальним впливом та зайнятістю; перевірте географію й критерії BLOOM.");
+    if (p.id === "govtech-pilots" && /стартап|startup|govtech|державн.*(?:цифр|технолог)|цифр.*державн/.test(cleaned)) add(75,"Конкурс для технологічного пілоту на визначену державну потребу; звичайні сервісні бізнеси не є цільовими заявниками.");
+    if (p.id === "eit-sme-expansion" && /mobility|міськ.*(?:транспорт|мобіль)|urban|eit/.test(cleaned)) add(90,"Підтримка зрілої технології міської мобільності для нового ринку. Потрібні TRL7+, 3 FTE і клієнт; є фінансові зобов’язання.");
+    // Rank words in sourced fields; exclusions are deliberately not positive matches.
+    const candidateWords = (value: string) => normalize(value).split(" ").filter(t => t.length >= 4);
+    const overlap = (value: string) => { const tokens=candidateWords(value); return useful.filter(w=>tokens.some(t=>match(w,t)||match(t,w))).length; };
+    const named=overlap([p.title, friendlyTitle(p), p.provider, ...(p.searchTerms??[])].join(" "));
+    const costs=overlap([...p.eligibleCosts,...p.details.costs].join(" "));
+    const applicants=overlap([p.targetAudience,...p.details.eligibility].join(" "));
+    const context=overlap([p.summary,p.categoryLabel,p.details.overview,...p.details.funding,...p.details.obligations,...p.details.documents,...p.details.steps].join(" "));
+    const excluded=overlap(p.details.exclusions.join(" "));
+    const explicitProvider=overlap([p.title,p.provider].join(" "))>0;
+    if (p.fundingType === "reimbursement" && !intents.includes("veteran") && !explicitProvider) { score=0; reason=""; }
+    else if(named||costs||applicants||context) {
+      const lexical=Math.min(45,named*16+costs*12+applicants*8+context*5);
+      if(lexical>=5) add(lexical, excluded ? "Слова запиту є в описі програми та її обмеженнях. Уважно звірте, чи підходить ваш випадок." : named ? "Назва, організатор або напрям програми відповідає словам запиту; перевірте умови участі." : costs ? "Опис витрат програми згадує ваш запит; перевірте допустимість конкретної витрати." : applicants ? "Опис заявників програми відповідає словам запиту; право на участь потрібно підтвердити." : "Умови або документи програми згадують слова вашого запиту; перевірте контекст у джерелі.");
+    }
+    if (!words.length)
+      add(1, "Перегляньте, що фінансує програма та кому вона доступна.");
+
+    if (score > 0)
+      matches.push({
+        programId: p.id,
+        title: friendlyTitle(p),
+        reason,
+        score,
+        caution:
+          p.intakeStatus === "paused"
+            ? "Зараз прийом призупинено. Можна ознайомитись та підготуватися."
+            : p.id === "vlasna-sprava" && intents.includes("applicant")
+              ? "Вік і відповідність умовам програми потрібно уточнити; студентський статус сам по собі не підтверджує право на грант."
+              : "Актуальний прийом і вашу відповідність потрібно підтвердити; це можливий напрям, не схвалення заявки.",
+        evidenceUrl:
+          p.id === "vlasna-sprava" && intents.includes("transport")
+            ? "https://diia.gov.ua/news/vlasna-sprava-zbilshyly-hranty-na-start-i-masshtabuvannia-biznesu"
+            : p.officialUrl,
+      });
+  }
+  const questions = personal
+    ? ["Йдеться про особисте авто чи транспорт для роботи?"]
+    : intents.includes("transport")
+      ? [
+          "Для чого саме потрібне авто та чи є у вас бізнес?",
+          "У якому регіоні працюватимете та яка орієнтовна сума потрібна?",
+        ]
+      : intents.includes("applicant")
+        ? [
+            "Яку бізнес-ідею маєте та на що потрібні кошти?",
+            "Ви плануєте почати справу чи вже працюєте?",
+          ]
+        : [
+            "На що саме потрібні кошти та яка орієнтовна сума?",
+            "Ви плануєте почати справу чи вже працюєте? У якому регіоні?",
+          ];
+  return {
+    query: query.slice(0, 500),
+    intents: [...new Set(intents)],
+    matches: matches.sort((a, b) => b.score - a.score),
+    questions,
+    explanation: personal
+      ? "Не знайшов підтвердженої програми на особисте авто. Інші результати стосуються інших потреб у вашому запиті; підтримка комерційного транспорту має інше призначення."
+      : intents.includes("study") && !matches.length
+        ? "GrantFolio допомагає з грантами для бізнесу; особисте навчання та стипендії не входять до каталогу."
+        : matches.length
+          ? "Це можливі напрями за змістом запиту. Нижче пояснено підстави й обмеження."
+          : "У перевіреній частині каталогу поки немає підтвердженого збігу. Уточніть потребу або обговоріть її з асистентом; випадкові програми не підставляємо.",
+  };
+}

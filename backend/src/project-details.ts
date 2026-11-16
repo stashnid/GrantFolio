@@ -20,6 +20,7 @@ export const detailsCommandSchema = z
 
 export function readiness(row: {
   revision: number;
+  program_id?: string | null;
   details: z.infer<typeof detailsSchema>;
   items: unknown[];
 }) {
@@ -44,7 +45,7 @@ export function readiness(row: {
       {
         id: "budget",
         label: "Бюджет",
-        status: row.items.length ? "complete" : "missing",
+        status: row.items.length ? ("complete" as const) : ("missing" as const),
       },
     ],
     disclaimer:

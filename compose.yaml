@@ -13,9 +13,14 @@ services:
       timeout: 3s
       retries: 20
   auth:
+    init: true
+    stop_signal: SIGINT
+    stop_grace_period: 30s
+    volumes: ["auth-data:/var/lib/grantfolio-auth"]
     build:
       context: .
       dockerfile: infra/Dockerfile.emulator
     ports: ["127.0.0.1:9099:9099"]
 volumes:
+  auth-data:
   postgres-data:

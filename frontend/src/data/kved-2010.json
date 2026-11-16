@@ -1,0 +1,3692 @@
+[
+  {
+    "value": "01.11",
+    "label": "Вирощування зернових культур (крім рису), бобових культур і насіння олійних культур",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_11.html"
+  },
+  {
+    "value": "01.12",
+    "label": "Вирощування рису",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_12.html"
+  },
+  {
+    "value": "01.13",
+    "label": "Вирощування овочів і баштанних культур, коренеплодів і бульбоплодів",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_13.html"
+  },
+  {
+    "value": "01.14",
+    "label": "Вирощування цукрової тростини",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_14.html"
+  },
+  {
+    "value": "01.15",
+    "label": "Вирощування тютюну",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_15.html"
+  },
+  {
+    "value": "01.16",
+    "label": "Вирощування прядивних культур",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_16.html"
+  },
+  {
+    "value": "01.19",
+    "label": "Вирощування інших однорічних і дворічних культур",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_19.html"
+  },
+  {
+    "value": "01.21",
+    "label": "Вирощування винограду",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_21.html"
+  },
+  {
+    "value": "01.22",
+    "label": "Вирощування тропічних і субтропічних фруктів",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_22.html"
+  },
+  {
+    "value": "01.23",
+    "label": "Вирощування цитрусових",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_23.html"
+  },
+  {
+    "value": "01.24",
+    "label": "Вирощування зерняткових і кісточкових фруктів",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_24.html"
+  },
+  {
+    "value": "01.25",
+    "label": "Вирощування ягід, горіхів та інших фруктів",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_25.html"
+  },
+  {
+    "value": "01.26",
+    "label": "Вирощування олійних плодів",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_26.html"
+  },
+  {
+    "value": "01.27",
+    "label": "Вирощування культур для виробництва напоїв",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_27.html"
+  },
+  {
+    "value": "01.28",
+    "label": "Вирощування пряних, ароматичних і лікарських культур",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_28.html"
+  },
+  {
+    "value": "01.29",
+    "label": "Вирощування інших багаторічних культур",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_29.html"
+  },
+  {
+    "value": "01.30",
+    "label": "Відтворення рослин",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_30.html"
+  },
+  {
+    "value": "01.41",
+    "label": "Розведення великої рогатої худоби молочних порід",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_41.html"
+  },
+  {
+    "value": "01.42",
+    "label": "Розведення іншої великої рогатої худоби та буйволів",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_42.html"
+  },
+  {
+    "value": "01.43",
+    "label": "Розведення коней та інших тварин родини конячих",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_43.html"
+  },
+  {
+    "value": "01.44",
+    "label": "Розведення верблюдів та інших тварин родини верблюдячих",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_44.html"
+  },
+  {
+    "value": "01.45",
+    "label": "Розведення овець і кіз",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_45.html"
+  },
+  {
+    "value": "01.46",
+    "label": "Розведення свиней",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_46.html"
+  },
+  {
+    "value": "01.47",
+    "label": "Розведення свійської птиці",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_47.html"
+  },
+  {
+    "value": "01.49",
+    "label": "Розведення інших тварин",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_49.html"
+  },
+  {
+    "value": "01.50",
+    "label": "Змішане сільське господарство",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_50.html"
+  },
+  {
+    "value": "01.61",
+    "label": "Допоміжна діяльність у рослинництві",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_61.html"
+  },
+  {
+    "value": "01.62",
+    "label": "Допоміжна діяльність у тваринництві",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_62.html"
+  },
+  {
+    "value": "01.63",
+    "label": "Післяурожайна діяльність",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_63.html"
+  },
+  {
+    "value": "01.64",
+    "label": "Оброблення насіння для відтворення",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_64.html"
+  },
+  {
+    "value": "01.70",
+    "label": "Мисливство, відловлювання тварин і надання пов'язаних із ними послуг",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/01/KVED10_01_70.html"
+  },
+  {
+    "value": "02.10",
+    "label": "Лісівництво та інша діяльність у лісовому господарстві",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/02/KVED10_02_10.html"
+  },
+  {
+    "value": "02.20",
+    "label": "Лісозаготівлі",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/02/KVED10_02_20.html"
+  },
+  {
+    "value": "02.30",
+    "label": "Збирання дикорослих недеревних продуктів",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/02/KVED10_02_30.html"
+  },
+  {
+    "value": "02.40",
+    "label": "Надання допоміжних послуг у лісовому господарстві",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/02/KVED10_02_40.html"
+  },
+  {
+    "value": "03.11",
+    "label": "Морське рибальство",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/03/KVED10_03_11.html"
+  },
+  {
+    "value": "03.12",
+    "label": "Прісноводне рибальство",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/03/KVED10_03_12.html"
+  },
+  {
+    "value": "03.21",
+    "label": "Морське рибництво (аквакультура)",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/03/KVED10_03_21.html"
+  },
+  {
+    "value": "03.22",
+    "label": "Прісноводне рибництво (аквакультура)",
+    "section": "A",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/03/KVED10_03_22.html"
+  },
+  {
+    "value": "05.10",
+    "label": "Добування кам'яного вугілля",
+    "section": "B",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/05/KVED10_05_10.html"
+  },
+  {
+    "value": "05.20",
+    "label": "Добування бурого вугілля",
+    "section": "B",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/05/KVED10_05_20.html"
+  },
+  {
+    "value": "06.10",
+    "label": "Добування сирої нафти",
+    "section": "B",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/06/KVED10_06_10.html"
+  },
+  {
+    "value": "06.20",
+    "label": "Добування природного газу",
+    "section": "B",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/06/KVED10_06_20.html"
+  },
+  {
+    "value": "07.10",
+    "label": "Добування залізних руд",
+    "section": "B",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/07/KVED10_07_10.html"
+  },
+  {
+    "value": "07.21",
+    "label": "Добування уранових і торієвих руд",
+    "section": "B",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/07/KVED10_07_21.html"
+  },
+  {
+    "value": "07.29",
+    "label": "Добування руд інших кольорових металів",
+    "section": "B",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/07/KVED10_07_29.html"
+  },
+  {
+    "value": "08.11",
+    "label": "Добування декоративного та будівельного каменю, вапняку, гіпсу, крейди та глинистого сланцю",
+    "section": "B",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/08/KVED10_08_11.html"
+  },
+  {
+    "value": "08.12",
+    "label": "Добування піску, гравію, глин і каоліну",
+    "section": "B",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/08/KVED10_08_12.html"
+  },
+  {
+    "value": "08.91",
+    "label": "Добування мінеральної сировини для хімічної промисловості та виробництва мінеральних добрив",
+    "section": "B",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/08/KVED10_08_91.html"
+  },
+  {
+    "value": "08.92",
+    "label": "Добування торфу",
+    "section": "B",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/08/KVED10_08_92.html"
+  },
+  {
+    "value": "08.93",
+    "label": "Добування солі",
+    "section": "B",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/08/KVED10_08_93.html"
+  },
+  {
+    "value": "08.99",
+    "label": "Добування інших корисних копалин і розроблення кар'єрів, н.в.і.у.",
+    "section": "B",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/08/KVED10_08_99.html"
+  },
+  {
+    "value": "09.10",
+    "label": "Надання допоміжних послуг у сфері добування нафти та природного газу",
+    "section": "B",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/09/KVED10_09_10.html"
+  },
+  {
+    "value": "09.90",
+    "label": "Надання допоміжних послуг у сфері добування інших корисних копалин і розроблення кар'єрів",
+    "section": "B",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/09/KVED10_09_90.html"
+  },
+  {
+    "value": "10.11",
+    "label": "Виробництво м'яса",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_11.html"
+  },
+  {
+    "value": "10.12",
+    "label": "Виробництво м'яса свійської птиці",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_12.html"
+  },
+  {
+    "value": "10.13",
+    "label": "Виробництво м'ясних продуктів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_13.html"
+  },
+  {
+    "value": "10.20",
+    "label": "Перероблення та консервування риби, ракоподібних і молюсків",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_20.html"
+  },
+  {
+    "value": "10.31",
+    "label": "Перероблення та консервування картоплі",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_31.html"
+  },
+  {
+    "value": "10.32",
+    "label": "Виробництво фруктових і овочевих соків",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_32.html"
+  },
+  {
+    "value": "10.39",
+    "label": "Інші види перероблення та консервування фруктів і овочів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_39.html"
+  },
+  {
+    "value": "10.41",
+    "label": "Виробництво олії та тваринних жирів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_41.html"
+  },
+  {
+    "value": "10.42",
+    "label": "Виробництво маргарину і подібних харчових жирів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_42.html"
+  },
+  {
+    "value": "10.51",
+    "label": "Перероблення молока, виробництво масла та сиру",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_51.html"
+  },
+  {
+    "value": "10.52",
+    "label": "Виробництво морозива",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_52.html"
+  },
+  {
+    "value": "10.61",
+    "label": "Виробництво продуктів борошномельно-круп'яної промисловості",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_61.html"
+  },
+  {
+    "value": "10.62",
+    "label": "Виробництво крохмалів і крохмальних продуктів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_62.html"
+  },
+  {
+    "value": "10.71",
+    "label": "Виробництво хліба та хлібобулочних виробів; виробництво борошняних кондитерських виробів, тортів і тістечок нетривалого зберігання",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_71.html"
+  },
+  {
+    "value": "10.72",
+    "label": "Виробництво сухарів і сухого печива; виробництво борошняних кондитерських виробів, тортів і тістечок тривалого зберігання",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_72.html"
+  },
+  {
+    "value": "10.73",
+    "label": "Виробництво макаронних виробів і подібних борошняних виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_73.html"
+  },
+  {
+    "value": "10.81",
+    "label": "Виробництво цукру",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_81.html"
+  },
+  {
+    "value": "10.82",
+    "label": "Виробництво какао, шоколаду та цукрових кондитерських виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_82.html"
+  },
+  {
+    "value": "10.83",
+    "label": "Виробництво чаю та кави",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_83.html"
+  },
+  {
+    "value": "10.84",
+    "label": "Виробництво прянощів і приправ",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_84.html"
+  },
+  {
+    "value": "10.85",
+    "label": "Виробництво готової їжі та страв",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_85.html"
+  },
+  {
+    "value": "10.86",
+    "label": "Виробництво дитячого харчування та дієтичних харчових продуктів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_86.html"
+  },
+  {
+    "value": "10.89",
+    "label": "Виробництво інших харчових продуктів, н.в.і.у.",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_89.html"
+  },
+  {
+    "value": "10.91",
+    "label": "Виробництво готових кормів для тварин, що утримуються на фермах",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_91.html"
+  },
+  {
+    "value": "10.92",
+    "label": "Виробництво готових кормів для домашніх тварин",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/10/KVED10_10_92.html"
+  },
+  {
+    "value": "11.01",
+    "label": "Дистиляція, ректифікація та змішування алкогольних напоїв",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/11/KVED10_11_01.html"
+  },
+  {
+    "value": "11.02",
+    "label": "Виробництво виноградних вин",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/11/KVED10_11_02.html"
+  },
+  {
+    "value": "11.03",
+    "label": "Виробництво сидру та інших плодово-ягідних вин",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/11/KVED10_11_03.html"
+  },
+  {
+    "value": "11.04",
+    "label": "Виробництво інших недистильованих напоїв із зброджуваних продуктів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/11/KVED10_11_04.html"
+  },
+  {
+    "value": "11.05",
+    "label": "Виробництво пива",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/11/KVED10_11_05.html"
+  },
+  {
+    "value": "11.06",
+    "label": "Виробництво солоду",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/11/KVED10_11_06.html"
+  },
+  {
+    "value": "11.07",
+    "label": "Виробництво безалкогольних напоїв; виробництво мінеральних вод та інших вод, розлитих у пляшки",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/11/KVED10_11_07.html"
+  },
+  {
+    "value": "12.00",
+    "label": "Виробництво тютюнових виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/12/KVED10_12_00.html"
+  },
+  {
+    "value": "13.10",
+    "label": "Підготування та прядіння текстильних волокон",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/13/KVED10_13_10.html"
+  },
+  {
+    "value": "13.20",
+    "label": "Ткацьке виробництво",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/13/KVED10_13_20.html"
+  },
+  {
+    "value": "13.30",
+    "label": "Оздоблення текстильних виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/13/KVED10_13_30.html"
+  },
+  {
+    "value": "13.91",
+    "label": "Виробництво трикотажного полотна",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/13/KVED10_13_91.html"
+  },
+  {
+    "value": "13.92",
+    "label": "Виробництво готових текстильних виробів, крім одягу",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/13/KVED10_13_92.html"
+  },
+  {
+    "value": "13.93",
+    "label": "Виробництво килимів і килимових виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/13/KVED10_13_93.html"
+  },
+  {
+    "value": "13.94",
+    "label": "Виробництво канатів, мотузок, шпагату та сіток",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/13/KVED10_13_94.html"
+  },
+  {
+    "value": "13.95",
+    "label": "Виробництво нетканих текстильних матеріалів і виробів із них, крім одягу",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/13/KVED10_13_95.html"
+  },
+  {
+    "value": "13.96",
+    "label": "Виробництво інших текстильних виробів технічного та промислового призначення",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/13/KVED10_13_96.html"
+  },
+  {
+    "value": "13.99",
+    "label": "Виробництво інших текстильних виробів, н.в.і.у.",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/13/KVED10_13_99.html"
+  },
+  {
+    "value": "14.11",
+    "label": "Виробництво одягу зі шкіри",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/14/KVED10_14_11.html"
+  },
+  {
+    "value": "14.12",
+    "label": "Виробництво робочого одягу",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/14/KVED10_14_12.html"
+  },
+  {
+    "value": "14.13",
+    "label": "Виробництво іншого верхнього одягу",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/14/KVED10_14_13.html"
+  },
+  {
+    "value": "14.14",
+    "label": "Виробництво спіднього одягу",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/14/KVED10_14_14.html"
+  },
+  {
+    "value": "14.19",
+    "label": "Виробництво іншого одягу й аксесуарів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/14/KVED10_14_19.html"
+  },
+  {
+    "value": "14.20",
+    "label": "Виготовлення виробів із хутра",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/14/KVED10_14_20.html"
+  },
+  {
+    "value": "14.31",
+    "label": "Виробництво панчішно-шкарпеткових виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/14/KVED10_14_31.html"
+  },
+  {
+    "value": "14.39",
+    "label": "Виробництво іншого трикотажного та в'язаного одягу",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/14/KVED10_14_39.html"
+  },
+  {
+    "value": "15.11",
+    "label": "Дублення шкур і оздоблення шкіри; вичинка та фарбування хутра",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/15/KVED10_15_11.html"
+  },
+  {
+    "value": "15.12",
+    "label": "Виробництво дорожніх виробів, сумок, лимарно-сідельних виробів зі шкіри та інших матеріалів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/15/KVED10_15_12.html"
+  },
+  {
+    "value": "15.20",
+    "label": "Виробництво взуття",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/15/KVED10_15_20.html"
+  },
+  {
+    "value": "16.10",
+    "label": "Лісопильне та стругальне виробництво",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/16/KVED10_16_10.html"
+  },
+  {
+    "value": "16.21",
+    "label": "Виробництво фанери, дерев'яних плит і панелей, шпону",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/16/KVED10_16_21.html"
+  },
+  {
+    "value": "16.22",
+    "label": "Виробництво щитового паркету",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/16/KVED10_16_22.html"
+  },
+  {
+    "value": "16.23",
+    "label": "Виробництво інших дерев'яних будівельних конструкцій і столярних виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/16/KVED10_16_23.html"
+  },
+  {
+    "value": "16.24",
+    "label": "Виробництво дерев'яної тари",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/16/KVED10_16_24.html"
+  },
+  {
+    "value": "16.29",
+    "label": "Виробництво інших виробів з деревини; виготовлення виробів з корка, соломки та рослинних матеріалів для плетіння",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/16/KVED10_16_29.html"
+  },
+  {
+    "value": "17.11",
+    "label": "Виробництво паперової маси",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/17/KVED10_17_11.html"
+  },
+  {
+    "value": "17.12",
+    "label": "Виробництво паперу та картону",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/17/KVED10_17_12.html"
+  },
+  {
+    "value": "17.21",
+    "label": "Виробництво гофрованого паперу та картону, паперової та картонної тари",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/17/KVED10_17_21.html"
+  },
+  {
+    "value": "17.22",
+    "label": "Виробництво паперових виробів господарсько-побутового та санітарно-гігієнічного призначення",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/17/KVED10_17_22.html"
+  },
+  {
+    "value": "17.23",
+    "label": "Виробництво паперових канцелярських виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/17/KVED10_17_23.html"
+  },
+  {
+    "value": "17.24",
+    "label": "Виробництво шпалер",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/17/KVED10_17_24.html"
+  },
+  {
+    "value": "17.29",
+    "label": "Виробництво інших виробів з паперу та картону",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/17/KVED10_17_29.html"
+  },
+  {
+    "value": "18.11",
+    "label": "Друкування газет",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/18/KVED10_18_11.html"
+  },
+  {
+    "value": "18.12",
+    "label": "Друкування іншої продукції",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/18/KVED10_18_12.html"
+  },
+  {
+    "value": "18.13",
+    "label": "Виготовлення друкарських форм і надання інших поліграфічних послуг",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/18/KVED10_18_13.html"
+  },
+  {
+    "value": "18.14",
+    "label": "Брошурувально-палітурна діяльність і надання пов'язаних із нею послуг",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/18/KVED10_18_14.html"
+  },
+  {
+    "value": "18.20",
+    "label": "Тиражування звуко-, відеозаписів і програмного забезпечення",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/18/KVED10_18_20.html"
+  },
+  {
+    "value": "19.10",
+    "label": "Виробництво коксу та коксопродуктів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/19/KVED10_19_10.html"
+  },
+  {
+    "value": "19.20",
+    "label": "Виробництво продуктів нафтоперероблення",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/19/KVED10_19_20.html"
+  },
+  {
+    "value": "20.11",
+    "label": "Виробництво промислових газів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/20/KVED10_20_11.html"
+  },
+  {
+    "value": "20.12",
+    "label": "Виробництво барвників і пігментів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/20/KVED10_20_12.html"
+  },
+  {
+    "value": "20.13",
+    "label": "Виробництво інших основних неорганічних хімічних речовин",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/20/KVED10_20_13.html"
+  },
+  {
+    "value": "20.14",
+    "label": "Виробництво інших основних органічних хімічних речовин",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/20/KVED10_20_14.html"
+  },
+  {
+    "value": "20.15",
+    "label": "Виробництво добрив і азотних сполук",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/20/KVED10_20_15.html"
+  },
+  {
+    "value": "20.16",
+    "label": "Виробництво пластмас у первинних формах",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/20/KVED10_20_16.html"
+  },
+  {
+    "value": "20.17",
+    "label": "Виробництво синтетичного каучуку в первинних формах",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/20/KVED10_20_17.html"
+  },
+  {
+    "value": "20.20",
+    "label": "Виробництво пестицидів та іншої агрохімічної продукції",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/20/KVED10_20_20.html"
+  },
+  {
+    "value": "20.30",
+    "label": "Виробництво фарб, лаків і подібної продукції, друкарської фарби та мастик",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/20/KVED10_20_30.html"
+  },
+  {
+    "value": "20.41",
+    "label": "Виробництво мила та мийних засобів, засобів для чищення та полірування",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/20/KVED10_20_41.html"
+  },
+  {
+    "value": "20.42",
+    "label": "Виробництво парфумних і косметичних засобів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/20/KVED10_20_42.html"
+  },
+  {
+    "value": "20.51",
+    "label": "Виробництво вибухових речовин",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/20/KVED10_20_51.html"
+  },
+  {
+    "value": "20.52",
+    "label": "Виробництво клеїв",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/20/KVED10_20_52.html"
+  },
+  {
+    "value": "20.53",
+    "label": "Виробництво ефірних олій",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/20/KVED10_20_53.html"
+  },
+  {
+    "value": "20.59",
+    "label": "Виробництво іншої хімічної продукції, н.в.і.у.",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/20/KVED10_20_59.html"
+  },
+  {
+    "value": "20.60",
+    "label": "Виробництво штучних і синтетичних волокон",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/20/KVED10_20_60.html"
+  },
+  {
+    "value": "21.10",
+    "label": "Виробництво основних фармацевтичних продуктів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/21/KVED10_21_10.html"
+  },
+  {
+    "value": "21.20",
+    "label": "Виробництво фармацевтичних препаратів і матеріалів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/21/KVED10_21_20.html"
+  },
+  {
+    "value": "22.11",
+    "label": "Виробництво гумових шин, покришок і камер; відновлення протектора гумових шин і покришок",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/22/KVED10_22_11.html"
+  },
+  {
+    "value": "22.19",
+    "label": "Виробництво інших гумових виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/22/KVED10_22_19.html"
+  },
+  {
+    "value": "22.21",
+    "label": "Виробництво плит, листів, труб і профілів із пластмас",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/22/KVED10_22_21.html"
+  },
+  {
+    "value": "22.22",
+    "label": "Виробництво тари з пластмас",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/22/KVED10_22_22.html"
+  },
+  {
+    "value": "22.23",
+    "label": "Виробництво будівельних виробів із пластмас",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/22/KVED10_22_23.html"
+  },
+  {
+    "value": "22.29",
+    "label": "Виробництво інших виробів із пластмас",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/22/KVED10_22_29.html"
+  },
+  {
+    "value": "23.11",
+    "label": "Виробництво листового скла",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_11.html"
+  },
+  {
+    "value": "23.12",
+    "label": "Формування й оброблення листового скла",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_12.html"
+  },
+  {
+    "value": "23.13",
+    "label": "Виробництво порожнистого скла",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_13.html"
+  },
+  {
+    "value": "23.14",
+    "label": "Виробництво скловолокна",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_14.html"
+  },
+  {
+    "value": "23.19",
+    "label": "Виробництво й оброблення інших скляних виробів, у тому числі технічних",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_19.html"
+  },
+  {
+    "value": "23.20",
+    "label": "Виробництво вогнетривких виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_20.html"
+  },
+  {
+    "value": "23.31",
+    "label": "Виробництво керамічних плиток і плит",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_31.html"
+  },
+  {
+    "value": "23.32",
+    "label": "Виробництво цегли, черепиці та інших будівельних виробів із випаленої глини",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_32.html"
+  },
+  {
+    "value": "23.41",
+    "label": "Виробництво господарських і декоративних керамічних виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_41.html"
+  },
+  {
+    "value": "23.42",
+    "label": "Виробництво керамічних санітарно-технічних виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_42.html"
+  },
+  {
+    "value": "23.43",
+    "label": "Виробництво керамічних електроізоляторів та ізоляційної арматури",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_43.html"
+  },
+  {
+    "value": "23.44",
+    "label": "Виробництво інших керамічних виробів технічного призначення",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_44.html"
+  },
+  {
+    "value": "23.49",
+    "label": "Виробництво інших керамічних виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_49.html"
+  },
+  {
+    "value": "23.51",
+    "label": "Виробництво цементу",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_51.html"
+  },
+  {
+    "value": "23.52",
+    "label": "Виробництво вапна та гіпсових сумішей",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_52.html"
+  },
+  {
+    "value": "23.61",
+    "label": "Виготовлення виробів із бетону для будівництва",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_61.html"
+  },
+  {
+    "value": "23.62",
+    "label": "Виготовлення виробів із гіпсу для будівництва",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_62.html"
+  },
+  {
+    "value": "23.63",
+    "label": "Виробництво бетонних розчинів, готових для використання",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_63.html"
+  },
+  {
+    "value": "23.64",
+    "label": "Виробництво сухих будівельних сумішей",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_64.html"
+  },
+  {
+    "value": "23.65",
+    "label": "Виготовлення виробів із волокнистого цементу",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_65.html"
+  },
+  {
+    "value": "23.69",
+    "label": "Виробництво інших виробів із бетону, гіпсу та цементу",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_69.html"
+  },
+  {
+    "value": "23.70",
+    "label": "Різання, оброблення та оздоблення декоративного та будівельного каменю",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_70.html"
+  },
+  {
+    "value": "23.91",
+    "label": "Виробництво абразивних виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_91.html"
+  },
+  {
+    "value": "23.99",
+    "label": "Виробництво неметалевих мінеральних виробів, н.в.і.у.",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/23/KVED10_23_99.html"
+  },
+  {
+    "value": "24.10",
+    "label": "Виробництво чавуну, сталі та феросплавів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/24/KVED10_24_10.html"
+  },
+  {
+    "value": "24.20",
+    "label": "Виробництво труб, порожнистих профілів і фітингів зі сталі",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/24/KVED10_24_20.html"
+  },
+  {
+    "value": "24.31",
+    "label": "Холодне волочіння прутків і профілів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/24/KVED10_24_31.html"
+  },
+  {
+    "value": "24.32",
+    "label": "Холодний прокат вузької штаби",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/24/KVED10_24_32.html"
+  },
+  {
+    "value": "24.33",
+    "label": "Холодне штампування та гнуття",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/24/KVED10_24_33.html"
+  },
+  {
+    "value": "24.34",
+    "label": "Холодне волочіння дроту",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/24/KVED10_24_34.html"
+  },
+  {
+    "value": "24.41",
+    "label": "Виробництво дорогоцінних металів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/24/KVED10_24_41.html"
+  },
+  {
+    "value": "24.42",
+    "label": "Виробництво алюмінію",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/24/KVED10_24_42.html"
+  },
+  {
+    "value": "24.43",
+    "label": "Виробництво свинцю, цинку й олова",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/24/KVED10_24_43.html"
+  },
+  {
+    "value": "24.44",
+    "label": "Виробництво міді",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/24/KVED10_24_44.html"
+  },
+  {
+    "value": "24.45",
+    "label": "Виробництво інших кольорових металів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/24/KVED10_24_45.html"
+  },
+  {
+    "value": "24.46",
+    "label": "Виробництво ядерних матеріалів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/24/KVED10_24_46.html"
+  },
+  {
+    "value": "24.51",
+    "label": "Лиття чавуну",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/24/KVED10_24_51.html"
+  },
+  {
+    "value": "24.52",
+    "label": "Лиття сталі",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/24/KVED10_24_52.html"
+  },
+  {
+    "value": "24.53",
+    "label": "Лиття легких кольорових металів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/24/KVED10_24_53.html"
+  },
+  {
+    "value": "24.54",
+    "label": "Лиття інших кольорових металів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/24/KVED10_24_54.html"
+  },
+  {
+    "value": "25.11",
+    "label": "Виробництво будівельних металевих конструкцій і частин конструкцій",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/25/KVED10_25_11.html"
+  },
+  {
+    "value": "25.12",
+    "label": "Виробництво металевих дверей і вікон",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/25/KVED10_25_12.html"
+  },
+  {
+    "value": "25.21",
+    "label": "Виробництво радіаторів і котлів центрального опалення",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/25/KVED10_25_21.html"
+  },
+  {
+    "value": "25.29",
+    "label": "Виробництво інших металевих баків, резервуарів і контейнерів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/25/KVED10_25_29.html"
+  },
+  {
+    "value": "25.30",
+    "label": "Виробництво парових котлів, крім котлів центрального опалення",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/25/KVED10_25_30.html"
+  },
+  {
+    "value": "25.40",
+    "label": "Виробництво зброї та боєприпасів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/25/KVED10_25_40.html"
+  },
+  {
+    "value": "25.50",
+    "label": "Кування, пресування, штампування, профілювання; порошкова металургія",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/25/KVED10_25_50.html"
+  },
+  {
+    "value": "25.61",
+    "label": "Оброблення металів та нанесення покриття на метали",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/25/KVED10_25_61.html"
+  },
+  {
+    "value": "25.62",
+    "label": "Механічне оброблення металевих виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/25/KVED10_25_62.html"
+  },
+  {
+    "value": "25.71",
+    "label": "Виробництво столових приборів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/25/KVED10_25_71.html"
+  },
+  {
+    "value": "25.72",
+    "label": "Виробництво замків і дверних петель",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/25/KVED10_25_72.html"
+  },
+  {
+    "value": "25.73",
+    "label": "Виробництво інструментів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/25/KVED10_25_73.html"
+  },
+  {
+    "value": "25.91",
+    "label": "Виробництво сталевих бочок і подібних контейнерів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/25/KVED10_25_91.html"
+  },
+  {
+    "value": "25.92",
+    "label": "Виробництво легких металевих паковань",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/25/KVED10_25_92.html"
+  },
+  {
+    "value": "25.93",
+    "label": "Виробництво виробів із дроту, ланцюгів і пружин",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/25/KVED10_25_93.html"
+  },
+  {
+    "value": "25.94",
+    "label": "Виробництво кріпильних і гвинтонарізних виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/25/KVED10_25_94.html"
+  },
+  {
+    "value": "25.99",
+    "label": "Виробництво інших готових металевих виробів, н.в.і.у.",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/25/KVED10_25_99.html"
+  },
+  {
+    "value": "26.11",
+    "label": "Виробництво електронних компонентів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/26/KVED10_26_11.html"
+  },
+  {
+    "value": "26.12",
+    "label": "Виробництво змонтованих електронних плат",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/26/KVED10_26_12.html"
+  },
+  {
+    "value": "26.20",
+    "label": "Виробництво комп'ютерів і периферійного устатковання",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/26/KVED10_26_20.html"
+  },
+  {
+    "value": "26.30",
+    "label": "Виробництво обладнання зв'язку",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/26/KVED10_26_30.html"
+  },
+  {
+    "value": "26.40",
+    "label": "Виробництво електронної апаратури побутового призначення для приймання, записування та відтворювання звуку й зображення",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/26/KVED10_26_40.html"
+  },
+  {
+    "value": "26.51",
+    "label": "Виробництво інструментів і обладнання для вимірювання, дослідження та навігації",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/26/KVED10_26_51.html"
+  },
+  {
+    "value": "26.52",
+    "label": "Виробництво годинників",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/26/KVED10_26_52.html"
+  },
+  {
+    "value": "26.60",
+    "label": "Виробництво радіологічного, електромедичного й електротерапевтичного устатковання",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/26/KVED10_26_60.html"
+  },
+  {
+    "value": "26.70",
+    "label": "Виробництво оптичних приладів і фотографічного устатковання",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/26/KVED10_26_70.html"
+  },
+  {
+    "value": "26.80",
+    "label": "Виробництво магнітних і оптичних носіїв даних",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/26/KVED10_26_80.html"
+  },
+  {
+    "value": "27.11",
+    "label": "Виробництво електродвигунів, генераторів і трансформаторів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/27/KVED10_27_11.html"
+  },
+  {
+    "value": "27.12",
+    "label": "Виробництво електророзподільчої та контрольної апаратури",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/27/KVED10_27_12.html"
+  },
+  {
+    "value": "27.20",
+    "label": "Виробництво батарей і акумуляторів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/27/KVED10_27_20.html"
+  },
+  {
+    "value": "27.31",
+    "label": "Виробництво волоконно-оптичних кабелів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/27/KVED10_27_31.html"
+  },
+  {
+    "value": "27.32",
+    "label": "Виробництво інших видів електронних і електричних проводів і кабелів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/27/KVED10_27_32.html"
+  },
+  {
+    "value": "27.33",
+    "label": "Виробництво електромонтажних пристроїв",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/27/KVED10_27_33.html"
+  },
+  {
+    "value": "27.40",
+    "label": "Виробництво електричного освітлювального устатковання",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/27/KVED10_27_40.html"
+  },
+  {
+    "value": "27.51",
+    "label": "Виробництво електричних побутових приладів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/27/KVED10_27_51.html"
+  },
+  {
+    "value": "27.52",
+    "label": "Виробництво неелектричних побутових приладів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/27/KVED10_27_52.html"
+  },
+  {
+    "value": "27.90",
+    "label": "Виробництво іншого електричного устатковання",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/27/KVED10_27_90.html"
+  },
+  {
+    "value": "28.11",
+    "label": "Виробництво двигунів і турбін, крім авіаційних, автотранспортних і мотоциклетних двигунів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_11.html"
+  },
+  {
+    "value": "28.12",
+    "label": "Виробництво гідравлічного та пневматичного устатковання",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_12.html"
+  },
+  {
+    "value": "28.13",
+    "label": "Виробництво інших помп і компресорів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_13.html"
+  },
+  {
+    "value": "28.14",
+    "label": "Виробництво інших кранів і клапанів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_14.html"
+  },
+  {
+    "value": "28.15",
+    "label": "Виробництво підшипників, зубчастих передач, елементів механічних передач і приводів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_15.html"
+  },
+  {
+    "value": "28.21",
+    "label": "Виробництво печей і пічних пальників",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_21.html"
+  },
+  {
+    "value": "28.22",
+    "label": "Виробництво підіймального та вантажно-розвантажувального устатковання",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_22.html"
+  },
+  {
+    "value": "28.23",
+    "label": "Виробництво офісних машин і устатковання, крім комп'ютерів і периферійного устатковання",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_23.html"
+  },
+  {
+    "value": "28.24",
+    "label": "Виробництво ручних електромеханічних і пневматичних інструментів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_24.html"
+  },
+  {
+    "value": "28.25",
+    "label": "Виробництво промислового холодильного та вентиляційного устатковання",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_25.html"
+  },
+  {
+    "value": "28.29",
+    "label": "Виробництво інших машин і устатковання загального призначення, н.в.і.у.",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_29.html"
+  },
+  {
+    "value": "28.30",
+    "label": "Виробництво машин і устатковання для сільського та лісового господарства",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_30.html"
+  },
+  {
+    "value": "28.41",
+    "label": "Виробництво металообробних машин",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_41.html"
+  },
+  {
+    "value": "28.49",
+    "label": "Виробництво інших верстатів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_49.html"
+  },
+  {
+    "value": "28.91",
+    "label": "Виробництво машин і устатковання для металургії",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_91.html"
+  },
+  {
+    "value": "28.92",
+    "label": "Виробництво машин і устатковання для добувної промисловості та будівництва",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_92.html"
+  },
+  {
+    "value": "28.93",
+    "label": "Виробництво машин і устатковання для виготовлення харчових продуктів і напоїв, перероблення тютюну",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_93.html"
+  },
+  {
+    "value": "28.94",
+    "label": "Виробництво машин і устатковання для виготовлення текстильних, швейних, хутряних і шкіряних виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_94.html"
+  },
+  {
+    "value": "28.95",
+    "label": "Виробництво машин і устатковання для виготовлення паперу та картону",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_95.html"
+  },
+  {
+    "value": "28.96",
+    "label": "Виробництво машин і устатковання для виготовлення пластмас і гуми",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_96.html"
+  },
+  {
+    "value": "28.99",
+    "label": "Виробництво інших машин і устатковання спеціального призначення, н.в.і.у.",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/28/KVED10_28_99.html"
+  },
+  {
+    "value": "29.10",
+    "label": "Виробництво автотранспортних засобів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/29/KVED10_29_10.html"
+  },
+  {
+    "value": "29.20",
+    "label": "Виробництво кузовів для автотранспортних засобів, причепів і напівпричепів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/29/KVED10_29_20.html"
+  },
+  {
+    "value": "29.31",
+    "label": "Виробництво електричного й електронного устатковання для автотранспортних засобів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/29/KVED10_29_31.html"
+  },
+  {
+    "value": "29.32",
+    "label": "Виробництво інших вузлів, деталей і приладдя для автотранспортних засобів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/29/KVED10_29_32.html"
+  },
+  {
+    "value": "30.11",
+    "label": "Будування суден і плавучих конструкцій",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/30/KVED10_30_11.html"
+  },
+  {
+    "value": "30.12",
+    "label": "Будування прогулянкових і спортивних човнів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/30/KVED10_30_12.html"
+  },
+  {
+    "value": "30.20",
+    "label": "Виробництво залізничних локомотивів і рухомого складу",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/30/KVED10_30_20.html"
+  },
+  {
+    "value": "30.30",
+    "label": "Виробництво повітряних і космічних літальних апаратів, супутнього устатковання",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/30/KVED10_30_30.html"
+  },
+  {
+    "value": "30.40",
+    "label": "Виробництво військових транспортних засобів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/30/KVED10_30_40.html"
+  },
+  {
+    "value": "30.91",
+    "label": "Виробництво мотоциклів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/30/KVED10_30_91.html"
+  },
+  {
+    "value": "30.92",
+    "label": "Виробництво велосипедів, дитячих та інвалідних колясок",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/30/KVED10_30_92.html"
+  },
+  {
+    "value": "30.99",
+    "label": "Виробництво інших транспортних засобів і обладнання, н.в.і.у.",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/30/KVED10_30_99.html"
+  },
+  {
+    "value": "31.01",
+    "label": "Виробництво меблів для офісів і підприємств торгівлі",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/31/KVED10_31_01.html"
+  },
+  {
+    "value": "31.02",
+    "label": "Виробництво кухонних меблів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/31/KVED10_31_02.html"
+  },
+  {
+    "value": "31.03",
+    "label": "Виробництво матраців",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/31/KVED10_31_03.html"
+  },
+  {
+    "value": "31.09",
+    "label": "Виробництво інших меблів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/31/KVED10_31_09.html"
+  },
+  {
+    "value": "32.11",
+    "label": "Карбування монет",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/32/KVED10_32_11.html"
+  },
+  {
+    "value": "32.12",
+    "label": "Виробництво ювелірних і подібних виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/32/KVED10_32_12.html"
+  },
+  {
+    "value": "32.13",
+    "label": "Виробництво біжутерії та подібних виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/32/KVED10_32_13.html"
+  },
+  {
+    "value": "32.20",
+    "label": "Виробництво музичних інструментів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/32/KVED10_32_20.html"
+  },
+  {
+    "value": "32.30",
+    "label": "Виробництво спортивних товарів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/32/KVED10_32_30.html"
+  },
+  {
+    "value": "32.40",
+    "label": "Виробництво ігор та іграшок",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/32/KVED10_32_40.html"
+  },
+  {
+    "value": "32.50",
+    "label": "Виробництво медичних і стоматологічних інструментів і матеріалів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/32/KVED10_32_50.html"
+  },
+  {
+    "value": "32.91",
+    "label": "Виробництво мітел і щіток",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/32/KVED10_32_91.html"
+  },
+  {
+    "value": "32.99",
+    "label": "Виробництво іншої продукції, н.в.і.у.",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/32/KVED10_32_99.html"
+  },
+  {
+    "value": "33.11",
+    "label": "Ремонт і технічне обслуговування готових металевих виробів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/33/KVED10_33_11.html"
+  },
+  {
+    "value": "33.12",
+    "label": "Ремонт і технічне обслуговування машин і устатковання промислового призначення",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/33/KVED10_33_12.html"
+  },
+  {
+    "value": "33.13",
+    "label": "Ремонт і технічне обслуговування електронного й оптичного устатковання",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/33/KVED10_33_13.html"
+  },
+  {
+    "value": "33.14",
+    "label": "Ремонт і технічне обслуговування електричного устатковання",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/33/KVED10_33_14.html"
+  },
+  {
+    "value": "33.15",
+    "label": "Ремонт і технічне обслуговування суден і човнів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/33/KVED10_33_15.html"
+  },
+  {
+    "value": "33.16",
+    "label": "Ремонт і технічне обслуговування повітряних і космічних літальних апаратів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/33/KVED10_33_16.html"
+  },
+  {
+    "value": "33.17",
+    "label": "Ремонт і технічне обслуговування інших транспортних засобів",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/33/KVED10_33_17.html"
+  },
+  {
+    "value": "33.19",
+    "label": "Ремонт і технічне обслуговування інших машин і устатковання",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/33/KVED10_33_19.html"
+  },
+  {
+    "value": "33.20",
+    "label": "Установлення та монтаж машин і устатковання",
+    "section": "C",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/33/KVED10_33_20.html"
+  },
+  {
+    "value": "35.11",
+    "label": "Виробництво електроенергії",
+    "section": "D",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/35/KVED10_35_11.html"
+  },
+  {
+    "value": "35.12",
+    "label": "Передача електроенергії",
+    "section": "D",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/35/KVED10_35_12.html"
+  },
+  {
+    "value": "35.13",
+    "label": "Розподілення електроенергії",
+    "section": "D",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/35/KVED10_35_13.html"
+  },
+  {
+    "value": "35.14",
+    "label": "Торгівля електроенергією",
+    "section": "D",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/35/KVED10_35_14.html"
+  },
+  {
+    "value": "35.21",
+    "label": "Виробництво газу",
+    "section": "D",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/35/KVED10_35_21.html"
+  },
+  {
+    "value": "35.22",
+    "label": "Розподілення газоподібного палива через місцеві (локальні) трубопроводи",
+    "section": "D",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/35/KVED10_35_22.html"
+  },
+  {
+    "value": "35.23",
+    "label": "Торгівля газом через місцеві (локальні) трубопроводи",
+    "section": "D",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/35/KVED10_35_23.html"
+  },
+  {
+    "value": "35.30",
+    "label": "Постачання пари, гарячої води та кондиційованого повітря",
+    "section": "D",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/35/KVED10_35_30.html"
+  },
+  {
+    "value": "36.00",
+    "label": "Забір, очищення та постачання води",
+    "section": "E",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/36/KVED10_36_00.html"
+  },
+  {
+    "value": "37.00",
+    "label": "Каналізація, відведення й очищення стічних вод",
+    "section": "E",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/37/KVED10_37_00.html"
+  },
+  {
+    "value": "38.11",
+    "label": "Збирання безпечних відходів",
+    "section": "E",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/38/KVED10_38_11.html"
+  },
+  {
+    "value": "38.12",
+    "label": "Збирання небезпечних відходів",
+    "section": "E",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/38/KVED10_38_12.html"
+  },
+  {
+    "value": "38.21",
+    "label": "Оброблення та видалення безпечних відходів",
+    "section": "E",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/38/KVED10_38_21.html"
+  },
+  {
+    "value": "38.22",
+    "label": "Оброблення та видалення небезпечних відходів",
+    "section": "E",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/38/KVED10_38_22.html"
+  },
+  {
+    "value": "38.31",
+    "label": "Демонтаж (розбирання) машин і устатковання",
+    "section": "E",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/38/KVED10_38_31.html"
+  },
+  {
+    "value": "38.32",
+    "label": "Відновлення відсортованих відходів",
+    "section": "E",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/38/KVED10_38_32.html"
+  },
+  {
+    "value": "39.00",
+    "label": "Інша діяльність щодо поводження з відходами",
+    "section": "E",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/39/KVED10_39_00.html"
+  },
+  {
+    "value": "41.10",
+    "label": "Організація будівництва будівель",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/41/KVED10_41_10.html"
+  },
+  {
+    "value": "41.20",
+    "label": "Будівництво житлових і нежитлових будівель",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/41/KVED10_41_20.html"
+  },
+  {
+    "value": "42.11",
+    "label": "Будівництво доріг і автострад",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/42/KVED10_42_11.html"
+  },
+  {
+    "value": "42.12",
+    "label": "Будівництво залізниць і метрополітену",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/42/KVED10_42_12.html"
+  },
+  {
+    "value": "42.13",
+    "label": "Будівництво мостів і тунелів",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/42/KVED10_42_13.html"
+  },
+  {
+    "value": "42.21",
+    "label": "Будівництво трубопроводів",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/42/KVED10_42_21.html"
+  },
+  {
+    "value": "42.22",
+    "label": "Будівництво споруд електропостачання та телекомунікацій",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/42/KVED10_42_22.html"
+  },
+  {
+    "value": "42.91",
+    "label": "Будівництво водних споруд",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/42/KVED10_42_91.html"
+  },
+  {
+    "value": "42.99",
+    "label": "Будівництво інших споруд, н.в.і.у.",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/42/KVED10_42_99.html"
+  },
+  {
+    "value": "43.11",
+    "label": "Знесення",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/43/KVED10_43_11.html"
+  },
+  {
+    "value": "43.12",
+    "label": "Підготовчі роботи на будівельному майданчику",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/43/KVED10_43_12.html"
+  },
+  {
+    "value": "43.13",
+    "label": "Розвідувальне буріння",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/43/KVED10_43_13.html"
+  },
+  {
+    "value": "43.21",
+    "label": "Електромонтажні роботи",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/43/KVED10_43_21.html"
+  },
+  {
+    "value": "43.22",
+    "label": "Монтаж водопровідних мереж, систем опалення та кондиціонування",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/43/KVED10_43_22.html"
+  },
+  {
+    "value": "43.29",
+    "label": "Інші будівельно-монтажні роботи",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/43/KVED10_43_29.html"
+  },
+  {
+    "value": "43.31",
+    "label": "Штукатурні роботи",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/43/KVED10_43_31.html"
+  },
+  {
+    "value": "43.32",
+    "label": "Установлення столярних виробів",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/43/KVED10_43_32.html"
+  },
+  {
+    "value": "43.33",
+    "label": "Покриття підлоги й облицювання стін",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/43/KVED10_43_33.html"
+  },
+  {
+    "value": "43.34",
+    "label": "Малярні роботи та скління",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/43/KVED10_43_34.html"
+  },
+  {
+    "value": "43.39",
+    "label": "Інші роботи із завершення будівництва",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/43/KVED10_43_39.html"
+  },
+  {
+    "value": "43.91",
+    "label": "Покрівельні роботи",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/43/KVED10_43_91.html"
+  },
+  {
+    "value": "43.99",
+    "label": "Інші спеціалізовані будівельні роботи, н.в.і.у.",
+    "section": "F",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/43/KVED10_43_99.html"
+  },
+  {
+    "value": "45.11",
+    "label": "Торгівля автомобілями та легковими автотранспортними засобами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/45/KVED10_45_11.html"
+  },
+  {
+    "value": "45.19",
+    "label": "Торгівля іншими автотранспортними засобами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/45/KVED10_45_19.html"
+  },
+  {
+    "value": "45.20",
+    "label": "Технічне обслуговування та ремонт автотранспортних засобів",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/45/KVED10_45_20.html"
+  },
+  {
+    "value": "45.31",
+    "label": "Оптова торгівля деталями та приладдям для автотранспортних засобів",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/45/KVED10_45_31.html"
+  },
+  {
+    "value": "45.32",
+    "label": "Роздрібна торгівля деталями та приладдям для автотранспортних засобів",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/45/KVED10_45_32.html"
+  },
+  {
+    "value": "45.40",
+    "label": "Торгівля мотоциклами, деталями та приладдям до них, технічне обслуговування і ремонт мотоциклів",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/45/KVED10_45_40.html"
+  },
+  {
+    "value": "46.11",
+    "label": "Діяльність посередників у торгівлі сільськогосподарською сировиною, живими тваринами, текстильною сировиною та напівфабрикатами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_11.html"
+  },
+  {
+    "value": "46.12",
+    "label": "Діяльність посередників у торгівлі паливом, рудами, металами та промисловими хімічними речовинами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_12.html"
+  },
+  {
+    "value": "46.13",
+    "label": "Діяльність посередників у торгівлі деревиною, будівельними матеріалами та санітарно-технічними виробами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_13.html"
+  },
+  {
+    "value": "46.14",
+    "label": "Діяльність посередників у торгівлі машинами, промисловим устаткованням, суднами та літаками",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_14.html"
+  },
+  {
+    "value": "46.15",
+    "label": "Діяльність посередників у торгівлі меблями, господарськими товарами, залізними та іншими металевими виробами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_15.html"
+  },
+  {
+    "value": "46.16",
+    "label": "Діяльність посередників у торгівлі текстильними виробами, одягом, хутром, взуттям і шкіряними виробами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_16.html"
+  },
+  {
+    "value": "46.17",
+    "label": "Діяльність посередників у торгівлі продуктами харчування, напоями та тютюновими виробами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_17.html"
+  },
+  {
+    "value": "46.18",
+    "label": "Діяльність посередників, що спеціалізуються в торгівлі іншими товарами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_18.html"
+  },
+  {
+    "value": "46.19",
+    "label": "Діяльність посередників у торгівлі товарами широкого асортименту",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_19.html"
+  },
+  {
+    "value": "46.21",
+    "label": "Оптова торгівля зерном, необробленим тютюном, насінням і кормами для тварин",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_21.html"
+  },
+  {
+    "value": "46.22",
+    "label": "Оптова торгівля квітами та рослинами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_22.html"
+  },
+  {
+    "value": "46.23",
+    "label": "Оптова торгівля живими тваринами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_23.html"
+  },
+  {
+    "value": "46.24",
+    "label": "Оптова торгівля шкірсировиною, шкурами та шкірою",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_24.html"
+  },
+  {
+    "value": "46.31",
+    "label": "Оптова торгівля фруктами й овочами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_31.html"
+  },
+  {
+    "value": "46.32",
+    "label": "Оптова торгівля м'ясом і м'ясними продуктами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_32.html"
+  },
+  {
+    "value": "46.33",
+    "label": "Оптова торгівля молочними продуктами, яйцями, харчовими оліями та жирами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_33.html"
+  },
+  {
+    "value": "46.34",
+    "label": "Оптова торгівля напоями",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_34.html"
+  },
+  {
+    "value": "46.35",
+    "label": "Оптова торгівля тютюновими виробами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_35.html"
+  },
+  {
+    "value": "46.36",
+    "label": "Оптова торгівля цукром, шоколадом і кондитерськими виробами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_36.html"
+  },
+  {
+    "value": "46.37",
+    "label": "Оптова торгівля кавою, чаєм, какао та прянощами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_37.html"
+  },
+  {
+    "value": "46.38",
+    "label": "Оптова торгівля іншими продуктами харчування, у тому числі рибою, ракоподібними та молюсками",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_38.html"
+  },
+  {
+    "value": "46.39",
+    "label": "Неспеціалізована оптова торгівля продуктами харчування, напоями та тютюновими виробами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_39.html"
+  },
+  {
+    "value": "46.41",
+    "label": "Оптова торгівля текстильними товарами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_41.html"
+  },
+  {
+    "value": "46.42",
+    "label": "Оптова торгівля одягом і взуттям",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_42.html"
+  },
+  {
+    "value": "46.43",
+    "label": "Оптова торгівля побутовими електротоварами й електронною апаратурою побутового призначення для приймання, записування, відтворювання звуку й зображення",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_43.html"
+  },
+  {
+    "value": "46.44",
+    "label": "Оптова торгівля фарфором, скляним посудом і засобами для чищення",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_44.html"
+  },
+  {
+    "value": "46.45",
+    "label": "Оптова торгівля парфумними та косметичними товарами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_45.html"
+  },
+  {
+    "value": "46.46",
+    "label": "Оптова торгівля фармацевтичними товарами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_46.html"
+  },
+  {
+    "value": "46.47",
+    "label": "Оптова торгівля меблями, килимами й освітлювальним приладдям",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_47.html"
+  },
+  {
+    "value": "46.48",
+    "label": "Оптова торгівля годинниками та ювелірними виробами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_48.html"
+  },
+  {
+    "value": "46.49",
+    "label": "Оптова торгівля іншими товарами господарського призначення",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_49.html"
+  },
+  {
+    "value": "46.51",
+    "label": "Оптова торгівля комп'ютерами, периферійним устаткованням і програмним забезпеченням",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_51.html"
+  },
+  {
+    "value": "46.52",
+    "label": "Оптова торгівля електронним і телекомунікаційним устаткованням, деталями до нього",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_52.html"
+  },
+  {
+    "value": "46.61",
+    "label": "Оптова торгівля сільськогосподарськими машинами й устаткованням",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_61.html"
+  },
+  {
+    "value": "46.62",
+    "label": "Оптова торгівля верстатами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_62.html"
+  },
+  {
+    "value": "46.63",
+    "label": "Оптова торгівля машинами й устаткованням для добувної промисловості та будівництва",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_63.html"
+  },
+  {
+    "value": "46.64",
+    "label": "Оптова торгівля машинами й устаткованням для текстильного, швейного та трикотажного виробництва",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_64.html"
+  },
+  {
+    "value": "46.65",
+    "label": "Оптова торгівля офісними меблями",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_65.html"
+  },
+  {
+    "value": "46.66",
+    "label": "Оптова торгівля іншими офісними машинами й устаткованням",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_66.html"
+  },
+  {
+    "value": "46.69",
+    "label": "Оптова торгівля іншими машинами й устаткованням",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_69.html"
+  },
+  {
+    "value": "46.71",
+    "label": "Оптова торгівля твердим, рідким, газоподібним паливом і подібними продуктами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_71.html"
+  },
+  {
+    "value": "46.72",
+    "label": "Оптова торгівля металами та металевими рудами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_72.html"
+  },
+  {
+    "value": "46.73",
+    "label": "Оптова торгівля деревиною, будівельними матеріалами та санітарно-технічним обладнанням",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_73.html"
+  },
+  {
+    "value": "46.74",
+    "label": "Оптова торгівля залізними виробами, водопровідним і опалювальним устаткованням і приладдям до нього",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_74.html"
+  },
+  {
+    "value": "46.75",
+    "label": "Оптова торгівля хімічними продуктами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_75.html"
+  },
+  {
+    "value": "46.76",
+    "label": "Оптова торгівля іншими проміжними продуктами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_76.html"
+  },
+  {
+    "value": "46.77",
+    "label": "Оптова торгівля відходами та брухтом",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_77.html"
+  },
+  {
+    "value": "46.90",
+    "label": "Неспеціалізована оптова торгівля",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/46/KVED10_46_90.html"
+  },
+  {
+    "value": "47.11",
+    "label": "Роздрібна торгівля в неспеціалізованих магазинах переважно продуктами харчування, напоями та тютюновими виробами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_11.html"
+  },
+  {
+    "value": "47.19",
+    "label": "Інші види роздрібної торгівлі в неспеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_19.html"
+  },
+  {
+    "value": "47.21",
+    "label": "Роздрібна торгівля фруктами й овочами в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_21.html"
+  },
+  {
+    "value": "47.22",
+    "label": "Роздрібна торгівля м'ясом і м'ясними продуктами в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_22.html"
+  },
+  {
+    "value": "47.23",
+    "label": "Роздрібна торгівля рибою, ракоподібними та молюсками в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_23.html"
+  },
+  {
+    "value": "47.24",
+    "label": "Роздрібна торгівля хлібобулочними виробами, борошняними та цукровими кондитерськими виробами в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_24.html"
+  },
+  {
+    "value": "47.25",
+    "label": "Роздрібна торгівля напоями в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_25.html"
+  },
+  {
+    "value": "47.26",
+    "label": "Роздрібна торгівля тютюновими виробами в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_26.html"
+  },
+  {
+    "value": "47.29",
+    "label": "Роздрібна торгівля іншими продуктами харчування в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_29.html"
+  },
+  {
+    "value": "47.30",
+    "label": "Роздрібна торгівля пальним",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_30.html"
+  },
+  {
+    "value": "47.41",
+    "label": "Роздрібна торгівля комп'ютерами, периферійним устаткованням і програмним забезпеченням у спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_41.html"
+  },
+  {
+    "value": "47.42",
+    "label": "Роздрібна торгівля телекомунікаційним устаткованням у спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_42.html"
+  },
+  {
+    "value": "47.43",
+    "label": "Роздрібна торгівля в спеціалізованих магазинах електронною апаратурою побутового призначення для приймання, записування, відтворювання звуку й зображення",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_43.html"
+  },
+  {
+    "value": "47.51",
+    "label": "Роздрібна торгівля текстильними товарами в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_51.html"
+  },
+  {
+    "value": "47.52",
+    "label": "Роздрібна торгівля залізними виробами, будівельними матеріалами та санітарно-технічними виробами в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_52.html"
+  },
+  {
+    "value": "47.53",
+    "label": "Роздрібна торгівля килимами, килимовими виробами, покриттям для стін і підлоги в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_53.html"
+  },
+  {
+    "value": "47.54",
+    "label": "Роздрібна торгівля побутовими електротоварами в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_54.html"
+  },
+  {
+    "value": "47.59",
+    "label": "Роздрібна торгівля меблями, освітлювальним приладдям та іншими товарами для дому в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_59.html"
+  },
+  {
+    "value": "47.61",
+    "label": "Роздрібна торгівля книгами в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_61.html"
+  },
+  {
+    "value": "47.62",
+    "label": "Роздрібна торгівля газетами та канцелярськими товарами в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_62.html"
+  },
+  {
+    "value": "47.63",
+    "label": "Роздрібна торгівля аудіо- та відеозаписами в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_63.html"
+  },
+  {
+    "value": "47.64",
+    "label": "Роздрібна торгівля спортивним інвентарем у спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_64.html"
+  },
+  {
+    "value": "47.65",
+    "label": "Роздрібна торгівля іграми та іграшками в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_65.html"
+  },
+  {
+    "value": "47.71",
+    "label": "Роздрібна торгівля одягом у спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_71.html"
+  },
+  {
+    "value": "47.72",
+    "label": "Роздрібна торгівля взуттям і шкіряними виробами в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_72.html"
+  },
+  {
+    "value": "47.73",
+    "label": "Роздрібна торгівля фармацевтичними товарами в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_73.html"
+  },
+  {
+    "value": "47.74",
+    "label": "Роздрібна торгівля медичними й ортопедичними товарами в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_74.html"
+  },
+  {
+    "value": "47.75",
+    "label": "Роздрібна торгівля косметичними товарами та туалетними приналежностями в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_75.html"
+  },
+  {
+    "value": "47.76",
+    "label": "Роздрібна торгівля квітами, рослинами, насінням, добривами, домашніми тваринами та кормами для них у спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_76.html"
+  },
+  {
+    "value": "47.77",
+    "label": "Роздрібна торгівля годинниками та ювелірними виробами в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_77.html"
+  },
+  {
+    "value": "47.78",
+    "label": "Роздрібна торгівля іншими невживаними товарами в спеціалізованих магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_78.html"
+  },
+  {
+    "value": "47.79",
+    "label": "Роздрібна торгівля уживаними товарами в магазинах",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_79.html"
+  },
+  {
+    "value": "47.81",
+    "label": "Роздрібна торгівля з лотків і на ринках харчовими продуктами, напоями та тютюновими виробами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_81.html"
+  },
+  {
+    "value": "47.82",
+    "label": "Роздрібна торгівля з лотків і на ринках текстильними виробами, одягом і взуттям",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_82.html"
+  },
+  {
+    "value": "47.89",
+    "label": "Роздрібна торгівля з лотків і на ринках іншими товарами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_89.html"
+  },
+  {
+    "value": "47.91",
+    "label": "Роздрібна торгівля, що здійснюється фірмами поштового замовлення або через мережу Інтернет",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_91.html"
+  },
+  {
+    "value": "47.99",
+    "label": "Інші види роздрібної торгівлі поза магазинами",
+    "section": "G",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/47/KVED10_47_99.html"
+  },
+  {
+    "value": "49.10",
+    "label": "Пасажирський залізничний транспорт міжміського сполучення",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/49/KVED10_49_10.html"
+  },
+  {
+    "value": "49.20",
+    "label": "Вантажний залізничний транспорт",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/49/KVED10_49_20.html"
+  },
+  {
+    "value": "49.31",
+    "label": "Пасажирський наземний транспорт міського та приміського сполучення",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/49/KVED10_49_31.html"
+  },
+  {
+    "value": "49.32",
+    "label": "Надання послуг таксі",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/49/KVED10_49_32.html"
+  },
+  {
+    "value": "49.39",
+    "label": "Інший пасажирський наземний транспорт, н.в.і.у.",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/49/KVED10_49_39.html"
+  },
+  {
+    "value": "49.41",
+    "label": "Вантажний автомобільний транспорт",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/49/KVED10_49_41.html"
+  },
+  {
+    "value": "49.42",
+    "label": "Надання послуг перевезення речей (переїзду)",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/49/KVED10_49_42.html"
+  },
+  {
+    "value": "49.50",
+    "label": "Трубопровідний транспорт",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/49/KVED10_49_50.html"
+  },
+  {
+    "value": "50.10",
+    "label": "Пасажирський морський транспорт",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/50/KVED10_50_10.html"
+  },
+  {
+    "value": "50.20",
+    "label": "Вантажний морський транспорт",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/50/KVED10_50_20.html"
+  },
+  {
+    "value": "50.30",
+    "label": "Пасажирський річковий транспорт",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/50/KVED10_50_30.html"
+  },
+  {
+    "value": "50.40",
+    "label": "Вантажний річковий транспорт",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/50/KVED10_50_40.html"
+  },
+  {
+    "value": "51.10",
+    "label": "Пасажирський авіаційний транспорт",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/51/KVED10_51_10.html"
+  },
+  {
+    "value": "51.21",
+    "label": "Вантажний авіаційний транспорт",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/51/KVED10_51_21.html"
+  },
+  {
+    "value": "51.22",
+    "label": "Космічний транспорт",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/51/KVED10_51_22.html"
+  },
+  {
+    "value": "52.10",
+    "label": "Складське господарство",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/52/KVED10_52_10.html"
+  },
+  {
+    "value": "52.21",
+    "label": "Допоміжне обслуговування наземного транспорту",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/52/KVED10_52_21.html"
+  },
+  {
+    "value": "52.22",
+    "label": "Допоміжне обслуговування водного транспорту",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/52/KVED10_52_22.html"
+  },
+  {
+    "value": "52.23",
+    "label": "Допоміжне обслуговування авіаційного транспорту",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/52/KVED10_52_23.html"
+  },
+  {
+    "value": "52.24",
+    "label": "Транспортне оброблення вантажів",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/52/KVED10_52_24.html"
+  },
+  {
+    "value": "52.29",
+    "label": "Інша допоміжна діяльність у сфері транспорту",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/52/KVED10_52_29.html"
+  },
+  {
+    "value": "53.10",
+    "label": "Діяльність національної пошти",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/53/KVED10_53_10.html"
+  },
+  {
+    "value": "53.20",
+    "label": "Інша поштова та кур'єрська діяльність",
+    "section": "H",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/53/KVED10_53_20.html"
+  },
+  {
+    "value": "55.10",
+    "label": "Діяльність готелів і подібних засобів тимчасового розміщування",
+    "section": "I",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/55/KVED10_55_10.html"
+  },
+  {
+    "value": "55.20",
+    "label": "Діяльність засобів розміщування на період відпустки та іншого тимчасового проживання",
+    "section": "I",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/55/KVED10_55_20.html"
+  },
+  {
+    "value": "55.30",
+    "label": "Надання місць кемпінгами та стоянками для житлових автофургонів і причепів",
+    "section": "I",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/55/KVED10_55_30.html"
+  },
+  {
+    "value": "55.90",
+    "label": "Діяльність інших засобів тимчасового розміщування",
+    "section": "I",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/55/KVED10_55_90.html"
+  },
+  {
+    "value": "56.10",
+    "label": "Діяльність ресторанів, надання послуг мобільного харчування",
+    "section": "I",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/56/KVED10_56_10.html"
+  },
+  {
+    "value": "56.21",
+    "label": "Постачання готових страв для подій",
+    "section": "I",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/56/KVED10_56_21.html"
+  },
+  {
+    "value": "56.29",
+    "label": "Постачання інших готових страв",
+    "section": "I",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/56/KVED10_56_29.html"
+  },
+  {
+    "value": "56.30",
+    "label": "Обслуговування напоями",
+    "section": "I",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/56/KVED10_56_30.html"
+  },
+  {
+    "value": "58.11",
+    "label": "Видання книг",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/58/KVED10_58_11.html"
+  },
+  {
+    "value": "58.12",
+    "label": "Видання довідників і каталогів",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/58/KVED10_58_12.html"
+  },
+  {
+    "value": "58.13",
+    "label": "Видання газет",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/58/KVED10_58_13.html"
+  },
+  {
+    "value": "58.14",
+    "label": "Видання журналів і періодичних видань",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/58/KVED10_58_14.html"
+  },
+  {
+    "value": "58.19",
+    "label": "Інші види видавничої діяльності",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/58/KVED10_58_19.html"
+  },
+  {
+    "value": "58.21",
+    "label": "Видання комп'ютерних ігор",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/58/KVED10_58_21.html"
+  },
+  {
+    "value": "58.29",
+    "label": "Видання іншого програмного забезпечення",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/58/KVED10_58_29.html"
+  },
+  {
+    "value": "59.11",
+    "label": "Виробництво кіно- та відеофільмів, телевізійних програм",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/59/KVED10_59_11.html"
+  },
+  {
+    "value": "59.12",
+    "label": "Компонування кіно- та відеофільмів, телевізійних програм",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/59/KVED10_59_12.html"
+  },
+  {
+    "value": "59.13",
+    "label": "Розповсюдження кіно- та відеофільмів, телевізійних програм",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/59/KVED10_59_13.html"
+  },
+  {
+    "value": "59.14",
+    "label": "Демонстрація кінофільмів",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/59/KVED10_59_14.html"
+  },
+  {
+    "value": "59.20",
+    "label": "Видання звукозаписів",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/59/KVED10_59_20.html"
+  },
+  {
+    "value": "60.10",
+    "label": "Діяльність у сфері радіомовлення",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/60/KVED10_60_10.html"
+  },
+  {
+    "value": "60.20",
+    "label": "Діяльність у сфері телевізійного мовлення",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/60/KVED10_60_20.html"
+  },
+  {
+    "value": "61.10",
+    "label": "Діяльність у сфері проводового електрозв'язку",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/61/KVED10_61_10.html"
+  },
+  {
+    "value": "61.20",
+    "label": "Діяльність у сфері безпроводового електрозв'язку",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/61/KVED10_61_20.html"
+  },
+  {
+    "value": "61.30",
+    "label": "Діяльність у сфері супутникового електрозв'язку",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/61/KVED10_61_30.html"
+  },
+  {
+    "value": "61.90",
+    "label": "Інша діяльність у сфері електрозв'язку",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/61/KVED10_61_90.html"
+  },
+  {
+    "value": "62.01",
+    "label": "Комп'ютерне програмування",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/62/KVED10_62_01.html"
+  },
+  {
+    "value": "62.02",
+    "label": "Консультування з питань інформатизації",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/62/KVED10_62_02.html"
+  },
+  {
+    "value": "62.03",
+    "label": "Діяльність із керування комп'ютерним устаткованням",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/62/KVED10_62_03.html"
+  },
+  {
+    "value": "62.09",
+    "label": "Інша діяльність у сфері інформаційних технологій і комп'ютерних систем",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/62/KVED10_62_09.html"
+  },
+  {
+    "value": "63.11",
+    "label": "Оброблення даних, розміщення інформації на веб-вузлах і пов'язана з ними діяльність",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/63/KVED10_63_11.html"
+  },
+  {
+    "value": "63.12",
+    "label": "Веб-портали",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/63/KVED10_63_12.html"
+  },
+  {
+    "value": "63.91",
+    "label": "Діяльність інформаційних агентств",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/63/KVED10_63_91.html"
+  },
+  {
+    "value": "63.99",
+    "label": "Надання інших інформаційних послуг, н.в.і.у.",
+    "section": "J",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/63/KVED10_63_99.html"
+  },
+  {
+    "value": "64.11",
+    "label": "Діяльність центрального банку",
+    "section": "K",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/64/KVED10_64_11.html"
+  },
+  {
+    "value": "64.19",
+    "label": "Інші види грошового посередництва",
+    "section": "K",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/64/KVED10_64_19.html"
+  },
+  {
+    "value": "64.20",
+    "label": "Діяльність холдингових компаній",
+    "section": "K",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/64/KVED10_64_20.html"
+  },
+  {
+    "value": "64.30",
+    "label": "Трасти, фонди та подібні фінансові суб'єкти",
+    "section": "K",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/64/KVED10_64_30.html"
+  },
+  {
+    "value": "64.91",
+    "label": "Фінансовий лізинг",
+    "section": "K",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/64/KVED10_64_91.html"
+  },
+  {
+    "value": "64.92",
+    "label": "Інші види кредитування",
+    "section": "K",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/64/KVED10_64_92.html"
+  },
+  {
+    "value": "64.99",
+    "label": "Надання інших фінансових послуг (крім страхування та пенсійного забезпечення), н.в.і.у.",
+    "section": "K",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/64/KVED10_64_99.html"
+  },
+  {
+    "value": "65.11",
+    "label": "Страхування життя",
+    "section": "K",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/65/KVED10_65_11.html"
+  },
+  {
+    "value": "65.12",
+    "label": "Інші види страхування, крім страхування життя",
+    "section": "K",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/65/KVED10_65_12.html"
+  },
+  {
+    "value": "65.20",
+    "label": "Перестрахування",
+    "section": "K",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/65/KVED10_65_20.html"
+  },
+  {
+    "value": "65.30",
+    "label": "Недержавне пенсійне забезпечення",
+    "section": "K",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/65/KVED10_65_30.html"
+  },
+  {
+    "value": "66.11",
+    "label": "Управління фінансовими ринками",
+    "section": "K",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/66/KVED10_66_11.html"
+  },
+  {
+    "value": "66.12",
+    "label": "Посередництво за договорами по цінних паперах або товарах",
+    "section": "K",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/66/KVED10_66_12.html"
+  },
+  {
+    "value": "66.19",
+    "label": "Інша допоміжна діяльність у сфері фінансових послуг, крім страхування та пенсійного забезпечення",
+    "section": "K",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/66/KVED10_66_19.html"
+  },
+  {
+    "value": "66.21",
+    "label": "Оцінювання ризиків та завданої шкоди",
+    "section": "K",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/66/KVED10_66_21.html"
+  },
+  {
+    "value": "66.22",
+    "label": "Діяльність страхових агентів і брокерів",
+    "section": "K",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/66/KVED10_66_22.html"
+  },
+  {
+    "value": "66.29",
+    "label": "Інша допоміжна діяльність у сфері страхування та пенсійного забезпечення",
+    "section": "K",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/66/KVED10_66_29.html"
+  },
+  {
+    "value": "66.30",
+    "label": "Управління фондами",
+    "section": "K",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/66/KVED10_66_30.html"
+  },
+  {
+    "value": "68.10",
+    "label": "Купівля та продаж власного нерухомого майна",
+    "section": "L",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/68/KVED10_68_10.html"
+  },
+  {
+    "value": "68.20",
+    "label": "Надання в оренду й експлуатацію власного чи орендованого нерухомого майна",
+    "section": "L",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/68/KVED10_68_20.html"
+  },
+  {
+    "value": "68.31",
+    "label": "Агентства нерухомості",
+    "section": "L",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/68/KVED10_68_31.html"
+  },
+  {
+    "value": "68.32",
+    "label": "Управління нерухомим майном за винагороду або на основі контракту",
+    "section": "L",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/68/KVED10_68_32.html"
+  },
+  {
+    "value": "69.10",
+    "label": "Діяльність у сфері права",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/69/KVED10_69_10.html"
+  },
+  {
+    "value": "69.20",
+    "label": "Діяльність у сфері бухгалтерського обліку й аудиту; консультування з питань оподаткування",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/69/KVED10_69_20.html"
+  },
+  {
+    "value": "70.10",
+    "label": "Діяльність головних управлінь (хед-офісів)",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/70/KVED10_70_10.html"
+  },
+  {
+    "value": "70.21",
+    "label": "Діяльність у сфері зв'язків із громадськістю",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/70/KVED10_70_21.html"
+  },
+  {
+    "value": "70.22",
+    "label": "Консультування з питань комерційної діяльності й керування",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/70/KVED10_70_22.html"
+  },
+  {
+    "value": "71.11",
+    "label": "Діяльність у сфері архітектури",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/71/KVED10_71_11.html"
+  },
+  {
+    "value": "71.12",
+    "label": "Діяльність у сфері інжинірингу, геології та геодезії, надання послуг технічного консультування в цих сферах",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/71/KVED10_71_12.html"
+  },
+  {
+    "value": "71.20",
+    "label": "Технічні випробування та дослідження",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/71/KVED10_71_20.html"
+  },
+  {
+    "value": "72.11",
+    "label": "Дослідження й експериментальні розробки у сфері біотехнологій",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/72/KVED10_72_11.html"
+  },
+  {
+    "value": "72.19",
+    "label": "Дослідження й експериментальні розробки у сфері інших природничих і технічних наук",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/72/KVED10_72_19.html"
+  },
+  {
+    "value": "72.20",
+    "label": "Дослідження й експериментальні розробки у сфері суспільних і гуманітарних наук",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/72/KVED10_72_20.html"
+  },
+  {
+    "value": "73.11",
+    "label": "Рекламні агентства",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/73/KVED10_73_11.html"
+  },
+  {
+    "value": "73.12",
+    "label": "Посередництво в розміщенні реклами в засобах масової інформації",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/73/KVED10_73_12.html"
+  },
+  {
+    "value": "73.20",
+    "label": "Дослідження кон'юнктури ринку та виявлення громадської думки",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/73/KVED10_73_20.html"
+  },
+  {
+    "value": "74.10",
+    "label": "Спеціалізована діяльність із дизайну",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/74/KVED10_74_10.html"
+  },
+  {
+    "value": "74.20",
+    "label": "Діяльність у сфері фотографії",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/74/KVED10_74_20.html"
+  },
+  {
+    "value": "74.30",
+    "label": "Надання послуг перекладу",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/74/KVED10_74_30.html"
+  },
+  {
+    "value": "74.90",
+    "label": "Інша професійна, наукова та технічна діяльність, н.в.і.у.",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/74/KVED10_74_90.html"
+  },
+  {
+    "value": "75.00",
+    "label": "Ветеринарна діяльність",
+    "section": "M",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/75/KVED10_75_00.html"
+  },
+  {
+    "value": "77.11",
+    "label": "Надання в оренду автомобілів і легкових автотранспортних засобів",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/77/KVED10_77_11.html"
+  },
+  {
+    "value": "77.12",
+    "label": "Надання в оренду вантажних автомобілів",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/77/KVED10_77_12.html"
+  },
+  {
+    "value": "77.21",
+    "label": "Прокат товарів для спорту та відпочинку",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/77/KVED10_77_21.html"
+  },
+  {
+    "value": "77.22",
+    "label": "Прокат відеозаписів і дисків",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/77/KVED10_77_22.html"
+  },
+  {
+    "value": "77.29",
+    "label": "Прокат інших побутових виробів і предметів особистого вжитку",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/77/KVED10_77_29.html"
+  },
+  {
+    "value": "77.31",
+    "label": "Надання в оренду сільськогосподарських машин і устатковання",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/77/KVED10_77_31.html"
+  },
+  {
+    "value": "77.32",
+    "label": "Надання в оренду будівельних машин і устатковання",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/77/KVED10_77_32.html"
+  },
+  {
+    "value": "77.33",
+    "label": "Надання в оренду офісних машин і устатковання, у тому числі комп'ютерів",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/77/KVED10_77_33.html"
+  },
+  {
+    "value": "77.34",
+    "label": "Надання в оренду водних транспортних засобів",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/77/KVED10_77_34.html"
+  },
+  {
+    "value": "77.35",
+    "label": "Надання в оренду повітряних транспортних засобів",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/77/KVED10_77_35.html"
+  },
+  {
+    "value": "77.39",
+    "label": "Надання в оренду інших машин, устатковання та товарів, н.в.і.у.",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/77/KVED10_77_39.html"
+  },
+  {
+    "value": "77.40",
+    "label": "Лізинг інтелектуальної власності та подібних продуктів, крім творів, захищених авторськими правами",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/77/KVED10_77_40.html"
+  },
+  {
+    "value": "78.10",
+    "label": "Діяльність агентств працевлаштування",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/78/KVED10_78_10.html"
+  },
+  {
+    "value": "78.20",
+    "label": "Діяльність агентств тимчасового працевлаштування",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/78/KVED10_78_20.html"
+  },
+  {
+    "value": "78.30",
+    "label": "Інша діяльність із забезпечення трудовими ресурсами",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/78/KVED10_78_30.html"
+  },
+  {
+    "value": "79.11",
+    "label": "Діяльність туристичних агентств",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/79/KVED10_79_11.html"
+  },
+  {
+    "value": "79.12",
+    "label": "Діяльність туристичних операторів",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/79/KVED10_79_12.html"
+  },
+  {
+    "value": "79.90",
+    "label": "Надання інших послуг бронювання та пов'язана з цим діяльність",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/79/KVED10_79_90.html"
+  },
+  {
+    "value": "80.10",
+    "label": "Діяльність приватних охоронних служб",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/80/KVED10_80_10.html"
+  },
+  {
+    "value": "80.20",
+    "label": "Обслуговування систем безпеки",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/80/KVED10_80_20.html"
+  },
+  {
+    "value": "80.30",
+    "label": "Проведення розслідувань",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/80/KVED10_80_30.html"
+  },
+  {
+    "value": "81.10",
+    "label": "Комплексне обслуговування об'єктів",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/81/KVED10_81_10.html"
+  },
+  {
+    "value": "81.21",
+    "label": "Загальне прибирання будинків",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/81/KVED10_81_21.html"
+  },
+  {
+    "value": "81.22",
+    "label": "Інша діяльність із прибирання будинків і промислових об'єктів",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/81/KVED10_81_22.html"
+  },
+  {
+    "value": "81.29",
+    "label": "Інші види діяльності із прибирання",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/81/KVED10_81_29.html"
+  },
+  {
+    "value": "81.30",
+    "label": "Надання ландшафтних послуг",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/81/KVED10_81_30.html"
+  },
+  {
+    "value": "82.11",
+    "label": "Надання комбінованих офісних адміністративних послуг",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/82/KVED10_82_11.html"
+  },
+  {
+    "value": "82.19",
+    "label": "Фотокопіювання, підготування документів та інша спеціалізована допоміжна офісна діяльність",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/82/KVED10_82_19.html"
+  },
+  {
+    "value": "82.20",
+    "label": "Діяльність телефонних центрів",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/82/KVED10_82_20.html"
+  },
+  {
+    "value": "82.30",
+    "label": "Організування конгресів і торговельних виставок",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/82/KVED10_82_30.html"
+  },
+  {
+    "value": "82.91",
+    "label": "Діяльність агентств зі стягування платежів і бюро кредитних історій",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/82/KVED10_82_91.html"
+  },
+  {
+    "value": "82.92",
+    "label": "Пакування",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/82/KVED10_82_92.html"
+  },
+  {
+    "value": "82.99",
+    "label": "Надання інших допоміжних комерційних послуг, н.в.і.у.",
+    "section": "N",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/82/KVED10_82_99.html"
+  },
+  {
+    "value": "84.11",
+    "label": "Державне управління загального характеру",
+    "section": "O",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/84/KVED10_84_11.html"
+  },
+  {
+    "value": "84.12",
+    "label": "Регулювання у сферах охорони здоров'я, освіти, культури та інших соціальних сферах, крім обов'язкового соціального страхування",
+    "section": "O",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/84/KVED10_84_12.html"
+  },
+  {
+    "value": "84.13",
+    "label": "Регулювання та сприяння ефективному веденню економічної діяльності",
+    "section": "O",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/84/KVED10_84_13.html"
+  },
+  {
+    "value": "84.21",
+    "label": "Міжнародна діяльність",
+    "section": "O",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/84/KVED10_84_21.html"
+  },
+  {
+    "value": "84.22",
+    "label": "Діяльність у сфері оборони",
+    "section": "O",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/84/KVED10_84_22.html"
+  },
+  {
+    "value": "84.23",
+    "label": "Діяльність у сфері юстиції та правосуддя",
+    "section": "O",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/84/KVED10_84_23.html"
+  },
+  {
+    "value": "84.24",
+    "label": "Діяльність у сфері охорони громадського порядку та безпеки",
+    "section": "O",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/84/KVED10_84_24.html"
+  },
+  {
+    "value": "84.25",
+    "label": "Діяльність пожежних служб",
+    "section": "O",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/84/KVED10_84_25.html"
+  },
+  {
+    "value": "84.30",
+    "label": "Діяльність у сфері обов'язкового соціального страхування",
+    "section": "O",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/84/KVED10_84_30.html"
+  },
+  {
+    "value": "85.10",
+    "label": "Дошкільна освіта",
+    "section": "P",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/85/KVED10_85_10.html"
+  },
+  {
+    "value": "85.20",
+    "label": "Початкова освіта",
+    "section": "P",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/85/KVED10_85_20.html"
+  },
+  {
+    "value": "85.31",
+    "label": "Загальна середня освіта",
+    "section": "P",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/85/KVED10_85_31.html"
+  },
+  {
+    "value": "85.32",
+    "label": "Професійно-технічна освіта",
+    "section": "P",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/85/KVED10_85_32.html"
+  },
+  {
+    "value": "85.41",
+    "label": "Професійно-технічна освіта на рівні вищого професійно-технічного навчального закладу",
+    "section": "P",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/85/KVED10_85_41.html"
+  },
+  {
+    "value": "85.42",
+    "label": "Вища освіта",
+    "section": "P",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/85/KVED10_85_42.html"
+  },
+  {
+    "value": "85.51",
+    "label": "Освіта у сфері спорту та відпочинку",
+    "section": "P",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/85/KVED10_85_51.html"
+  },
+  {
+    "value": "85.52",
+    "label": "Освіта у сфері культури",
+    "section": "P",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/85/KVED10_85_52.html"
+  },
+  {
+    "value": "85.53",
+    "label": "Діяльність шкіл підготовки водіїв транспортних засобів",
+    "section": "P",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/85/KVED10_85_53.html"
+  },
+  {
+    "value": "85.59",
+    "label": "Інші види освіти, н.в.і.у.",
+    "section": "P",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/85/KVED10_85_59.html"
+  },
+  {
+    "value": "85.60",
+    "label": "Допоміжна діяльність у сфері освіти",
+    "section": "P",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/85/KVED10_85_60.html"
+  },
+  {
+    "value": "86.10",
+    "label": "Діяльність лікарняних закладів",
+    "section": "Q",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/86/KVED10_86_10.html"
+  },
+  {
+    "value": "86.21",
+    "label": "Загальна медична практика",
+    "section": "Q",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/86/KVED10_86_21.html"
+  },
+  {
+    "value": "86.22",
+    "label": "Спеціалізована медична практика",
+    "section": "Q",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/86/KVED10_86_22.html"
+  },
+  {
+    "value": "86.23",
+    "label": "Стоматологічна практика",
+    "section": "Q",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/86/KVED10_86_23.html"
+  },
+  {
+    "value": "86.90",
+    "label": "Інша діяльність у сфері охорони здоров'я",
+    "section": "Q",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/86/KVED10_86_90.html"
+  },
+  {
+    "value": "87.10",
+    "label": "Діяльність із догляду за хворими із забезпеченням проживання",
+    "section": "Q",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/87/KVED10_87_10.html"
+  },
+  {
+    "value": "87.20",
+    "label": "Надання послуг догляду із забезпеченням проживання для осіб з розумовими вадами та хворих на наркоманію",
+    "section": "Q",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/87/KVED10_87_20.html"
+  },
+  {
+    "value": "87.30",
+    "label": "Надання послуг догляду із забезпеченням проживання для осіб похилого віку та інвалідів",
+    "section": "Q",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/87/KVED10_87_30.html"
+  },
+  {
+    "value": "87.90",
+    "label": "Надання інших послуг догляду із забезпеченням проживання",
+    "section": "Q",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/87/KVED10_87_90.html"
+  },
+  {
+    "value": "88.10",
+    "label": "Надання соціальної допомоги без забезпечення проживання для осіб похилого віку та інвалідів",
+    "section": "Q",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/88/KVED10_88_10.html"
+  },
+  {
+    "value": "88.91",
+    "label": "Денний догляд за дітьми",
+    "section": "Q",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/88/KVED10_88_91.html"
+  },
+  {
+    "value": "88.99",
+    "label": "Надання іншої соціальної допомоги без забезпечення проживання, н.в.і.у.",
+    "section": "Q",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/88/KVED10_88_99.html"
+  },
+  {
+    "value": "90.01",
+    "label": "Театральна та концертна діяльність",
+    "section": "R",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/90/KVED10_90_01.html"
+  },
+  {
+    "value": "90.02",
+    "label": "Діяльність із підтримки театральних і концертних заходів",
+    "section": "R",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/90/KVED10_90_02.html"
+  },
+  {
+    "value": "90.03",
+    "label": "Індивідуальна мистецька діяльність",
+    "section": "R",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/90/KVED10_90_03.html"
+  },
+  {
+    "value": "90.04",
+    "label": "Функціювання театральних і концертних залів",
+    "section": "R",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/90/KVED10_90_04.html"
+  },
+  {
+    "value": "91.01",
+    "label": "Функціювання бібліотек і архівів",
+    "section": "R",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/91/KVED10_91_01.html"
+  },
+  {
+    "value": "91.02",
+    "label": "Функціювання музеїв",
+    "section": "R",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/91/KVED10_91_02.html"
+  },
+  {
+    "value": "91.03",
+    "label": "Діяльність із охорони та використання пам'яток історії, будівель та інших пам'яток культури",
+    "section": "R",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/91/KVED10_91_03.html"
+  },
+  {
+    "value": "91.04",
+    "label": "Функціювання ботанічних садів, зоопарків і природних заповідників",
+    "section": "R",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/91/KVED10_91_04.html"
+  },
+  {
+    "value": "92.00",
+    "label": "Організування азартних ігор",
+    "section": "R",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/92/KVED10_92_00.html"
+  },
+  {
+    "value": "93.11",
+    "label": "Функціювання спортивних споруд",
+    "section": "R",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/93/KVED10_93_11.html"
+  },
+  {
+    "value": "93.12",
+    "label": "Діяльність спортивних клубів",
+    "section": "R",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/93/KVED10_93_12.html"
+  },
+  {
+    "value": "93.13",
+    "label": "Діяльність фітнес-центрів",
+    "section": "R",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/93/KVED10_93_13.html"
+  },
+  {
+    "value": "93.19",
+    "label": "Інша діяльність у сфері спорту",
+    "section": "R",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/93/KVED10_93_19.html"
+  },
+  {
+    "value": "93.21",
+    "label": "Функціювання атракціонів і тематичних парків",
+    "section": "R",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/93/KVED10_93_21.html"
+  },
+  {
+    "value": "93.29",
+    "label": "Організування інших видів відпочинку та розваг",
+    "section": "R",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/93/KVED10_93_29.html"
+  },
+  {
+    "value": "94.11",
+    "label": "Діяльність організацій промисловців і підприємців",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/94/KVED10_94_11.html"
+  },
+  {
+    "value": "94.12",
+    "label": "Діяльність професійних громадських організацій",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/94/KVED10_94_12.html"
+  },
+  {
+    "value": "94.20",
+    "label": "Діяльність професійних спілок",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/94/KVED10_94_20.html"
+  },
+  {
+    "value": "94.91",
+    "label": "Діяльність релігійних організацій",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/94/KVED10_94_91.html"
+  },
+  {
+    "value": "94.92",
+    "label": "Діяльність політичних організацій",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/94/KVED10_94_92.html"
+  },
+  {
+    "value": "94.99",
+    "label": "Діяльність інших громадських організацій, н.в.і.у.",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/94/KVED10_94_99.html"
+  },
+  {
+    "value": "95.11",
+    "label": "Ремонт комп'ютерів і периферійного устатковання",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/95/KVED10_95_11.html"
+  },
+  {
+    "value": "95.12",
+    "label": "Ремонт обладнання зв'язку",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/95/KVED10_95_12.html"
+  },
+  {
+    "value": "95.21",
+    "label": "Ремонт електронної апаратури побутового призначення для приймання, записування, відтворювання звуку й зображення",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/95/KVED10_95_21.html"
+  },
+  {
+    "value": "95.22",
+    "label": "Ремонт побутових приладів, домашнього та садового обладнання",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/95/KVED10_95_22.html"
+  },
+  {
+    "value": "95.23",
+    "label": "Ремонт взуття та шкіряних виробів",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/95/KVED10_95_23.html"
+  },
+  {
+    "value": "95.24",
+    "label": "Ремонт меблів і домашнього начиння",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/95/KVED10_95_24.html"
+  },
+  {
+    "value": "95.25",
+    "label": "Ремонт годинників і ювелірних виробів",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/95/KVED10_95_25.html"
+  },
+  {
+    "value": "95.29",
+    "label": "Ремонт інших побутових виробів і предметів особистого вжитку",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/95/KVED10_95_29.html"
+  },
+  {
+    "value": "96.01",
+    "label": "Прання та хімічне чищення текстильних і хутряних виробів",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/96/KVED10_96_01.html"
+  },
+  {
+    "value": "96.02",
+    "label": "Надання послуг перукарнями та салонами краси",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/96/KVED10_96_02.html"
+  },
+  {
+    "value": "96.03",
+    "label": "Організування поховань і надання суміжних послуг",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/96/KVED10_96_03.html"
+  },
+  {
+    "value": "96.04",
+    "label": "Діяльність із забезпечення фізичного комфорту",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/96/KVED10_96_04.html"
+  },
+  {
+    "value": "96.09",
+    "label": "Надання інших індивідуальних послуг, н.в.і.у.",
+    "section": "S",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/96/KVED10_96_09.html"
+  },
+  {
+    "value": "97.00",
+    "label": "Діяльність домашніх господарств як роботодавців для домашньої прислуги",
+    "section": "T",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/97/KVED10_97_00.html"
+  },
+  {
+    "value": "98.10",
+    "label": "Діяльність домашніх господарств як виробників товарів для власного споживання",
+    "section": "T",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/98/KVED10_98_10.html"
+  },
+  {
+    "value": "98.20",
+    "label": "Діяльність домашніх господарств як виробників послуг для власного споживання",
+    "section": "T",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/98/KVED10_98_20.html"
+  },
+  {
+    "value": "99.00",
+    "label": "Діяльність екстериторіальних організацій і органів",
+    "section": "U",
+    "source": "https://kved.ukrstat.gov.ua/KVED2010/99/KVED10_99_00.html"
+  }
+]

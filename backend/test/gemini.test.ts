@@ -55,7 +55,9 @@ test("configuredGeminiResponder sends exact POST header/body and includes budget
 
     const snapshot = {
       title: "Мій бізнес",
+      program_id: "vlasna-sprava",
       revision: 2,
+      profileRevision: 0,
       details: { sector: "IT" },
       items: [{ name: "Ноутбук", amount: 30000 }],
       total_kopecks: "3000000",
@@ -176,4 +178,42 @@ test("only complete visible text parts are returned; blocked or incomplete repli
     if (original === undefined) delete process.env.GEMINI_API_KEY;
     else process.env.GEMINI_API_KEY = original;
   }
+});
+
+test("discovery model receives business-only scope and no assumed student age", async () => {
+  const previousKey = process.env.GEMINI_API_KEY;
+  process.env.GEMINI_API_KEY = "mock-only-key";
+  try {
+    let prompt = "";
+    const respond = configuredGeminiResponder(async (_url, options) => {
+      prompt = JSON.parse(String(options?.body)).systemInstruction.parts[0].text;
+      return new Response(JSON.stringify({candidates:[{finishReason:"STOP",content:{parts:[{text:"Яку справу хочете розпочати?"}]}}]}), {status:200});
+    });
+    assert(respond);
+    await respond({mode:"discovery",title:"Підбір",revision:0,profileRevision:0,details:{},items:[],total_kopecks:"0"}, "Гранти для студентів", new AbortController().signal);
+    assert.match(prompt, /фінансування бізнесу/);
+    assert.match(prompt, /Не визначай вік за статусом студента/);
+    assert.match(prompt, /особисте навчання поза сферою/);
+  } finally {
+    if (previousKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = previousKey;
+  }
+});
+
+
+test("unbound project sends no assumed program or source context", async () => {
+  const old = process.env.GEMINI_API_KEY;
+  process.env.GEMINI_API_KEY = "test-key";
+  let payload: any;
+  const stub = async (_url: unknown, options: any) => {
+    payload = JSON.parse(options.body);
+    return new Response(JSON.stringify({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: "Добре" }] } }] }));
+  };
+  try {
+    await configuredGeminiResponder(stub as any)!({ title: "Проєкт", program_id: null, revision: 0, profileRevision: 0, details: {}, items: [], total_kopecks: "0" }, "Порадь", new AbortController().signal);
+    const context = JSON.parse(payload.contents[0].parts[0].text);
+    assert.equal(context.targetProgram, null);
+    assert.equal(context.grantSourceContext, null);
+    assert.match(payload.systemInstruction.parts[0].text, /програму не обрано/);
+  } finally { if (old === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = old; }
 });
