@@ -39,3 +39,45 @@ User explicitly requests Astra as coordinator and agents using other models for 
 ## Delivery focus (2026-11-14)
 
 User prioritizes finishing the prototype over additional model/provider research. Use already verified Gemini Flash-Lite as initial integration candidate; no Claude API or additional gateway setup needed now. This supersedes Opus-first as immediate implementation priority, not as a quality benchmark result. No paid calls without concrete authorization. Record first test version scope/status in docs/STATUS.md.
+
+## Development tools: gstack, ECC, and Karpathy-inspired guidelines (2026-11-16)
+
+**Scope: GrantFolio only (`https://github.com/stashnid/GrantFolio`).** These settings and tool choices apply exclusively within this project. Do not modify global rules, user-level configs, or settings of other projects, Codex, or Claude Code.
+
+### 1. Karpathy-inspired principles (applied across all tasks)
+1. **Think Before Coding**: Understand requirements and acceptance criteria before writing code. State assumptions and tradeoffs explicitly. Stop when confused and ask for clarification rather than guessing.
+2. **Simplicity First**: Choose the simplest sufficient solution (KISS / YAGNI). No speculative generality, unrequested features, or single-use abstractions.
+3. **Surgical Changes**: Touch only what is necessary for the task. Clean up only your own orphans. Match existing style and preserve surrounding code.
+4. **Goal-Driven Execution**: Anchor changes to verifiable criteria (tests, typecheck, build, UI states). Use loop: brief plan → surgical implementation → verification.
+
+### 2. Task distribution
+
+| Area | Primary Toolkit | Skills & Usage |
+|---|---|---|
+| Product & feature scope | **gstack** | `/office-hours` (ideation, forcing questions), `/plan-ceo-review` (ambitious rethink) |
+| Architecture & UX planning | **gstack** | `/autoplan` (comprehensive architecture, edge cases, failure modes, tests), `/plan-design-review` (designer's eye UI review) |
+| Code review & diff inspection | **gstack** | `/review` (SQL safety, trust boundaries, side-effects) |
+| User journey & browser QA | **gstack** | `/qa` (browser testing & atomic bug fix), `/qa-only` (reproduction report) |
+| Frontend implementation | **ECC** | `frontend-patterns`, `react-patterns`, `react-testing`, `react-performance`, `accessibility`, `frontend-a11y`, `vite-patterns` |
+| Backend & API implementation | **ECC** | `backend-patterns`, `api-design`, `contract-first`, `typescript-patterns`, `coding-standards` |
+| Database & persistence | **ECC** | `postgres-patterns`, `database-migrations` |
+| AI integration | **ECC** | `agent-self-evaluation`, `loop-design-check`, `intent-driven-development` |
+| Testing & verification | **ECC** | `tdd-workflow`, `verification-loop`, `react-testing`, `e2e-testing` |
+| Security & trust boundaries | **ECC** | `security-review`, `security-scan`, `safety-guard` |
+
+*Note on upstream differences:*
+- Upstream gstack subsumed `plan-eng-review` into `autoplan`.
+- Upstream gstack retired `investigate`; for deep bug diagnosis, use a reproducible test + ECC testing/verification skills or the gstack `qa` loop.
+
+### 3. GrantFolio task playbooks
+- **Business profile, chat, catalog, donations/subscriptions**: ECC for implementation (components, state, API endpoints, schema); gstack for UX/user journey verification (`/qa`, `/plan-design-review`).
+- **Grants ingestion and updates**: gstack for architecture review if needed; ECC for connectors, deduplication, schedule, retries, and tests.
+- **Document bundle & export**: ECC for templates, data validation, and export logic; gstack for full user scenario verification.
+- **Bug fixing**: Reproduce → write reproduction check/test → surgical fix → verify (typecheck, tests, build).
+
+### 4. Workflow rules for future tasks
+- Select only the skills needed for the specific task.
+- Small fix: direct surgical fix + verification.
+- Large feature: brief plan → surgical implementation → verification.
+- Do not run duplicate planning processes or duplicate review pipelines.
+- Installed agent definitions do not mean running multiple agents unless explicitly warranted.

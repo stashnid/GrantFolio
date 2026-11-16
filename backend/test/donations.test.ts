@@ -128,3 +128,16 @@ test("donations API requires auth, isolates owners, validates amounts, and compu
   assert.ok(stats.totalKopecks >= 150000);
   assert.ok(stats.count >= 2);
 });
+
+// Regression: a lost response and retry must not duplicate a self-reported contribution.
+test("concurrent donation replays are idempotent and cannot reveal another owner's record", async () => {
+  const [a,b] = await Promise.all([signup(),signup()]);
+  const entry = { id: crypto.randomUUID(), amountKopecks: 100, target: "Synthetic contribution test", note: "Not an actual payment" };
+  const results = await Promise.all([call(a,entry),call(a,entry)]);
+  assert.deepEqual(results.map(r=>r.status).sort(),[200,201]);
+  for (const result of results) assert.equal((await result.json() as {donation:{id:string}}).donation.id,entry.id);
+  assert.equal((await (await call(a)).json() as {donations:unknown[]}).donations.length,1);
+  assert.equal((await call(a,{...entry,amountKopecks:200})).status,409);
+  assert.equal((await call(b,entry)).status,409);
+  assert.equal((await (await call(b)).json() as {donations:unknown[]}).donations.length,0);
+});

@@ -1,0 +1,15 @@
+# Передача поточного стану на GitHub — 17.11.2026
+
+- Запит користувача: «на гітхаб» після завершеного оновлення інтерфейсу.
+- Координатор: Sol; task branch `feat/conversation-workspace`, base `15a8346226f8071181f3479c1de8fa4375477f99`.
+- Перед публікацією: local status і свіжий `git ls-remote --heads origin` перевірено; relevant heads не змінилися. Наявні локальні/team зміни збережені. Remote `stashnid/GrantFolio`, private, default branch `main`; visibility не змінюється.
+- GitHub connector не бачить цього приватного repo; локальні Git/gh мають робочий доступ. Відкритого PR для поточної гілки до підготовки немає.
+- Scope: зберегти накопичену реалізацію, міграції009–014, тести, джерела/КВЕД, локальні шрифти з ліцензією, актуальні документи. Завантажені локальні `.agents/` інструменти не включені; `.env`, приватні auth-export/DB дані, node_modules, build і логи також не входять.
+- Локальна перевірка 135 кандидатів до додавання цього звіту: приблизно1.1MB; за вбудованими шаблонами секретів збігів0, несподіваних binary/великих файлів0. Це перевірка обмеженим набором правил, не універсальна гарантія відсутності секретів. Файл списку й audit script залишені в `/private/tmp/`.
+- Перевірки коду з фінальної інтеграції: 66/66 tests, typecheck/build, Chrome desktop/mobile, новий flow та recovery regression PASS. Після них змінюються тільки записи передачі. [Поточна реалізація й фактичні межі](2026-11-16-modern-chat-integration.md).
+- Публікація: окрема гілка й pull request до main; без автоматичного merge, deployment, live AI або billing changes. Факт прийнятого remote commit і стан GitHub checks перевіряється після push.
+
+
+## Результат публікації
+
+GitHub прийняв commit `d98bba8ee841ab019138d897f581ff238485b16f` у [feat/conversation-workspace](https://github.com/stashnid/GrantFolio/tree/feat/conversation-workspace); свіжий `ls-remote` підтвердив збіг SHA. Відкрито [PR №3](https://github.com/stashnid/GrantFolio/pull/3) до `main`, без merge. GitHub Actions запустив перевірки; на момент запису вони ще виконуються, тому remote PASS не заявляється. Локальні66 tests/typecheck/build/browser QA мають PASS у попередньому інтеграційному звіті. Цей запис результату передається окремим документаційним комітом.

@@ -1,3 +1,4 @@
+import {GRANT_CATALOG} from "./grant-catalog-data.js";
 import { Router } from "express";
 import type { Pool } from "pg";
 import { randomUUID } from "node:crypto";
@@ -8,30 +9,28 @@ import { draftExport } from "./draft-export.js";
 import { assistantRouter } from "./assistant.js";
 import { configuredGeminiResponder } from "./gemini.js";
 const idSchema = z.string().uuid();
-const ALLOWED_PROGRAMS = [
-  "vlasna-sprava",
-  "veteran-grant",
-  "processing-business",
-  "agro-gardens",
-] as const;
+const ALLOWED_PROGRAMS = GRANT_CATALOG.map(p=>p.id) as [string,...string[]];
 
 const createCaseSchema = z
   .object({
+    id: idSchema.optional(),
     title: z.string().trim().min(1).max(160),
-    programId: z.enum(ALLOWED_PROGRAMS).optional().default("vlasna-sprava"),
+    initialDescription: z.string().trim().max(2000).optional(),
+    programId: z.enum(ALLOWED_PROGRAMS).nullable().optional().default(null),
   })
   .strict();
 
 const updateProgramSchema = z
   .object({
-    programId: z.enum(ALLOWED_PROGRAMS),
+    programId: z.enum(ALLOWED_PROGRAMS).nullable(),
+    expectedRevision: z.number().int().min(0).max(2147483646),
   })
   .strict();
 
 type CaseRow = {
   id: string;
   title: string;
-  program_id?: string;
+  program_id: string | null;
   revision: number;
   items: unknown;
   total_kopecks: string;
@@ -41,7 +40,7 @@ function view(row: CaseRow) {
   return {
     id: row.id,
     title: row.title,
-    programId: row.program_id ?? "vlasna-sprava",
+    programId: row.program_id ?? null,
     revision: row.revision,
     items: row.items,
     details: row.details,
@@ -73,11 +72,20 @@ export function casesRouter(db: Pool) {
       return;
     }
     try {
+      const id = parsed.data.id ?? randomUUID();
       const result = await db.query(
-        "INSERT INTO cases(id,owner_id,title,program_id) VALUES($1,$2,$3,$4) RETURNING *",
-        [randomUUID(), res.locals.uid, parsed.data.title, parsed.data.programId],
+        "INSERT INTO cases(id,owner_id,title,program_id,details) VALUES($1,$2,$3,$4,$5::jsonb) ON CONFLICT (id) DO NOTHING RETURNING *",
+        [id, res.locals.uid, parsed.data.title, parsed.data.programId, JSON.stringify({projectDescription:parsed.data.initialDescription ?? "",customers:"",salesChannels:"",implementationPlan:"",expectedResults:""})],
       );
-      res.status(201).json({ case: view(result.rows[0]) });
+      let row = result.rows[0];
+      if (!row) {
+        const previous = await db.query("SELECT * FROM cases WHERE id=$1 AND owner_id=$2", [id, res.locals.uid]);
+        row = previous.rows[0];
+        if (!row || row.title !== parsed.data.title || row.program_id !== parsed.data.programId) {
+          res.status(409).json({ error: "creation_conflict" }); return;
+        }
+      }
+      res.status(result.rowCount ? 201 : 200).json({ case: view(row) });
     } catch (e) {
       next(e);
     }
@@ -92,18 +100,36 @@ export function casesRouter(db: Pool) {
       res.status(400).json({ error: "invalid_program" });
       return;
     }
+    const client = await db.connect().catch(next);
+    if (!client) return;
     try {
-      const result = await db.query(
-        "UPDATE cases SET program_id=$1 WHERE id=$2 AND owner_id=$3 RETURNING *",
-        [parsed.data.programId, req.params.id, res.locals.uid],
+      await client.query("BEGIN");
+      const result = await client.query(
+        "SELECT * FROM cases WHERE id=$1 AND owner_id=$2 FOR UPDATE",
+        [req.params.id, res.locals.uid],
       );
       if (!result.rowCount) {
+        await client.query("ROLLBACK");
         res.status(404).json({ error: "not_found" });
         return;
       }
-      res.json({ case: view(result.rows[0]) });
+      const current = result.rows[0];
+      if (current.revision !== parsed.data.expectedRevision) {
+        await client.query("ROLLBACK");
+        res.status(409).json({ error: "revision_conflict" });
+        return;
+      }
+      const updated = current.program_id === parsed.data.programId ? result : await client.query(
+        "UPDATE cases SET program_id=$1, revision=revision+1 WHERE id=$2 AND owner_id=$3 RETURNING *",
+        [parsed.data.programId, req.params.id, res.locals.uid],
+      );
+      await client.query("COMMIT");
+      res.json({ case: view(updated.rows[0]) });
     } catch (e) {
+      await client.query("ROLLBACK");
       next(e);
+    } finally {
+      client.release();
     }
   });
   router.get("/:id", async (req, res, next) => {

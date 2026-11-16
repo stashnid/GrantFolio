@@ -1,29 +1,41 @@
-/** Curated official-page observations, not a grant eligibility rules engine. */
-export const grantSourceContext = {
-  program: "Власна справа",
-  checkedAt: "2026-11-15",
-  currentRoundOpen: null,
-  eligibilityRulesReviewed: false,
-  officialFormReviewed: false,
-  sources: [
-    {
-      url: "https://diia.gov.ua/services/zapochatkuvannia-ta-masshtabuvannia-vlasnoi-spravy/",
-      title: "Започаткування та масштабування власної справи — Дія",
+import { isGrantAvailable } from "./grant-availability.js";
+import { GRANT_CATALOG } from "./grant-catalog-data.js";
+
+/** Curated observations, not verified eligibility rules or an official form. */
+export function getGrantSourceContext(
+  programId = "vlasna-sprava",
+  now = new Date(),
+) {
+  const program =
+    GRANT_CATALOG.find((item) => item.id === programId) ?? GRANT_CATALOG[0];
+  return {
+    program: program.title,
+    checkedAt: program.checkedAt,
+    currentRoundOpen: isGrantAvailable(program, now),
+    intakeVerification: program.availability ?? null,
+    eligibilityRulesReviewed: false,
+    officialFormReviewed: false,
+    sources: program.details.sources.map((item) => ({
+      ...item,
       observations: [
-        "На офіційній сторінці наведено до 500 тис. грн для старту та до 2,5 млн грн для масштабування. Це опис напрямів, а не підтвердження права конкретного заявника.",
-        "На перевіреній сторінці зазначено завершення етапу 27.10.2026. Чинний відкритий прийом не підтверджено.",
-        "Онлайн-подання передбачає вхід до кабінету Дії, заповнення заявки, додавання бізнес-плану за формою у PDF і підписання електронним підписом.",
-        "Офіційна сторінка містить посилання на приклад бізнес-плану. Вміст форми ще не звірено; TXT-чернетка GrantFolio не замінює цю форму.",
-        "Серед напрямів витрат на сторінці наведено обладнання, оренду приміщень, цифровізацію, маркетинг та облаштування робочих місць. Дозволеність конкретної витрати потребує перевірки повних чинних правил.",
+        program.amount,
+        `${isGrantAvailable(program, now) ? "Поточний" : "Останній відомий"} дедлайн: ${program.availability?.deadlineAt ?? (program.availability?.rolling ? "постійний прийом" : "невідомий")}`,
+        ...program.details.documents,
+        ...program.details.costs,
+        ...program.details.unresolved,
       ],
-    },
-  ],
-} as const;
+    })),
+  };
+}
+export const grantSourceContext = getGrantSourceContext();
 
 export type ProgramDetails = {
   id: string;
   title: string;
   provider: string;
+  documents: string[];
+  steps: string[];
+  /** Display/planning reference only; zero means no verified numerical reference. Never an eligibility cap. */
   maxAmountKopecks: number;
   amountLabel: string;
   jobRequirement: string;
@@ -33,89 +45,61 @@ export type ProgramDetails = {
   notes: string[];
 };
 
-export const SUPPORTED_PROGRAMS: Record<string, ProgramDetails> = {
-  "vlasna-sprava": {
-    id: "vlasna-sprava",
-    title: "Власна справа",
-    provider: "Дія / Державний центр зайнятості",
-    maxAmountKopecks: 25000000, // 250 000 грн (до 500 тис. грн у спецзонах)
-    amountLabel: "до 250 000 грн (до 500 000 грн для прифронтових територій)",
-    jobRequirement: "1 робоче місце для суми до 150 000 грн, 2 робочих місця для суми до 250 000 грн",
-    coFinancing: "100% грант (без обов'язкового власного співфінансування)",
-    allowedCosts: [
-      "Придбання обладнання та техніки для бізнесу",
-      "Оренда приміщення (не більше 25% від суми гранту)",
-      "Закупівля сировини та матеріалів (не більше 50% від суми гранту)",
-      "Маркетинг та реклама (не більше 10% від суми гранту)",
-      "Лізинг обладнання, послуги зв'язку та ПРРО",
-    ],
-    officialUrl: "https://diia.gov.ua/services/zapochatkuvannia-ta-masshtabuvannia-vlasnoi-spravy",
-    notes: [
-      "Потрібно створити робочі місця протягом 6 місяців з дня отримання коштів.",
-      "Повернення коштів відбувається через сплату податків та ЄСВ протягом 3 років.",
-    ],
-  },
-  "veteran-grant": {
-    id: "veteran-grant",
-    title: "Грант для ветеранів та членів їхніх сімей",
-    provider: "е-Ветеран / Дія / Державний центр зайнятості",
-    maxAmountKopecks: 100000000, // 1 000 000 грн
-    amountLabel: "до 250 000 грн, 500 000 грн або 1 000 000 грн",
-    jobRequirement: "1 місце (до 250 тис.), 2 місця (до 500 тис.), 4 місця (до 1 млн грн)",
-    coFinancing: "До 250 тис. — 100% грант; від 500 тис. до 1 млн — 70% грант / 30% власні кошти",
-    allowedCosts: [
-      "Придбання виробничого та технологічного обладнання",
-      "Оренда приміщень та земельних ділянок (до 25%)",
-      "Придбання сировини, матеріалів, комплектуючих",
-      "Маркетинг, реклама та створення веб-сайту (до 10%)",
-      "Придбання ліцензійного програмного забезпечення",
-      "Франшиза",
-    ],
-    officialUrl: "https://eveteran.gov.ua/benefits/yerobota-grant-dlya-veteraniv-ta-chleniv-yihnih-simej-dlya-stvorennya-abo-rozvitku-veteranskogo-biznesu",
-    notes: [
-      "Учасники бойових дій або особи з інвалідністю внаслідок війни, а також їхні дружини/чоловіки.",
-      "Для гранту на 1 млн грн необхідна реєстрація ФОП не менше 36 місяців до моменту подачі.",
-    ],
-  },
-  "processing-business": {
-    id: "processing-business",
-    title: "Грант на переробне підприємство",
-    provider: "Дія / Міністерство економіки України",
-    maxAmountKopecks: 800000000, // 8 000 000 грн
-    amountLabel: "до 8 000 000 грн (до 16 млн грн для відновлення)",
-    jobRequirement: "Створення щонайменше 5-25 робочих місць залежно від суми",
-    coFinancing: "50% грант / 50% власні кошти (або 70/30 для деокупованих територій)",
-    allowedCosts: [
-      "Придбання основних виробничих засобів (верстати, лінії, конвеєри)",
-      "Доставка та введення в експлуатацію виробничого обладнання",
-    ],
-    officialUrl: "https://diia.gov.ua/services/grant-na-pererobne-pidpriyemstvo",
-    notes: [
-      "Лише переробне виробництво (КВЕД секції С: харчова, деревообробна, меблева, металообробка тощо).",
-      "Суворе цільове використання коштів тільки на виробничі активи.",
-    ],
-  },
-  "agro-gardens": {
-    id: "agro-gardens",
-    title: "Грант на сад, ягідник або виноградник",
-    provider: "Дія / Мінагрополітики",
-    maxAmountKopecks: 1000000000, // 10 000 000 грн
-    amountLabel: "до 400 000 грн за 1 гектар (до 10 млн грн сумарно)",
-    jobRequirement: "Постійні працівники (від 5-10 осіб) та сезонні робітники",
-    coFinancing: "70% грант / 30% власні кошти",
-    allowedCosts: [
-      "Придбання саджанців та посадкового матеріалу",
-      "Встановлення систем крапельного зрошення та поливу",
-      "Встановлення шпалер та опорних конструкцій",
-    ],
-    officialUrl: "https://diia.gov.ua/services/grant-na-sad",
-    notes: [
-      "Обов'язкова наявність затвердженого проєкту висадки насаджень від сертифікованого розробника.",
-      "Наявність права власності або користування землею щонайменше на 7 років.",
-    ],
-  },
-};
+/** Kept for chat compatibility; derived from the same catalog displayed to users. */
+export const SUPPORTED_PROGRAMS: Record<string, ProgramDetails> =
+  Object.fromEntries(
+    GRANT_CATALOG.map((program) => [
+      program.id,
+      {
+        id: program.id,
+        title: program.title,
+        provider: program.provider,
+        documents: program.details.documents,
+        steps: program.details.steps,
+        maxAmountKopecks: program.planningLimitKopecks ?? 0,
+        amountLabel: program.amount,
+        jobRequirement: program.details.obligations.join(" "),
+        coFinancing: program.details.funding.join(" "),
+        allowedCosts: program.details.costs,
+        officialUrl: program.officialUrl,
+        notes: [
+          `Статус прийому: ${program.intakeStatus}; перевірено ${program.checkedAt}. ${program.deadline}`,
+          ...program.details.eligibility,
+          ...program.details.exclusions,
+          ...program.details.documents,
+          ...program.details.steps,
+          ...program.details.timing,
+          ...program.details.pitfalls,
+          ...program.details.unresolved,
+          "Суми є довідковими, а не автоматичним рішенням про право на грант.",
+        ],
+      },
+    ]),
+  );
 
 export function getProgramDetails(programId: string): ProgramDetails {
-  return SUPPORTED_PROGRAMS[programId] ?? SUPPORTED_PROGRAMS["vlasna-sprava"];
+  const p = GRANT_CATALOG.find((p) => p.id === programId) ?? GRANT_CATALOG[0];
+  return {
+    ...SUPPORTED_PROGRAMS[p.id],
+    id: p.id,
+    title: p.title,
+    provider: p.provider,
+    documents: p.details.documents,
+    steps: p.details.steps,
+    maxAmountKopecks: p.planningLimitKopecks ?? 0,
+    amountLabel: p.amount,
+    jobRequirement: p.details.obligations.join(" "),
+    coFinancing: p.details.funding.join(" "),
+    allowedCosts: p.details.costs,
+    officialUrl: p.officialUrl,
+    notes: [
+      ...p.details.eligibility,
+      ...p.details.exclusions,
+      ...p.details.timing,
+      ...p.details.pitfalls,
+      ...p.details.unresolved,
+      `Прийом зараз: ${isGrantAvailable(p) ? "відкрито за перевіреним джерелом" : "не підтверджено як відкритий"}. Дедлайн: ${p.availability?.deadlineAt ?? (p.availability?.rolling ? "постійний прийом" : "невідомий")}.`,
+      `Сума програми: ${p.amount}. Робочий кошторис у GrantFolio — у гривнях; автоматичної конвертації валют немає.`,
+    ],
+  };
 }

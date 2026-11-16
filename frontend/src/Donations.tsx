@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import type { User } from "firebase/auth";
+import { ApiError, authenticatedRequest, readableApiError } from "./api";
 
 type DonationItem = {
   id: string;
@@ -37,13 +38,6 @@ const TARGET_OPTIONS = [
     url: "https://prytulafoundation.org/donation",
     official: "Офіційний фонд",
   },
-  {
-    id: "grantfolio",
-    name: "Підтримка розвитку GrantFolio",
-    desc: "Підтримка сервера, API моделей та розробки нових інструментів для українського бізнесу",
-    url: "https://send.monobank.ua/",
-    official: "Проєкт GrantFolio",
-  },
 ];
 
 const PRESET_AMOUNTS = [100, 250, 500, 1000, 2500];
@@ -59,30 +53,26 @@ export function Donations({ user }: { user: User }) {
   const [note, setNote] = useState<string>("");
   const [message, setMessage] = useState<string>("");
   const [error, setError] = useState<string>("");
+  const [loadError, setLoadError] = useState("");
+  const submission = useRef<{ body: string; id: string } | null>(null);
 
   const effectiveAmountUah = customAmount.trim() ? parseFloat(customAmount) : selectedAmount;
 
   async function loadData() {
+    setLoading(true);
+    setLoadError("");
     try {
-      const token = await user.getIdToken();
       const [resStats, resList] = await Promise.all([
-        fetch("/api/donations/stats", {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
-        fetch("/api/donations", {
-          headers: { Authorization: `Bearer ${token}` },
-        }),
+        authenticatedRequest(user, "/api/donations/stats"),
+        authenticatedRequest(user, "/api/donations"),
       ]);
-
-      if (resStats.ok) {
-        setStats(await resStats.json());
-      }
-      if (resList.ok) {
-        const body = await resList.json();
-        setHistory(body.donations ?? []);
-      }
-    } catch {
-      setError("Не вдалося завантажити статистику внесків.");
+      if (!resStats.ok) throw new ApiError("http", resStats.status);
+      if (!resList.ok) throw new ApiError("http", resList.status);
+      const [nextStats, nextHistory] = await Promise.all([resStats.json(), resList.json()]);
+      setStats(nextStats);
+      setHistory(nextHistory.donations ?? []);
+    } catch (error) {
+      setLoadError(readableApiError(error, "Не вдалося завантажити внески. Спробуйте ще раз."));
     } finally {
       setLoading(false);
     }
@@ -98,37 +88,32 @@ export function Donations({ user }: { user: User }) {
       setError("Вкажіть коректну суму внеску (від 1 грн).");
       return;
     }
+    if (submitting) return;
     const amountKopecks = Math.round(effectiveAmountUah * 100);
+    const body = JSON.stringify({ amountKopecks, target: selectedTarget, note: note.trim(), status: "completed" });
+    if (!submission.current || submission.current.body !== body) submission.current = { body, id: crypto.randomUUID() };
     setSubmitting(true);
     setError("");
     setMessage("");
 
     try {
-      const token = await user.getIdToken();
-      const res = await fetch("/api/donations", {
+      const response = await authenticatedRequest(user, "/api/donations", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({
-          amountKopecks,
-          target: selectedTarget,
-          note: note.trim(),
-          status: "completed",
-        }),
+        body: JSON.stringify({ ...JSON.parse(body), id: submission.current.id }),
       });
 
-      if (!res.ok) {
-        throw new Error("Failed to record donation");
-      }
+      if (!response.ok) throw new ApiError("http", response.status);
 
-      setMessage("💙💛 Дякуємо за ваш внесок! Запис успішно збережено у звіті проєкту.");
+      submission.current = null;
+      setMessage("Ваш запис збережено. Це повідомлення про внесок, а не підтвердження платежу фондом.");
       setNote("");
       setCustomAmount("");
       await loadData();
-    } catch {
-      setError("Не вдалося зафіксувати внесок. Спробуйте ще раз.");
+    } catch (error) {
+      setError(readableApiError(error, "Не вдалося підтвердити запис. Можна повторити без дублювання внеску."));
     } finally {
       setSubmitting(false);
     }
@@ -143,22 +128,25 @@ export function Donations({ user }: { user: User }) {
         <span>✳</span>
       </div>
 
-      <h2>Підтримка сил оборони та розвитку проєкту</h2>
+      <h2>Підтримка сил оборони</h2>
       <p className="donation-lead">
-        Кожен підприємець сьогодні — це надійний тил. Ви можете зробити благодійний внесок до перевірених фондів на підтримку ЗСУ або підтримати розробку відкритого копілота GrantFolio.
+        Ви можете зробити благодійний внесок на підтримку ЗСУ на офіційних сайтах фондів і повідомити про нього тут.
       </p>
 
+      {loading && <p role="status">Завантаження внесків…</p>}
+      {loadError && <div><p className="error" role="alert">{loadError}</p><button type="button" className="link" disabled={loading} onClick={() => void loadData()}>Повторити завантаження внесків</button></div>}
+      <p className="hint">Записи додають самі користувачі. GrantFolio не проводить і не перевіряє платежі. Зберігайте квитанцію фонду окремо.</p>
       {/* Aggregate Stats */}
       {stats && (
         <div className="donation-stats-row">
           <div className="donation-stat-box">
-            <span className="stat-label">Зібрано та зафіксовано спільнотою:</span>
+            <span className="stat-label">Сума внесків, про які повідомили користувачі:</span>
             <span className="stat-value">
               {Math.floor(stats.totalKopecks / 100).toLocaleString("uk-UA")} грн
             </span>
           </div>
           <div className="donation-stat-box">
-            <span className="stat-label">Кількість внесків підприємців:</span>
+            <span className="stat-label">Кількість повідомлень про внески:</span>
             <span className="stat-value">{stats.count}</span>
           </div>
         </div>
@@ -172,10 +160,9 @@ export function Donations({ user }: { user: User }) {
             <div
               key={target.id}
               className={`target-card ${selectedTarget === target.name ? "selected" : ""}`}
-              onClick={() => setSelectedTarget(target.name)}
             >
               <div className="target-card-header">
-                <strong>{target.name}</strong>
+                <button type="button" className="link" aria-pressed={selectedTarget === target.name} disabled={submitting} onClick={() => setSelectedTarget(target.name)}>{target.name}</button>
                 <span className="target-badge">{target.official}</span>
               </div>
               <p className="target-desc">{target.desc}</p>
@@ -184,7 +171,6 @@ export function Donations({ user }: { user: User }) {
                 target="_blank"
                 rel="noreferrer"
                 className="target-link"
-                onClick={(e) => e.stopPropagation()}
               >
                 Перейти на офіційну сторінку оплати ↗
               </a>
@@ -197,13 +183,14 @@ export function Donations({ user }: { user: User }) {
       <form onSubmit={handleRecordDonation} className="donation-form">
         <h3>2. Вкажіть суму та зафіксуйте свій внесок</h3>
         <p className="hint">
-          Зробіть платіж на офіційному сайті фонду та зафіксуйте його тут для обліку реальної участі та оцінки готовності платити.
+          Зробіть платіж на офіційному сайті фонду та зафіксуйте його тут як власне повідомлення про внесок. Не додавайте повні реквізити чи інші приватні дані.
         </p>
 
         <div className="amount-chips">
           {PRESET_AMOUNTS.map((amt) => (
             <button
               type="button"
+              disabled={submitting}
               key={amt}
               className={`amount-chip ${selectedAmount === amt && !customAmount ? "active" : ""}`}
               onClick={() => {
@@ -220,8 +207,10 @@ export function Donations({ user }: { user: User }) {
           Або введіть довільну суму (грн)
           <input
             type="number"
+            disabled={submitting}
             min="1"
-            step="1"
+            max="100000000"
+            step="0.01"
             placeholder="Наприклад: 300"
             value={customAmount}
             onChange={(e) => setCustomAmount(e.target.value)}
@@ -232,6 +221,7 @@ export function Donations({ user }: { user: User }) {
           Коментар або номер квитанції / деталі (за бажанням)
           <input
             maxLength={500}
+            disabled={submitting}
             placeholder="Наприклад: внесок на дрони, квитанція №..."
             value={note}
             onChange={(e) => setNote(e.target.value)}

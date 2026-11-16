@@ -15,7 +15,9 @@
     "migrate": "node --env-file-if-exists=.env --import tsx backend/src/migrate.ts",
     "start": "node --env-file-if-exists=.env backend/dist/server.js",
     "test": "node --env-file-if-exists=.env --import tsx --test backend/test/*.test.ts",
-    "migrate:prod": "node backend/dist/migrate.js"
+    "migrate:prod": "node backend/dist/migrate.js",
+    "test:auth-persistence": "node scripts/test-auth-persistence.mjs",
+    "grants:refresh": "node --env-file-if-exists=.env --import tsx backend/src/grant-sync-cli.ts"
   },
   "dependencies": {
     "express": "5.1.0",

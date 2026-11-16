@@ -3,4 +3,4 @@ RUN apt-get update && apt-get install -y --no-install-recommends openjdk-17-jre-
 RUN npm install --global firebase-tools@14.22.0
 WORKDIR /workspace
 COPY firebase.json ./
-CMD ["firebase", "emulators:start", "--only", "auth", "--project", "demo-grantfolio"]
+CMD ["firebase", "emulators:start", "--only", "auth", "--project", "demo-grantfolio", "--import", "/var/lib/grantfolio-auth/export", "--export-on-exit", "/var/lib/grantfolio-auth/export"]

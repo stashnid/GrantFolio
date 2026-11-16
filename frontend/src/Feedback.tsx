@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import type { User } from "firebase/auth";
+import { ApiError, authenticatedRequest, readableApiError } from "./api";
 
 const TASKS = [
   { value: "profile", label: "Профіль бізнесу" },
@@ -53,11 +54,10 @@ export function Feedback({ user }: { user: User }) {
     const currentContent = `${rating}|${task}|${comment.trim()}`;
 
     try {
-      const response = await fetch("/api/feedback", {
+      const response = await authenticatedRequest(user, "/api/feedback", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${await user.getIdToken()}`,
         },
         body: JSON.stringify({
           id: feedbackId,
@@ -67,17 +67,15 @@ export function Feedback({ user }: { user: User }) {
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("server_error");
-      }
+      if (!response.ok) throw new ApiError("http", response.status);
 
       setLastSubmittedContent(currentContent);
       setSuccess("Дякуємо! Ваш відгук успішно збережено.");
       setComment("");
       setFeedbackId(crypto.randomUUID());
       setLastSubmittedContent("");
-    } catch {
-      setError("Не вдалося надіслати відгук. Спробуйте ще раз.");
+    } catch (error) {
+      setError(readableApiError(error, "Не вдалося надіслати відгук. Спробуйте ще раз."));
       setLastSubmittedContent(currentContent);
     } finally {
       setBusy(false);

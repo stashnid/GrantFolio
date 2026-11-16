@@ -1,0 +1,308 @@
+/* The application shell styles its header globally; catalog headers are content. */
+.grant-catalog header {
+  position: static;
+  height: auto;
+  display: block;
+  padding: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
+  border: 0;
+}
+.grant-catalog .grant-page-header {
+  border-bottom: 1px solid #d5ded6;
+  padding-bottom: 25px;
+}
+.grant-catalog {
+  max-width: 1050px;
+  margin: 0 auto;
+  color: #202b25;
+}
+.grant-list-header h2,
+.grant-page h2 {
+  font-size: clamp(1.8rem, 3vw, 2.5rem);
+  line-height: 1.15;
+  margin: 0 0 12px;
+}
+.grant-list-header > p {
+  color: #56645a;
+  max-width: 650px;
+}
+.grant-search-label {
+  display: block;
+  max-width: 560px;
+  font-weight: 600;
+  margin-top: 26px;
+}
+.grant-search-label input {
+  margin-top: 8px;
+}
+.grant-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 18px 0;
+}
+.grant-filters button {
+  border: 1px solid #cbd6cc;
+  border-radius: 6px;
+  background: white;
+  color: #34483a;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+.grant-filters button[aria-pressed="true"] {
+  background: #dcebdc;
+  border-color: #699471;
+  color: #173d23;
+}
+.grant-count {
+  color: #59685d;
+  font-size: 0.9rem;
+  margin: 28px 0 8px;
+}
+.grant-list {
+  border-top: 1px solid #d5ded6;
+}
+.grant-list-item {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, 260px);
+  gap: 28px;
+  padding: 24px 0;
+  border-bottom: 1px solid #d5ded6;
+}
+.grant-list-item h3 {
+  font-size: 1.2rem;
+  margin: 7px 0;
+}
+.grant-list-item p {
+  margin: 8px 0;
+}
+.grant-category {
+  color: #506b55;
+  font-size: 0.88rem;
+  font-weight: 600;
+}
+.grant-status {
+  color: #58665b;
+  font-size: 0.9rem;
+}
+.grant-list-action {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 18px;
+}
+.grant-list-action button,
+.catalog-back {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  color: #1a6034;
+  font-weight: 700;
+  cursor: pointer;
+  text-align: left;
+}
+.grant-list-action button span {
+  margin-left: 6px;
+}
+.grant-page nav {
+  color: #68766a;
+  font-size: 0.9rem;
+  margin-bottom: 30px;
+}
+.grant-page-header {
+  border-bottom: 1px solid #d5ded6;
+  padding-bottom: 25px;
+}
+.grant-page-header h2:focus {
+  outline: none;
+}
+.grant-page-amount {
+  font-size: 1.25rem;
+  font-weight: 700;
+}
+.grant-prepare {
+  width: auto;
+  margin-top: 12px;
+}
+.grant-action-note {
+  max-width: 620px;
+  color: #59685d;
+  font-size: 0.9rem;
+}
+.grant-content {
+  max-width: 800px;
+}
+.grant-content section {
+  padding: 20px 0;
+  border-bottom: 1px solid #e1e7e1;
+}
+.grant-content h3,
+.grant-bottom-action h3 {
+  margin: 0 0 10px;
+  font-size: 1.12rem;
+}
+.grant-content h4 {
+  margin-bottom: 6px;
+}
+.grant-content p,
+.grant-content ul {
+  margin: 0;
+  line-height: 1.6;
+}
+.grant-content li + li {
+  margin-top: 7px;
+}
+.grant-content a {
+  color: #1a6034;
+}
+.grant-content li span {
+  color: #68766a;
+  font-size: 0.9rem;
+}
+.grant-bottom-action {
+  padding: 26px 0;
+}
+.grant-bottom-action p {
+  margin: 0;
+}
+.grant-catalog button:focus-visible,
+.grant-catalog a:focus-visible,
+.grant-catalog input:focus-visible {
+  outline: 3px solid #66a875;
+  outline-offset: 3px;
+}
+@media (max-width: 640px) {
+  .grant-list-item {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+  .grant-list-action {
+    gap: 12px;
+  }
+  .grant-page nav {
+    margin-bottom: 22px;
+  }
+}
+
+.grant-catalog {
+  padding: 28px 24px 48px;
+}
+.grant-content ul {
+  padding-left: 22px;
+}
+.grant-page nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+@media (max-width: 640px) {
+  .grant-catalog {
+    padding: 20px 16px 32px;
+  }
+  .grant-prepare {
+    max-width: 100%;
+  }
+}
+
+.grant-page .grant-section-index {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+  margin: 20px 0 0;
+}
+.grant-section-index button {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: #1a6034;
+  font: inherit;
+  text-align: left;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.grant-content h3[id] {
+  scroll-margin-top: 16px;
+}
+
+.grant-official-name {
+  font-size: 12px;
+  color: #778078;
+  line-height: 1.5;
+}
+.grant-search-help {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 12px 0 20px;
+}
+.grant-search-help button {
+  background: #f0f5ef;
+  border: 1px solid #dde7dc;
+  border-radius: 20px;
+  padding: 8px 12px;
+  color: #37513d;
+  font-size: 13px;
+}
+.grant-query-explanation {
+  padding: 14px 16px;
+  background: #f7f9f5;
+  border-radius: 8px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+.grant-match-reason {
+  padding: 14px;
+  border-left: 3px solid #7f9e7c;
+  background: #f8faf6;
+  margin-top: 14px;
+  font-size: 13px;
+}
+.grant-match-reason small {
+  display: block;
+  line-height: 1.6;
+  color: #786749;
+}
+.grant-match-reason a {
+  display: inline-block;
+  margin-top: 8px;
+  font-size: 12px;
+  color: #28583b;
+}
+
+.catalog-discuss {
+  border: 1px solid #699471;
+  border-radius: 6px;
+  background: white;
+  color: #1a6034;
+  padding: 10px 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.grant-deadline {
+  font-size: 0.9rem;
+  color: #34483a;
+}
+.grant-deadline-urgent {
+  background: #fff0c5;
+  color: #784200;
+  border-radius: 6px;
+  padding: 8px 10px;
+  font-weight: 700;
+}
+.grant-status a {
+  color: #1a6034;
+}
+
+.catalog-search-form { max-width:760px; margin-top:20px; }
+.catalog-search-form .grant-search-label { display:block; margin-bottom:8px; font-weight:600; }
+.catalog-search-controls { display:flex; align-items:stretch; gap:8px; }
+.catalog-search-controls input { flex:1; min-width:0; }
+.catalog-search-controls button { padding:10px 16px; border-radius:7px; font:inherit; cursor:pointer; }
+.catalog-search-submit { background:#315b43; color:#fff; border:1px solid #315b43; }
+.catalog-clear { background:#fff; color:#315b43; border:1px solid #b8cbbb; }
+.catalog-search-form>p { margin:8px 0 0; color:#6d7970; font-size:12px; }
+@media(max-width:520px) { .catalog-search-controls { flex-wrap:wrap; } .catalog-search-controls input { flex-basis:100%; } }

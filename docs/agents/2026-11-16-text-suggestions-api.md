@@ -1,0 +1,7 @@
+# Text suggestions API — 16.11.2026
+
+- Branch `feat/conversation-workspace`, base `15a8346226f8071181f3479c1de8fa4375477f99`. Owned backend assistant and Gemini adapter, `draft-suggestions.ts`, `draft-suggestions.test.ts`, this report. Existing shared changes preserved; frontend integration is coordinated separately.
+- POST and history derive the same human reply and optional `suggestions` from the raw stored response. Exactly one valid marked JSON block is accepted; fields are restricted to the five case text fields and each value is a trimmed string of 1–3000 characters. Unknown keys, invalid JSON, empty text, oversized values, multiple blocks and incomplete or nested blocks yield no suggestions. Marked blocks are hidden even on invalid output. Database replies are not rewritten; conversation context uses cleaned human text.
+- Project system instruction asks for structured proposals only when requested, to use supplied facts and ask for unknowns. Discovery instructions were not changed. Proposed content remains untrusted and is not applied automatically.
+- Checks: backend TypeScript passed; mocked assistant, suggestion parser and Gemini adapter tests 15/15 passed. Separate nested malformed-output test passed. No live model calls.
+- Limits: structured output is model-dependent; malformed output produces no suggestion. Validation checks shape and size, not factual accuracy; the user must review text before applying it. Existing stale and revision checks remain authoritative.

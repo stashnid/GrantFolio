@@ -25,4 +25,4 @@ coverage/
 .firebase/
 
 # Project-local downloaded agent tools
-/.agents/skills/
+/.agents/

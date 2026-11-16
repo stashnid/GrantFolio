@@ -5,12 +5,13 @@ import type { Pool } from "pg";
 import { assistantRouter, type AssistantResponder } from "../src/assistant.js";
 
 const id = "7e4b2e29-5b26-42dd-b21d-9ec2be62b4f2";
-async function setup(responder?: AssistantResponder, timeout = 100, failSave = false) {
+async function setup(responder?: AssistantResponder, timeout = 100, failSave = false, history: { question: string; reply: string; revision: number; profile_revision: number | null }[] = []) {
   let revision = 1;
   const db = { query: async (sql: string, values: string[]) => {
-    if (sql.startsWith("SELECT question, reply, revision FROM assistant_exchanges")) return { rowCount: 0, rows: [] };
+    if (sql.startsWith("SELECT business_name")) return { rowCount: 1, rows: [{ businessName: "Business", description: "Description", region: "Kyiv", revision: 1, details: { contactName: "Private", phone: "Private", website: "https://example.com", city: "Kyiv" } }] };
+    if (sql.startsWith("SELECT question, reply, revision, profile_revision FROM assistant_exchanges")) return { rowCount: history.length, rows: [...history] };
     if (sql.startsWith("WITH inserted") && failSave) throw new Error("database details");
-    if (sql.startsWith("WITH inserted")) return { rowCount: 1, rows: [{ id: values[0], question: values[3], reply: values[4], revision: values[5], created_at: "2026-11-14T00:00:00.000Z", current_revision: revision }] };
+    if (sql.startsWith("WITH inserted")) return { rowCount: 1, rows: [{ id: values[0], question: values[3], reply: values[4], revision: values[5], profile_revision: values[6], current_profile_revision: 1, created_at: "2026-11-14T00:00:00.000Z", current_revision: revision }] };
     if (values[0] !== id || values[1] !== "owner") return { rowCount: 0, rows: [] };
     return { rowCount: 1, rows: [sql.startsWith("SELECT revision") ? { revision } : { title: "Проєкт", revision, details: {}, items: [], total_kopecks: "0" }] };
   } } as unknown as Pool;
@@ -63,4 +64,28 @@ test("save failure reports an error without returning an unsaved answer", async 
   const s = await setup(async () => "Unsaved answer", 100, true);
   try { const response = await s.call("owner"); assert.equal(response.status, 500); assert.deepEqual(await response.json(), { error: "assistant_save_failed" }); }
   finally { await s.close(); }
+});
+
+test("assistant snapshot excludes contact fields", async () => {
+  const s = await setup(async (snapshot) => {
+    assert.deepEqual(snapshot.businessProfile, { businessName: "Business", description: "Description", region: "Kyiv", details: { city: "Kyiv" } });
+    return "OK";
+  });
+  try { assert.equal((await s.call("owner")).status, 200); } finally { await s.close(); }
+});
+
+
+test("assistant receives bounded chronological history with stale and truncated markers", async () => {
+  const history = [
+    { question: "new", reply: "recent", revision: 1, profile_revision: 1 },
+    { question: "old", reply: "x".repeat(3001), revision: 0, profile_revision: 1 },
+  ];
+  const s = await setup(async (snapshot) => {
+    assert.deepEqual(snapshot.conversation, [
+      { question: "old", reply: "x".repeat(3000), revision: 0, stale: true, truncated: true },
+      { question: "new", reply: "recent", revision: 1, stale: false, truncated: false },
+    ]);
+    return "OK";
+  }, 100, false, history);
+  try { assert.equal((await s.call("owner")).status, 200); } finally { await s.close(); }
 });
