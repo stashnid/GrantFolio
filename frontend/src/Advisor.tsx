@@ -21,6 +21,7 @@ type Message = {
 type Conversation = { id: string; title: string };
 export function Advisor({
   user,
+  savedLegalForm,
   onPrepare,
   onView,
   onDirty,
@@ -29,6 +30,7 @@ export function Advisor({
   onClearPrefilled,
 }: {
   user: User;
+  savedLegalForm?: string;
   onPrepare: (p: GrantProgram, seed: string) => void;
   onView: (p: GrantProgram) => void;
   onDirty: (dirty: boolean) => void;
@@ -422,11 +424,10 @@ export function Advisor({
                       : [
                           "Авто для доставки товарів",
                           "Авто для особистих потреб",
-                          "Уже працюю як ФОП",
+                          ...(savedLegalForm ? [] : ["Уже працюю як ФОП"]),
                         ]
                     : [
-                        "Бізнесу ще немає",
-                        "Уже працюю як ФОП",
+                        ...(savedLegalForm ? [] : ["Бізнесу ще немає", "Уже працюю як ФОП"]),
                         "Що потрібно для заявки?",
                       ]
                   ).map((q) => (

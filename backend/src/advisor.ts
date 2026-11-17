@@ -5,6 +5,7 @@ import { searchGrants } from "./grant-discovery.js";
 import { GRANT_CATALOG } from "./grant-catalog-data.js";
 import { configuredGeminiResponder } from "./gemini.js";
 import type { AssistantResponder } from "./assistant.js";
+import type { ProfileDetails } from "./profile-details.js";
 const input = z
   .object({
     id: z.string().uuid(),
@@ -22,7 +23,11 @@ const view = (r: any) => ({
   createdAt: r.created_at,
 });
 // Ask for one missing fact at a time using the current conversation, not just the last message.
-function nextQuestion(query: string, intents: string[]): string {
+function nextQuestion(
+  query: string,
+  intents: string[],
+  profile?: { region: string; details: Pick<ProfileDetails, "city" | "legalForm"> },
+): string {
   const q = query.toLocaleLowerCase("uk");
   if (
     /(студент|student)/i.test(q) &&
@@ -41,7 +46,7 @@ function nextQuestion(query: string, intents: string[]): string {
   if (intents.includes("transport")) {
     if (!/(достав|робот|бізнес|підприєм|фоп|особист|для себе)/.test(q))
       return "Для чого саме вам потрібне авто?";
-    if (!/(фоп|підприєм|бізнес|ще не|немає|не маю|планую відкрити)/.test(q))
+    if (!profile?.details.legalForm && !/(фоп|підприєм|бізнес|ще не|немає|не маю|планую відкрити)/.test(q))
       return "Ви вже працюєте як ФОП або тільки плануєте відкрити справу?";
   }
   const withoutAge = q.replace(
@@ -51,12 +56,14 @@ function nextQuestion(query: string, intents: string[]): string {
   if (!/(\d|тисяч|тис\b|мільйон)/.test(withoutAge))
     return "Яка орієнтовна сума вам потрібна?";
   if (
-    !/(регіон|област|київ|львів|одес|харків|дніпр|запоріж|полтав|вінниц|черкас|черніг|чернів|житомир|сум|терноп|луцьк|рівн|ужгород|миколаїв|херсон|кропивницьк|івано|хмельницьк)/.test(
+    !profile?.region?.trim() && !profile?.details.city?.trim() &&
+    !/(регіон|област|київ|києв|львів|львов|одес|харків|харков|дніпр|запоріж|полтав|вінниц|черкас|черніг|чернів|житомир|сум|терноп|луцьк|рівн|ужгород|миколаїв|миколаєв|херсон|кропивницьк|івано|хмельницьк)/.test(
       q,
     )
   )
     return "У якому регіоні ви плануєте працювати?";
   if (
+    !profile?.details.legalForm &&
     !/(фоп|підприєм|бізнес вже|вже працю|ще не|немає|не маю|планую відкрити)/.test(
       q,
     )
@@ -207,7 +214,7 @@ export function advisorRouter(
                   (m) => !m.programId.startsWith("erasmus-"),
                 ),
         };
-        const profile = await db.query(
+        const profile = await db.query<{ businessName: string; description: string; region: string; details: ProfileDetails }>(
           'SELECT business_name AS "businessName",description,region,details FROM profiles WHERE owner_id=$1',
           [uid],
         );
@@ -229,7 +236,7 @@ export function advisorRouter(
               : `${search.explanation}\n\n${search.matches
                   .slice(0, 3)
                   .map((m) => `${m.title}. ${m.reason}`)
-                  .join("\n\n")}\n\n${nextQuestion(query, search.intents)}`;
+                  .join("\n\n")}\n\n${nextQuestion(query, search.intents, businessProfile)}`;
         let mode = "guided";
         if (responder && !personalEducation && !studentNeedsIdea) {
           const controller = new AbortController();

@@ -436,7 +436,7 @@ export function App() {
           ) : (
             <>
             <div hidden={tab !== "advisor"}>
-              <Advisor key={user.uid} user={user} onDirty={setAdvisorDirty} prefilledMessage={advisorPrompt} prefillConversationId={advisorPromptId} onClearPrefilled={() => {setAdvisorPrompt("");setAdvisorPromptId("");}} onView={p => { openTab("catalog"); window.location.hash=`grants/${p.id}`; }} onPrepare={(p,seed) => {setSelectedProgram(p);setPreparationSeed(seed);setPreparationId(crypto.randomUUID());openTab("cases");}} />
+              <Advisor key={user.uid} user={user} savedLegalForm={savedProfile.details.legalForm} onDirty={setAdvisorDirty} prefilledMessage={advisorPrompt} prefillConversationId={advisorPromptId} onClearPrefilled={() => {setAdvisorPrompt("");setAdvisorPromptId("");}} onView={p => { openTab("catalog"); window.location.hash=`grants/${p.id}`; }} onPrepare={(p,seed) => {setSelectedProgram(p);setPreparationSeed(seed);setPreparationId(crypto.randomUUID());openTab("cases");}} />
             </div>
             <div hidden={tab !== "catalog"} className="catalog-tab-content">
               <GrantCatalog

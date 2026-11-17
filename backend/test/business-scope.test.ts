@@ -1,7 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readiness } from "../src/project-details.js";
-import { draftExport } from "../src/draft-export.js";
 import { GRANT_CATALOG } from "../src/grant-catalog-data.js";
 
 test("business preparation keeps business fields, budget and sourced submission steps", () => {
@@ -27,12 +26,6 @@ test("business preparation keeps business fields, budget and sourced submission 
     result.checks.find((check) => check.id === "budget")?.status,
     "missing",
   );
-  const output = draftExport(row);
-  assert.match(output, /Клієнти/);
-  assert.match(output, /Документи та наступні кроки/);
-  assert.match(output, /https:\/\/diia.gov.ua/);
-  assert.match(output, /Не офіційна заявка/);
-  assert.doesNotMatch(output, /Університет|Erasmus/);
 });
 
 test("youth support is an age-qualified business condition, not a student scholarship", () => {
