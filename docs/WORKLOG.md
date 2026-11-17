@@ -295,3 +295,8 @@ Sol координував три Terra-виконання: chat/history, search
 Власник авторизував `gmail.send` для `grantfoliomanager@gmail.com`. Секрет збережено в Secret Manager, доступ надано лише Cloud Run service account, а вимогу коду підтвердження ввімкнено у приватній ревізії `grantfolio-web-00003-n9g`. `/api/health` повернув `ok`. Публічний HTTPS і фактичну доставку тестового листа ще не підтверджено. [Передача](agents/2026-11-17-gcp-release-preparation.md).
 
 Випущено керований сертифікат із DNS-підтвердженням і відкрито публічний GrantFolio через балансувальник. Перевірено доставку поштового коду й доступ до кабінету в браузері. Публічний тест 30 паралельних сесій читання пройшов з 90/90 успішних запитів. [Передача](agents/2026-11-17-gcp-release-preparation.md).
+
+
+## 17.11: темно-синя premium тема
+
+За запитом користувача ff-only підтягнуто актуальну main c4d8d49 із завершеним HTTPS release. Terra змінив CSS, Sol незалежно перевірив браузер/контраст; координатор інтегрував градієнти, favicon, альтернативний вхід і друковані кольори. Backend та auth flows збережено. Typecheck/build/diff-check PASS; [передача та browser докази](agents/2026-11-17-navy-gradient-theme.md). Git task branch публікується за постійним дозволом; deployment окремий.
