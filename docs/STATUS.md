@@ -2,7 +2,7 @@
 
 ## Автоматичне розгортання з GitHub
 
-Підготовлено GitHub Actions для релізів із `main` після проходження тестів. Для активації потрібні зв’язок Google Cloud із GitHub через Workload Identity Federation і перший успішний запуск. [Передача](agents/2026-11-17-automatic-deploy.md).
+Підготовлено [PR №13](https://github.com/stashnid/GrantFolio/pull/13) з GitHub Actions для релізів із `main` після проходження тестів. Для активації потрібні зв’язок Google Cloud із GitHub через Workload Identity Federation і перший успішний запуск. [Передача](agents/2026-11-17-automatic-deploy.md).
 
 ## Сучасний світлий чат із темно-синьою основою — 17.11.2026
 
