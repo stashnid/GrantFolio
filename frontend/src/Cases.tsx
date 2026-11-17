@@ -552,32 +552,6 @@ export function Cases({
       setBusy(false);
     }
   }
-  async function downloadDraft() {
-    if (!selected || dirty || pending) {
-      setError("Спочатку збережіть зміни в описі та бюджеті.");
-      return;
-    }
-    setBusy(true);
-    setError("");
-    setNotice("");
-    try {
-      const response = await request(`/api/cases/${selected.id}/draft-export`);
-      if (!response.ok) throw Error();
-      const url = URL.createObjectURL(await response.blob());
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = "grantfolio-project.txt";
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      setNotice("Чернетку підготовлено до завантаження.");
-    } catch (error) {
-      setError(readableApiError(error, "Не вдалося завантажити чернетку. Спробуйте ще раз."));
-    } finally {
-      setBusy(false);
-    }
-  }
   async function deleteDraft() {
     if (!selected || sessionDraft.recovery) return;
     if (!window.confirm(`Видалити чернетку «${selected.title}»? Цю дію неможливо скасувати.`)) return;
@@ -669,28 +643,45 @@ export function Cases({
     <div className="card cases-card">
       {selected && createPortal(
         <article className="print-document" aria-label="Чернетка проєкту для друку">
-          <p>GrantFolio · Робоча чернетка</p>
+          <header className="print-document-header">
+            <div className="print-brand">GRANTFOLIO <span>ПІДГОТОВКА ПРОЄКТУ</span></div>
+            <p>РОБОЧИЙ ДОКУМЕНТ · НЕ Є ОФІЦІЙНОЮ ЗАЯВКОЮ</p>
+          </header>
           <h1>{selected.title}</h1>
-          <p>{activeProgram ? `Цільова програма: ${activeProgram.title} (${activeProgram.provider})` : "Фінансування підберемо далі"}</p>
-          <p>Збережена версія: {selected.revision}. Документ не замінює офіційної форми заявки.</p>
+          <p className="print-document-lead">Матеріали проєкту для перевірки та перенесення до форми організатора програми.</p>
+          <table className="print-metadata"><tbody>
+            <tr><th>Цільова програма</th><td>{activeProgram ? `${activeProgram.title} · ${activeProgram.provider}` : "Не обрано"}</td></tr>
+            <tr><th>Версія матеріалів</th><td>{selected.revision}</td></tr>
+            <tr><th>Дата формування</th><td>{new Date().toLocaleDateString("uk-UA", { day: "numeric", month: "long", year: "numeric" })}</td></tr>
+          </tbody></table>
+          <h2>1. Опис і план проєкту</h2>
           {[...basicsFields, ...planFields].map((field) => (
             <section key={field.key}>
-              <h2>{field.label}</h2>
+              <h3>{field.label}</h3>
               <p className="print-paragraph">{selected.details[field.key] || "Не заповнено"}</p>
             </section>
           ))}
-          <h2>{"Бюджет"}</h2>
-          <table>
+          <h2>2. План бюджету</h2>
+          <p className="print-document-note">Наведені суми взято зі збереженого кошторису проєкту.</p>
+          <table className="print-budget">
             <thead><tr><th>Витрата</th><th>Кількість</th><th>Ціна за одиницю</th><th>Сума</th></tr></thead>
-            <tbody>{selected.items.map((item, index) => <tr key={index}><td>{item.name}</td><td>{item.quantity}</td><td>{money(item.unitPriceKopecks)}</td><td>{money(item.quantity * item.unitPriceKopecks)}</td></tr>)}</tbody>
+            <tbody>{selected.items.length ? selected.items.map((item, index) => <tr key={index}><td>{item.name}</td><td>{item.quantity}</td><td>{money(item.unitPriceKopecks)}</td><td>{money(item.quantity * item.unitPriceKopecks)}</td></tr>) : <tr><td colSpan={4}>Витрати ще не додані</td></tr>}</tbody>
           </table>
-          <p><strong>Разом: {money(selected.totalKopecks)}</strong></p>
-          {activeProgram && <><h2>Документи та наступні кроки</h2>
-          <ul>{activeProgram.details.documents.map(document => <li key={document}>{document}</li>)}</ul>
-          <ol>{activeProgram.details.steps.map(step => <li key={step}>{step}</li>)}</ol>
-          <h2>Офіційні джерела</h2>
-          {activeProgram.details.sources.map(source => <p key={source.url}>{source.title}: {source.url} (перевірено {source.checkedAt})</p>)}</>}
-          <p>Умови участі, актуальний прийом, формат документів і дозволені витрати перевіряйте у конкретному конкурсі. Це робоча чернетка, не підтвердження офіційного подання.</p>
+          <p className="print-total">Загальна сума бюджету <strong>{money(selected.totalKopecks)}</strong></p>
+          {activeProgram && <>
+            <h2>3. Орієнтир щодо програми</h2>
+            <p>{activeProgram.keyCondition}</p>
+            <h3>Документи, зазначені в каталозі GrantFolio</h3>
+            <ul>{activeProgram.details.documents.map(document => <li key={document}>{document}</li>)}</ul>
+            <h3>Наступні кроки</h3>
+            <ol>{activeProgram.details.steps.map(step => <li key={step}>{step}</li>)}</ol>
+            <h2>4. Офіційні джерела</h2>
+            {activeProgram.details.sources.map(source => <p className="print-source" key={source.url}><strong>{source.title}</strong><br />{source.url}<br />Дата перевірки джерела: {source.checkedAt}</p>)}
+          </>}
+          <footer className="print-document-footer">
+            <strong>Перед використанням перевірте</strong>
+            <p>Це робоча чернетка, сформована збереженими матеріалами проєкту. Вона не є офіційною формою чи підтвердженням подання. Перевірте актуальні умови програми, перелік документів, бюджетні обмеження та правила подання на сайті організатора.</p>
+          </footer>
         </article>, document.body
       )}
       <div className="cases-toolbar">
@@ -1235,19 +1226,12 @@ export function Cases({
                     {"← Назад: Бюджет"}
                   </button>
                   <button
-                    className="primary export-btn"
-                    disabled={busy || dirty || !!pending || conflict}
-                    onClick={() => void downloadDraft()}
-                  >
-                    Завантажити чернетку (.txt) <span>↗</span>
-                  </button>
-                  <button
                     type="button"
                     className="secondary-btn print-pdf-btn"
                     disabled={busy || dirty || !!pending || conflict}
                     onClick={() => window.print()}
                   >
-                    📄 Зберегти як PDF / Друк ↗
+                    Відкрити друк / PDF ↗
                   </button>
                 </div>
                 {(dirty || pending) && (

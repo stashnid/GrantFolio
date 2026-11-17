@@ -401,44 +401,6 @@ test("case details persist privately, replay safely, and drive general readiness
 });
 
 
-test("draft export is private and reflects the saved details and budget revision", async () => {
-  const [a, b] = await Promise.all([signup(), signup()]);
-  const call = (token: string | undefined, path: string, method = "GET", body?: unknown) =>
-    fetch(`${base}${path}`, {
-      method,
-      headers: {
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        ...(body ? { "Content-Type": "application/json" } : {}),
-      },
-      ...(body ? { body: JSON.stringify(body) } : {}),
-    });
-  const created = await call(a, "/api/cases", "POST", { title: "Майстерня" });
-  const id = ((await created.json()) as { case: { id: string } }).case.id;
-  const path = `/api/cases/${id}`;
-  assert.equal((await call(undefined, `${path}/draft-export`)).status, 401);
-  assert.equal((await call(b, `${path}/draft-export`)).status, 404);
-  assert.equal((await call(a, "/api/cases/bad/draft-export")).status, 404);
-  const initial = await call(a, `${path}/draft-export`);
-  assert.equal(initial.headers.get("content-type"), "text/plain; charset=utf-8");
-  assert.equal(initial.headers.get("content-disposition"), 'attachment; filename="grantfolio-project.txt"');
-  assert.equal(initial.headers.get("cache-control"), "no-store");
-  const empty = await initial.text();
-  assert.match(empty, /Робоча чернетка\. Не офіційна заявка\./);
-  assert.match(empty, /Версія: 0/);
-  assert.equal((empty.match(/Не вказано/g) ?? []).length, 6);
-  const details = { projectDescription: "Український опис", customers: "Клієнти", salesChannels: "Онлайн", implementationPlan: "План", expectedResults: "Результат" };
-  assert.equal((await call(a, `${path}/details`, "PUT", { expectedRevision: 0, idempotencyKey: crypto.randomUUID(), details })).status, 200);
-  assert.equal((await call(a, `${path}/budget`, "PUT", { expectedRevision: 1, idempotencyKey: crypto.randomUUID(), items: [{ name: "Інструмент", quantity: 3, unitPriceKopecks: 1999 }, { name: "Матеріали", quantity: 2, unitPriceKopecks: 1 }] })).status, 200);
-  const result = await (await call(a, `${path}/draft-export`)).text();
-  assert.match(result, /Назва проєкту: Майстерня/);
-  assert.match(result, /Версія: 2/);
-  for (const value of Object.values(details)) assert.ok(result.includes(value));
-  assert.match(result, /3 × 19,99 грн = 59,97 грн/);
-  assert.match(result, /2 × 0,01 грн = 0,02 грн/);
-  assert.match(result, /Загалом: 59,99 грн/);
-});
-
-
 test("assistant history isolates owners, paginates tied timestamps, and preserves snapshot revisions", async () => {
   const [a, b] = await Promise.all([signup(), signup()]);
   const create = async (token: string) => {
@@ -549,10 +511,6 @@ test("case preserves programId, allows updating program and validates allowed pr
   assert.equal(createDefault.status, 201);
   const caseDefault = ((await createDefault.json()) as { case: { id: string; programId: string } }).case;
   assert.equal(caseDefault.programId, null);
-  const genericExport = await (await fetch(`${base}/api/cases/${caseDefault.id}/draft-export`, {headers: {Authorization: `Bearer ${a}`}})).text();
-  assert.match(genericExport, /Фінансування: підберемо далі/);
-  assert.doesNotMatch(genericExport, /Власна справа/);
-
   // Create case with explicit programId
   const createVeteran = await fetch(`${base}/api/cases`, {
     method: "POST",
@@ -627,13 +585,6 @@ test("case preserves programId, allows updating program and validates allowed pr
   });
   assert.equal(foreignUpdate.status, 404);
 
-  // Program details reflected in draft export
-  const exportRes = await fetch(`${base}/api/cases/${caseDefault.id}/draft-export`, {
-    headers: { Authorization: `Bearer ${a}` },
-  });
-  assert.equal(exportRes.status, 200);
-  const exportText = await exportRes.text();
-  assert.match(exportText, /Грант на переробне підприємство/);
   const concurrent = await Promise.all([programCall("veteran-grant", 1), programCall("agro-gardens", 1)]);
   assert.deepEqual(concurrent.map((response) => response.status).sort(), [200, 409]);
   const winner = concurrent.find((response) => response.status === 200)!;
