@@ -46,3 +46,8 @@ Sol перевірив реальну локальну guided розмову, sk
 GitHub прийняв інтегрований6d15993; відкрито [PR №12](https://github.com/stashnid/GrantFolio/pull/12) до main. Код чинного Vertex AI з main збережений. Новий deployment/merge не виконано. Фінальні preview скопійовано в локальну папку Codex visualizations; у Git — лише код і звіт, без сесій/приватних QA-даних.
 
 Межа project-chat QA: поява synthetic reply і gating пропозицій PASS; фактичний clipboard і застосування suggestion у формі не повторно перевірені після переривання. Зміни стосуються reveal/відображення; чинні backend guards збережено й91регресійний тест PASS. Локальний процес перевірено: GEMINI_API_KEY порожній, GEMINI_BACKEND не заданий.
+
+
+## Злиття до main за дорученням користувача
+
+Користувач прямо доручив злити PR12 у main для розгортання. Fresh fetch виявив main3c45110 (PR9, Google sign-in button). В origin/main інтеграції збережено нову SVG-кнопку й auth behavior; два конфлікти style.css/WORKLOG розв'язано зі збереженням обох змін. Палітру нової кнопки узгоджено з navy/white, офіційні кольори Google SVG збережено. Перевірки повторюються перед merge. Deployment виконує друг користувача; цей крок не є свідченням нового live release.
