@@ -46,10 +46,10 @@ export function BusinessProfile({ profile, email, ready, busy, dirty, error, mes
   const change = (key: FieldKey, value: string) => onChange(key === "businessName" || key === "region" || key === "description" ? { ...profile, [key]: value } : { ...profile, details: { ...profile.details, [key]: value } });
   function submit(e: React.FormEvent) { if (errors.length) { e.preventDefault(); setAttempted(true); setSection(sections.findIndex(s => s.fields.some(f => f.key === errors[0].key))); requestAnimationFrame(() => document.getElementById(`profile-${errors[0].key}`)?.focus()); return; } onSubmit(e); }
   return <div className="business-profile">
-    <div className="bp-header"><div><h2>Профіль бізнесу</h2><p>Інформація вашого бізнес-акаунта</p></div><span className={dirty ? "bp-status changed" : "bp-status"}>{!ready ? (error ? "Не завантажено" : "Завантаження…") : dirty ? "Є незбережені зміни" : "Збережено"}</span></div>
+    <div className="bp-header"><div><p className="bp-eyebrow">Ваш простір</p><h2>Профіль бізнесу</h2><p>Інформація вашого бізнес-акаунта</p></div><span className={dirty ? "bp-status changed" : "bp-status"}>{!ready ? (error ? "Не завантажено" : "Завантаження…") : dirty ? "Є незбережені зміни" : "Збережено"}</span></div>
     <div className="bp-layout"><div className="bp-main">
       <nav className="bp-nav" aria-label="Розділи профілю">{sections.map((s, i) => <button key={s.title} type="button" aria-pressed={section === i} onClick={() => setSection(i)}>{s.title}</button>)}</nav>
-      <form onSubmit={submit} noValidate><div className="bp-section"><h3>{sections[section].title}</h3><p>{sections[section].intro} Усі поля необов’язкові — заповніть ті, що стосуються вас.</p>
+      <form onSubmit={submit} noValidate><div className="bp-section"><p className="bp-section-number">Розділ {section + 1} з {sections.length}</p><h3>{sections[section].title}</h3><p>{sections[section].intro} Усі поля необов’язкові — заповніть ті, що стосуються вас.</p>
         {(!ready || conflict) && <button type="button" className="bp-retry" disabled={loading || busy} onClick={onRetry}>{loading ? "Завантажуємо…" : conflict ? "Завантажити актуальний профіль" : "Повторити завантаження"}</button>}
         {sections[section].fields.map(f => {
           const value = valueFor(f.key); const issue = attempted || touched[f.key] ? fieldError(f.key, value) : ""; const id = `profile-${f.key}`;

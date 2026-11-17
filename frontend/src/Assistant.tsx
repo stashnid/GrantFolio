@@ -437,10 +437,10 @@ export function Assistant({
         {historyError && <div className="chat-status-msg" role="alert">Не вдалося завантажити історію. <button type="button" className="link" onClick={() => void loadHistory(nextBefore)}>Спробувати ще раз</button></div>}
         {hasMore && !historyError && <button type="button" className="link load-more-history-btn" disabled={historyLoading} onClick={() => void loadHistory(nextBefore)}>Показати попередні повідомлення</button>}
         {exchanges.length === 0 && !historyLoading && !historyError && <div className="chat-welcome-card"><div className="welcome-content">
-          <h2>З чого почнемо?</h2>
+          <span className="welcome-eyebrow">ВАШ ПРОЄКТ · АСИСТЕНТ</span><h2>З чого почнемо?</h2>
           <p>{welcomePrompt ?? ("Обговоріть ідею, кошторис або наступні кроки. Асистент використовує збережені дані проєкту; його відповіді та умови програми варто перевіряти.")}</p>
           {goalText && <p className="chat-goal-text">{goalText}</p>}
-          <div className="welcome-quick-actions">{starterPrompts.map((sp) => <button key={sp.label} type="button" className="welcome-action-chip" onClick={() => usePrompt(sp.text)}>{sp.label}<span aria-hidden="true">↗</span></button>)}</div>
+          <p className="welcome-suggestions-label">Запитайте, наприклад</p><div className="welcome-quick-actions">{starterPrompts.map((sp) => <button key={sp.label} type="button" className="welcome-action-chip" onClick={() => usePrompt(sp.text)}>{sp.label}<span aria-hidden="true">↗</span></button>)}</div>
         </div></div>}
         {exchanges.map((exchange) => {
           const suggestedItems = extractBudgetItemsFromText(exchange.reply);

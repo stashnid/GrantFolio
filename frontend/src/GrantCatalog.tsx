@@ -284,7 +284,8 @@ export function GrantCatalog({
   return (
     <div className="grant-catalog">
       <header className="grant-list-header">
-        <h2>Знайдіть фінансування під свою потребу</h2>
+        <p className="catalog-eyebrow">Каталог грантів</p>
+        <h2>Знайдіть фінансування<br />для своєї ідеї</h2>
         <p>
           Опишіть потребу своїми словами. Назву програми знати не потрібно.
         </p>
@@ -346,9 +347,7 @@ export function GrantCatalog({
           Обговорити потребу з асистентом
         </button>
       )}
-      <p ref={resultsHeading} tabIndex={-1} role="status" className="grant-count">
-        Можливих напрямів: {filtered.length}
-      </p>
+      <div className="grant-results-heading"><div><p className="catalog-eyebrow">Доступні програми</p><h3>Можливості для вас</h3></div><p ref={resultsHeading} tabIndex={-1} role="status" className="grant-count">Можливих напрямів: {filtered.length}</p></div>
       {filtered.length === 0 && (
         <p>
           Зараз немає підтверджених відкритих програм за цим запитом. Це не означає, що фінансування взагалі не існує.{" "}

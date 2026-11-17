@@ -246,3 +246,13 @@ Sol координував три Terra-виконання: chat/history, search
 
 
 17.11, результат: push `d98bba8` у feat/conversation-workspace підтверджений свіжим remote SHA; відкрито [PR3](https://github.com/stashnid/GrantFolio/pull/3), Actions запущені. Main не зливався; доступ/visibility не змінювалися. Результат додано до STATUS і звіту окремим документаційним комітом.
+
+
+## 17.11: редизайн робочого простору
+
+За запитом користувача два Terra-агенти оновили чат та каталог/профіль; координатор інтегрував shell, вхід та оформлення проєктів. Sol виконав незалежну browser QA. Перевірки: typecheck/build, 66/66 tests, desktop/mobile, save/reload, keyboard focus, console. Без paid AI/push/deploy. [Файли, дизайн, перевірки, межі](agents/2026-11-17-workspace-redesign.md).
+
+
+## 17.11: постійне правило публікації
+
+Користувач доручив після змін одразу відправляти їх на GitHub. Правило збережено в AGENTS.md: після логічного завершення й перевірок — commit та push task branch без повторного підтвердження; без force-push, merge чи deploy. Редизайн публікується в поточній гілці.

@@ -1,5 +1,10 @@
 # Поточний стан GrantFolio
 
+## Локальний редизайн робочого простору — 17.11.2026
+
+Оновлено навігацію, вхід, асистент, каталог, профіль і оформлення проєкту: смарагдова панель, тепле світле поле, спільна типографіка, чіткі дії й адаптивні форми. Гілка `feat/considered-workspace-redesign`; підготовлено до публікації за новим постійним дозволом користувача, без deploy. Typecheck/build, 66 tests, Chrome desktop/mobile, keyboard focus, save/reload профілю та опису PASS; live AI не викликався. [Передача та межі перевірки](agents/2026-11-17-workspace-redesign.md).
+
+
 ## Передано на GitHub —17.11.2026
 
 Поточний код/міграції/тести й документація опубліковані в [feat/conversation-workspace](https://github.com/stashnid/GrantFolio/tree/feat/conversation-workspace), відкрито [PR №3](https://github.com/stashnid/GrantFolio/pull/3) до main. Remote кодовий SHA `d98bba8` підтверджений; GitHub checks на момент запису виконуються. Локальні66 тестів, typecheck/build і browser QA пройшли. [Передача публікації](agents/2026-11-17-github-publication.md).
