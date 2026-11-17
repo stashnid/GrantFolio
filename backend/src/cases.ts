@@ -5,7 +5,6 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { commandSchema, totalKopecks } from "./budget.js";
 import { detailsCommandSchema, readiness } from "./project-details.js";
-import { draftExport } from "./draft-export.js";
 import { assistantRouter } from "./assistant.js";
 import { configuredGeminiResponder } from "./gemini.js";
 const idSchema = z.string().uuid();
@@ -166,26 +165,6 @@ export function casesRouter(db: Pool) {
         return;
       }
       res.json({ deleted: true });
-    } catch (e) {
-      next(e);
-    }
-  });
-  router.get("/:id/draft-export", async (req, res, next) => {
-    if (!idSchema.safeParse(req.params.id).success) {
-      res.status(404).json({ error: "not_found" });
-      return;
-    }
-    try {
-      const result = await db.query(
-        "SELECT title, program_id, revision, details, items, total_kopecks FROM cases WHERE id=$1 AND owner_id=$2",
-        [req.params.id, res.locals.uid],
-      );
-      if (!result.rowCount) {
-        res.status(404).json({ error: "not_found" });
-        return;
-      }
-      res.set("Content-Disposition", 'attachment; filename="grantfolio-project.txt"');
-      res.type("text/plain; charset=utf-8").send(draftExport(result.rows[0]));
     } catch (e) {
       next(e);
     }
