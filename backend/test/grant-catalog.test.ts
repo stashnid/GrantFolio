@@ -4,7 +4,8 @@ import { GRANT_CATALOG } from "../src/grant-catalog-data.js";
 import { getGrantSourceContext, getProgramDetails } from "../src/grant-sources.js";
 
 test("catalog and assistant use the same program-specific facts and sources", () => {
-  assert.equal(new Set(GRANT_CATALOG.map(program => program.id)).size, 8);
+  assert.ok(GRANT_CATALOG.length >= 60);
+  assert.equal(new Set(GRANT_CATALOG.map(program => program.id)).size, GRANT_CATALOG.length);
   for (const program of GRANT_CATALOG) {
     const details = getProgramDetails(program.id);
     const context = getGrantSourceContext(program.id);

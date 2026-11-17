@@ -74,4 +74,35 @@ export const GRANT_SOURCE_RULES: GrantSourceRule[] = [
     deadlinePattern:
       "Прийом заяв(?:ок)? (?:відкрито|триває)[^.]{0,100}до (\\d{1,2}\\s+[а-яіїєґ]+\\s+20\\d{2})",
   },
+  {
+  "programId": "women-techeu-2-eic",
+  "url": "https://womentecheurope.eu/frequently-asked-questions-wteu2/",
+  "requiredText": "What are the Full Proposal submission dates?",
+  "openPattern": "Submission deadline 6",
+  "deadlinePattern": "Submission deadline 6:\\s*(14\\s+January\\s+2027,?\\s+17:00\\s+CET)",
+  "closedPatterns": [
+    "Applications are now closed",
+    "call has been closed"
+  ]
+},
+  {
+  "programId": "eu-women-innovators-2027",
+  "url": "https://www.eit.europa.eu/our-activities/opportunities/2027-european-prize-women-innovators-apply-now",
+  "requiredText": "2027 European Prize for Women Innovators",
+  "openPattern": "Apply now",
+  "deadlinePattern": "(01/12/2026\\s+17[.:]00\\s*-\\s*CET)",
+  "closedPatterns": [
+    "Applications are now closed"
+  ]
+},
+  {
+  "programId": "eit-food-poc-2026",
+  "url": "https://www.eitfood.eu/open-calls/proof-of-concept-co-financing-instrument-2",
+  "requiredText": "EIT Food's Co-Financing Instrument",
+  "openPattern": "Cutoff date",
+  "deadlinePattern": "(30/11/2026\\s+12:00\\s+CET)",
+  "closedPatterns": [
+    "Applications are now closed"
+  ]
+},
 ];

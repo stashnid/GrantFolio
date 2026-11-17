@@ -1,5 +1,9 @@
 # Поточний стан GrantFolio
 
+## Розширений каталог фінансування та автоматичне виявлення — 17.11.2026
+
+Каталог розширено до 68 верифікованих програм фінансування для українського бізнесу: підтримка жінок-підприємиць (Women TechEU 2, Cartier Women's Initiative, European Prize for Women Innovators, СТВОРЮЙ!, Початок 2 тощо), єРобота, Horizon Europe, EIC Accelerator, стартап-акселератори та пільгові фінансові інструменти. Додано 15 категорій та 15 типів фінансування з фільтрами та повнотекстовим пошуком. Реалізовано автоматичне виявлення нових грантів через публічний EU Funding & Tenders API (SEDIA) та цільовий бізнесовий RSS (Громадський Простір), збереження кандидатів у PostgreSQL (міграція 015) зі статусом «Потребує перевірки», періодичне фонове опитування та CLI `npm run grants:discover`. 27/27 unit-тестів, typecheck та production build PASS. [Детальний звіт](agents/2026-11-17-global-funding-catalog.md).
+
 ## Локальний редизайн робочого простору — 17.11.2026
 
 Оновлено навігацію, вхід, асистент, каталог, профіль і оформлення проєкту: смарагдова панель, тепле світле поле, спільна типографіка, чіткі дії й адаптивні форми. Опубліковано `ab0193a` у `feat/considered-workspace-redesign`, відкрито [PR №5](https://github.com/stashnid/GrantFolio/pull/5), без merge/deploy. Typecheck/build, 66 tests, Chrome desktop/mobile, keyboard focus, save/reload профілю та опису PASS; live AI не викликався. [Передача та межі перевірки](agents/2026-11-17-workspace-redesign.md).

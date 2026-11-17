@@ -86,7 +86,7 @@ function kyivInstant(
 function parseDate(value: string): Date | null {
   const s = value.toLocaleLowerCase("uk").trim();
   const iso = s.match(/(20\d{2})-(\d{1,2})-(\d{1,2})/),
-    dot = s.match(/(\d{1,2})\.(\d{1,2})\.(20\d{2})/);
+    dot = s.match(/(\d{1,2})[./](\d{1,2})[./](20\d{2})/);
   const named = s.match(/(\d{1,2})\s+([а-яіїєґ]+)\s+(20\d{2})/u);
   const englishMonths = [
     "january",
@@ -239,7 +239,7 @@ function interpret(
         : null;
       const parsed = deadline?.[1] ? parseDate(deadline[1]) : null;
       if (!parsed) throw Error("deadline_unrecognized");
-      deadlinePrecision = /(?:at|о)\s*\d{1,2}[.:]\d{2}|\d{1,2}:\d{2}/i.test(
+      deadlinePrecision = /(?:at|о)\s*\d{1,2}[.:]\d{2}|\d{1,2}:\d{2}|\d{1,2}\.\d{2}\s*-\s*CET/i.test(
         deadline![1],
       )
         ? "minute"

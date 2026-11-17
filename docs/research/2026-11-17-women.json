@@ -1,0 +1,438 @@
+{
+  "verified_at": "2026-11-17",
+  "scope": "Women, vulnerable founders, veterans and social business; primary sources",
+  "records": [
+    {
+      "id": "women-techeu-2-eic",
+      "title": "Women TechEU 2 EIC",
+      "provider": "EU / Women TechEU",
+      "official_url": "https://womentecheurope.eu/frequently-asked-questions-wteu2/",
+      "eligibility_ukraine": "Україна прямо включена; комерційний deep-tech стартап віком 6 місяців–5 років; жінка-засновниця у керівництві, частка ≥25%; TRL4–6; equity залучено <€1 млн.",
+      "funding_type": "grant",
+      "amount_text": "€75 000",
+      "repayment_conditions": "Non-dilutive грант на розвиток за договором; можливі повернення за порушення умов.",
+      "status": "open",
+      "deadline": "2027-01-14",
+      "category": "women",
+      "tags": [
+        "women",
+        "deep-tech",
+        "startup",
+        "eu",
+        "non-dilutive"
+      ],
+      "evidence_excerpt": "Each selected startup receives a grant of €75,000.",
+      "notes": "Двоетапна заявка: спочатку перевірка eligibility. Наступні full-proposal cutoff: 14.01, 01.04, 08.07.2027, 17:00 Brussels.",
+      "evidence_urls": [
+        "https://womentecheurope.eu/frequently-asked-questions-wteu2/",
+        "https://ec.europa.eu/info/funding-tenders/opportunities/portal/screen/opportunities/competitive-calls-cs/14402/"
+      ],
+      "verified_at": "2026-11-17"
+    },
+    {
+      "id": "eu-women-innovators-2027",
+      "title": "European Prize for Women Innovators 2027",
+      "provider": "EIC / EIT",
+      "official_url": "https://www.eit.europa.eu/our-activities/opportunities/2027-european-prize-women-innovators-apply-now",
+      "eligibility_ukraine": "Жінки-засновниці з ЄС та країн Horizon Europe associated; Україна асоційована. Остаточні вимоги до резидентства і дати реєстрації — Rules of Contest.",
+      "funding_type": "prize",
+      "amount_text": "€100 000 / €70 000 / €50 000",
+      "repayment_conditions": "Грошова премія; перевірити податки та правила конкурсу. Не кредит.",
+      "status": "open",
+      "deadline": "2026-12-01",
+      "category": "women",
+      "tags": [
+        "women",
+        "innovation",
+        "eu",
+        "prize"
+      ],
+      "evidence_excerpt": "Prizes: €100 000, €70 000 and €50 000.",
+      "notes": "На офіційній сторінці є суперечність timezone CET/CEST; перед подачею звірити портал. Дата 01.12.2026 підтверджена.",
+      "evidence_urls": [
+        "https://www.eit.europa.eu/our-activities/opportunities/2027-european-prize-women-innovators-apply-now"
+      ],
+      "verified_at": "2026-11-17"
+    },
+    {
+      "id": "eu-rising-innovators-2027",
+      "title": "European Prize: Rising Innovators 2027",
+      "provider": "EIC / EIT",
+      "official_url": "https://www.eit.europa.eu/our-activities/opportunities/2027-european-prize-women-innovators-apply-now",
+      "eligibility_ukraine": "Категорія для жінок-інноваторок до 35 років з eligible EU/associated countries; застосовуються загальні правила премії.",
+      "funding_type": "prize",
+      "amount_text": "€50 000 / €30 000 / €20 000",
+      "repayment_conditions": "Премія за правилами конкурсу.",
+      "status": "open",
+      "deadline": "2026-12-01",
+      "category": "women",
+      "tags": [
+        "women",
+        "young-founders",
+        "innovation",
+        "eu"
+      ],
+      "evidence_excerpt": "For promising women innovators under the age of 35.",
+      "notes": "Це категорія тієї самої премії; у застосунку варто зв’язати parent_program_id, а не рахувати як незалежний фонд.",
+      "evidence_urls": [
+        "https://www.eit.europa.eu/our-activities/opportunities/2027-european-prize-women-innovators-apply-now"
+      ],
+      "verified_at": "2026-11-17"
+    },
+    {
+      "id": "cartier-regional-2027",
+      "title": "Cartier Women’s Initiative — Regional Awards",
+      "provider": "Cartier",
+      "official_url": "https://www.cartierwomensinitiative.com/regional-awards",
+      "eligibility_ukraine": "Комерційні impact-компанії, очолювані й засновані жінками, будь-яка країна, зокрема Україна; revenue $50k–5m; 5–250 членів команди; equity/quasi-equity ≤$2m.",
+      "funding_type": "grant",
+      "amount_text": "USD 100 000 / 60 000 / 30 000",
+      "repayment_conditions": "Грант, участь у fellowship та звітність про вплив; це не «кошти без зобов’язань».",
+      "status": "closed",
+      "deadline": "2026-06-16",
+      "category": "women",
+      "tags": [
+        "women",
+        "impact",
+        "global",
+        "prize"
+      ],
+      "evidence_excerpt": "Applications are now closed for the 2027 edition.",
+      "notes": "Не публікувати як відкриту. Офіційне підтвердження worldwide eligibility у Richemont.",
+      "evidence_urls": [
+        "https://www.cartierwomensinitiative.com/faq",
+        "https://www.richemont.com/news-media/press-releases-news/cartier-women-s-initiative-celebrates-its-20th-anniversary-and-launches-call-for-applications-for-the-2027-edition/"
+      ],
+      "verified_at": "2026-11-17"
+    },
+    {
+      "id": "cartier-science-pioneer-2027",
+      "title": "Cartier — Science & Technology Pioneer Award",
+      "provider": "Cartier",
+      "official_url": "https://www.cartierwomensinitiative.com/science-technology-pioneer-award",
+      "eligibility_ukraine": "Жінки-засновниці deep-tech impact-бізнесів з будь-якої країни, включно Україною; TRL≥4; комерціалізація ≤5 років; без Series A.",
+      "funding_type": "grant",
+      "amount_text": "USD 100 000 / 60 000 / 30 000",
+      "repayment_conditions": "Грант із обов’язковою участю в fellowship та подальшою звітністю.",
+      "status": "closed",
+      "deadline": "2026-06-16",
+      "category": "women",
+      "tags": [
+        "women",
+        "deep-tech",
+        "global",
+        "impact"
+      ],
+      "evidence_excerpt": "Open to women entrepreneurs from any country and sector",
+      "notes": "Прийом 2027 закритий; лідерка має володіти часткою не меншою за співзасновників.",
+      "evidence_urls": [
+        "https://www.cartierwomensinitiative.com/science-technology-pioneer-award"
+      ],
+      "verified_at": "2026-11-17"
+    },
+    {
+      "id": "wo-ua-travel-2026-2027",
+      "title": "Тревел-гранти для підприємиць",
+      "provider": "Жіночі можливості в Україні",
+      "official_url": "https://wo-ua.org/projects/2498/",
+      "eligibility_ukraine": "ФОП-жінки з усіх регіонів України для міжнародних виставок, конференцій, навчання чи експорту; є галузеві виключення.",
+      "funding_type": "travel_grant",
+      "amount_text": "До USD 1 200 включно з податками",
+      "repayment_conditions": "Цільові витрати, фінзвіт; транші 80/20; поширення знань та комунікаційні зобов’язання.",
+      "status": "open",
+      "deadline": null,
+      "category": "women",
+      "tags": [
+        "women",
+        "export",
+        "travel",
+        "microgrant"
+      ],
+      "evidence_excerpt": "Прийом заявок триває з вересня 2026 року по травень 2027 року",
+      "notes": "Подати не пізніше ніж за 3 тижні до подорожі. Не включати beauty, похоронні, творчі розважальні чи зоозаходи; до двох грантів на місяць.",
+      "evidence_urls": [
+        "https://wo-ua.org/projects/2498/"
+      ],
+      "verified_at": "2026-11-17"
+    },
+    {
+      "id": "ukrsib-women-business-2026",
+      "title": "Women in Business 2026",
+      "provider": "UKRSIBBANK BNP Paribas Group",
+      "official_url": "https://ukrsibbank.com/epage/women-in-business-2026/",
+      "eligibility_ukraine": "Українські жінки-ФОП, власниці та керівниці зареєстрованих в Україні МСП.",
+      "funding_type": "grant",
+      "amount_text": "UAH 200 000 / 150 000 / 150 000",
+      "repayment_conditions": "Гранти за результатами конкурсу; договір і правила визначають використання та повернення при порушенні.",
+      "status": "closed",
+      "deadline": "2026-11-08",
+      "category": "women",
+      "tags": [
+        "women",
+        "sme",
+        "ukraine"
+      ],
+      "evidence_excerpt": "Заявки приймаються до 8 листопада включно.",
+      "notes": "Оцінювання ще триває, але нові заявки уже не приймаються.",
+      "evidence_urls": [
+        "https://ukrsibbank.com/epage/women-in-business-2026/"
+      ],
+      "verified_at": "2026-11-17"
+    },
+    {
+      "id": "stvoriui-women-manufacturing",
+      "title": "СТВОРЮЙ!",
+      "provider": "Мінекономіки / UMAEF / KSE Foundation",
+      "official_url": "https://www.oschadbank.ua/grantova-programa-stvoruj",
+      "eligibility_ukraine": "Жінки-ФОП або власниці >50% ТОВ/ПП; виробництво КВЕД C; щонайменше рік діяльності в Україні.",
+      "funding_type": "grant",
+      "amount_text": "До USD 15 000 до податків",
+      "repayment_conditions": "Цільовий грант на обладнання, логістику/монтаж; ПЗ до 30%. Умови повернення — договір.",
+      "status": "closed",
+      "deadline": "2025-10-31",
+      "category": "women",
+      "tags": [
+        "women",
+        "manufacturing",
+        "equipment"
+      ],
+      "evidence_excerpt": "кінцевий термін подачі заявок: 31 жовтня 2025 року включно",
+      "notes": "Агрегатори згадують 31.10.2026, але прочитана офіційна сторінка дає 2025. Новий цикл не підтверджений: не переносити дату автоматично.",
+      "evidence_urls": [
+        "https://www.oschadbank.ua/grantova-programa-stvoruj"
+      ],
+      "verified_at": "2026-11-17"
+    },
+    {
+      "id": "pochatok2-2026",
+      "title": "Початок 2",
+      "provider": "ООН Жінки / Дія.Бізнес",
+      "official_url": "https://www.pochatok2.com/",
+      "eligibility_ukraine": "Жінки з бізнесом або ідеєю в агро/харчовій переробці у 8 зазначених областях; окремий виняток для ВПО з Донеччини.",
+      "funding_type": "voucher",
+      "amount_text": "39 ваучерів по UAH 100 000; головна відзнака UAH 270 000",
+      "repayment_conditions": "Конкурс після навчання; участь не гарантує ваучера.",
+      "status": "closed",
+      "deadline": "2026-11-08",
+      "category": "women",
+      "tags": [
+        "women",
+        "agriculture",
+        "food",
+        "training",
+        "idp"
+      ],
+      "evidence_excerpt": "Реєстрація до 8 листопада 2026 року, 23:59",
+      "notes": "Області: Дніпропетровська, Донецька, Запорізька, Київська, Миколаївська, Одеська, Полтавська, Харківська.",
+      "evidence_urls": [
+        "https://www.pochatok2.com/"
+      ],
+      "verified_at": "2026-11-17"
+    },
+    {
+      "id": "dream-achieve-impactforce",
+      "title": "Мрій та досягай",
+      "provider": "Impact Force / ООН Жінки",
+      "official_url": "https://theimpactforce.org/uk/dreamachieve/",
+      "eligibility_ukraine": "Українські жінки 18+, які постраждали від війни; пріоритет ВПО, одиноким матерям, жінкам з інвалідністю, ветеранкам і родинам ветеранів.",
+      "funding_type": "grant_training",
+      "amount_text": "UAH 40 000 найкращим бізнесам",
+      "repayment_conditions": "Потрібне проходження програми й конкурсний відбір; фінпідтримку отримують не всі.",
+      "status": "unverified",
+      "deadline": null,
+      "category": "women",
+      "tags": [
+        "women",
+        "idp",
+        "veterans",
+        "online-business",
+        "microgrant"
+      ],
+      "evidence_excerpt": "Фінансова підтримка найкращих бізнесів за результатами програми",
+      "notes": "Сума на сторінці підтверджена; актуальне вікно реєстрації на 17.11.2026 не встановлено.",
+      "evidence_urls": [
+        "https://theimpactforce.org/uk/dreamachieve/"
+      ],
+      "verified_at": "2026-11-17"
+    },
+    {
+      "id": "oschad-woman-sprava",
+      "title": "Жіноча справа",
+      "provider": "Ощадбанк",
+      "official_url": "https://www.oschadbank.ua/news/osadbank-vidkrivae-prijom-zaavok-na-programi-finansuvanna-ta-rozvitku-zinocogo-biznesu-v-mezah-iniciativi-zinoca-sprava",
+      "eligibility_ukraine": "Жінки-підприємиці, власниці/співвласниці українського бізнесу; критерії залежать від обраного інструменту.",
+      "funding_type": "loan_and_support",
+      "amount_text": "Кредит на франшизу до UAH 5 млн; агроінвестиції до UAH 10 млн",
+      "repayment_conditions": "Кредит підлягає поверненню; окремі грантові компоненти мають власні правила.",
+      "status": "open",
+      "deadline": null,
+      "category": "women",
+      "tags": [
+        "women",
+        "loan",
+        "agriculture",
+        "franchise"
+      ],
+      "evidence_excerpt": "Перший етап: кредитування та програми, які вже діють",
+      "notes": "Це парасолькова ініціатива, не один безповоротний грант. BLOOM/Resilience оголошені наступними етапами; EFSE і Sparkassenstiftung частково заплановані на 2027; не показувати майбутні інструменти як доступні.",
+      "evidence_urls": [
+        "https://www.oschadbank.ua/news/osadbank-vidkrivae-prijom-zaavok-na-programi-finansuvanna-ta-rozvitku-zinocogo-biznesu-v-mezah-iniciativi-zinoca-sprava"
+      ],
+      "verified_at": "2026-11-17"
+    },
+    {
+      "id": "veteranfund-compensation-20000",
+      "title": "20 тисяч від УВФ",
+      "provider": "Український ветеранський фонд",
+      "official_url": "https://veteranfund.com.ua/projects/20000-2/",
+      "eligibility_ukraine": "Ветерани-ФОП / незалежна професійна діяльність зі статусом суб’єкта ветеранського підприємництва за чинними критеріями.",
+      "funding_type": "reimbursement",
+      "amount_text": "До UAH 20 000",
+      "repayment_conditions": "Компенсація вже понесених і підтверджених витрат на товари для власної справи; документи обов’язкові.",
+      "status": "recurring",
+      "deadline": null,
+      "category": "veterans",
+      "tags": [
+        "veterans",
+        "reimbursement",
+        "microgrant"
+      ],
+      "evidence_excerpt": "Український ветеранський фонд компенсує витрати до 20 тисяч гривень",
+      "notes": "Поточна сторінка звужує eligibility до ветеранів зі спеціальним статусом; не використовувати старі огляди про всіх членів сімей як чинні правила.",
+      "evidence_urls": [
+        "https://veteranfund.com.ua/projects/20000-2/"
+      ],
+      "verified_at": "2026-11-17"
+    },
+    {
+      "id": "varto-krok-vpered-2026",
+      "title": "ВАРТО: крок вперед",
+      "provider": "Український ветеранський фонд / Kernel",
+      "official_url": "https://veteranfund.com.ua/contests/varto-krok-vpered/",
+      "eligibility_ukraine": "Ветеранські ФОП, самозайняті та юрособи, офіційно зареєстровані як суб’єкти ветеранського підприємництва.",
+      "funding_type": "grant",
+      "amount_text": "UAH 500 000–1 500 000",
+      "repayment_conditions": "Цільове фінансування проєкту за кошторисом і правилами конкурсу.",
+      "status": "closed",
+      "deadline": "2026-09-29",
+      "category": "veterans",
+      "tags": [
+        "veterans",
+        "ukraine",
+        "sme"
+      ],
+      "evidence_excerpt": "Подати їх можна до 29 вересня 2026 року, 18:00.",
+      "notes": "Правила та суми підтверджені повідомленням профільного міністерства.",
+      "evidence_urls": [
+        "https://mva.gov.ua/prescenter/category/86-novini/19-iy-grantoviy-konkurs-varto-krok-vpered-startuvav"
+      ],
+      "verified_at": "2026-11-17"
+    },
+    {
+      "id": "usvf-social-enterprises",
+      "title": "Фінансування соціальних підприємств USVF",
+      "provider": "Український соціальний венчурний фонд",
+      "official_url": "https://www.usv.fund/",
+      "eligibility_ukraine": "Українські соціальні підприємства та impact-бізнеси; підтримує нові та діючі підприємства.",
+      "funding_type": "partially_repayable_grant",
+      "amount_text": "Розмір за конкурсом / договором",
+      "repayment_conditions": "За FAQ повернути 20–50% через 1–2 роки як благодійний внесок; точна частка у договорі.",
+      "status": "recurring",
+      "deadline": null,
+      "category": "social_business",
+      "tags": [
+        "social-enterprise",
+        "impact",
+        "partially-repayable"
+      ],
+      "evidence_excerpt": "USVF надає частково-поворотні гранти.",
+      "notes": "FAQ: відбір двічі на рік; відкритість конкретного набору 17.11.2026 не підтверджена. Окремі конкурсні умови ФОП можуть вимагати партнерство з юрособою.",
+      "evidence_urls": [
+        "https://www.usv.fund/"
+      ],
+      "verified_at": "2026-11-17"
+    },
+    {
+      "id": "echoing-green-fellowship",
+      "title": "Echoing Green Fellowship",
+      "provider": "Echoing Green",
+      "official_url": "https://echoinggreen.org/fellowship/",
+      "eligibility_ukraine": "Засновники соціальних/екологічних підприємств з усього світу; українські засновники можуть відповідати, потрібна повна зайнятість і selection fit.",
+      "funding_type": "recoverable_grant",
+      "amount_text": "USD 100 000 за 18 місяців",
+      "repayment_conditions": "Для for-profit — recoverable grant (поворотний за умовами), для nonprofit — stipend.",
+      "status": "unverified",
+      "deadline": null,
+      "category": "social_business",
+      "tags": [
+        "social-enterprise",
+        "global",
+        "fellowship",
+        "recoverable"
+      ],
+      "evidence_excerpt": "Funding offered to for-profit organizations is in the form of recoverable grants.",
+      "notes": "Новий шлях: спочатку Talent Platform; тільки її учасників запрошують подати на fellowship. Відкритий профіль платформи не означає відкриту заявку на гроші. Перший intake — April 2027.",
+      "evidence_urls": [
+        "https://echoinggreen.org/fellowship/",
+        "https://echoinggreen.org/fellowship/talent-platform/"
+      ],
+      "verified_at": "2026-11-17"
+    },
+    {
+      "id": "roddenberry-catalyst",
+      "title": "Roddenberry Catalyst Fund",
+      "provider": "Roddenberry Foundation",
+      "official_url": "https://apply.roddenberryfoundation.org/app/main/faqs",
+      "eligibility_ukraine": "Глобальні благодійні/соціальні проєкти; for-profit допустимі лише коли переважає charitable/educational purpose й приватна вигода incidental; юридична перевірка юрисдикції.",
+      "funding_type": "grant",
+      "amount_text": "До USD 15 000 за опублікованими правилами",
+      "repayment_conditions": "Цільовий грант; комерційні інтереси не можуть переважати благодійну мету.",
+      "status": "closed",
+      "deadline": null,
+      "category": "social_business",
+      "tags": [
+        "social-enterprise",
+        "global",
+        "early-stage"
+      ],
+      "evidence_excerpt": "There are no grant programs open for proposals at this time.",
+      "notes": "Немає запланованої дати відкриття. Старі статті про rolling без дедлайну застаріли.",
+      "evidence_urls": [
+        "https://apply.roddenberryfoundation.org/app/main/faqs",
+        "https://apply.roddenberryfoundation.org/library/doclib/2019/4/Catalyst-Rules-and-Regulations-TRF.pdf"
+      ],
+      "verified_at": "2026-11-17"
+    },
+    {
+      "id": "d-prize-global",
+      "title": "D-Prize Global Competition",
+      "provider": "D-Prize",
+      "official_url": "https://d-prize.org/faqs",
+      "eligibility_ukraine": "Засновники з будь-якої країни, але проєкт має боротися саме з extreme poverty через розповсюдження доведених рішень; придатність конкретної української локації окремо не підтверджена.",
+      "funding_type": "grant",
+      "amount_text": "До USD 20 000 на 3-місячний пілот",
+      "repayment_conditions": "На визначений пілот соціального бізнесу/НУО; не загальна підтримка будь-якого МСП.",
+      "status": "unverified",
+      "deadline": null,
+      "category": "social_business",
+      "tags": [
+        "social-enterprise",
+        "global",
+        "poverty",
+        "pilot"
+      ],
+      "evidence_excerpt": "D-Prize winners can be from anywhere in the world",
+      "notes": "Додавати як умовно придатну, а не гарантовано для діяльності в Україні. Поточне вікно не перевірене.",
+      "evidence_urls": [
+        "https://d-prize.org/faqs"
+      ],
+      "verified_at": "2026-11-17"
+    }
+  ],
+  "limitations": [
+    "Не всі виявлені програми відкриті. Закриті конкурси залишені для моніторингу наступних циклів.",
+    "Grant не дорівнює коштам без умов: цільове використання, звіти, навчання, податки й clawback слід читати в договорі.",
+    "Категорії одного конкурсу та парасолькові ініціативи не слід рахувати окремими незалежними джерелами грошей.",
+    "Безповоротність не завжди прямо встановлена джерелом; не обіцяти відсутність вимог до повернення."
+  ]
+}

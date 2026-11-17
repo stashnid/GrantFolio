@@ -1,0 +1,603 @@
+[
+  {
+    "id": "horizon-europe",
+    "title": "Horizon Europe: конкурсні дослідження й інновації",
+    "provider": "European Commission",
+    "official_url": "https://research-and-innovation.ec.europa.eu/strategy/strategy-research-and-innovation/europe-world/international-cooperation/association-horizon-europe/ukraine_en",
+    "eligibility_ukraine": "Україна асоційована; українські дослідники та інноватори беруть участь на рівних умовах, з урахуванням конкретного topic.",
+    "funding_type": "grant",
+    "amount_text": "Залежить від topic; це рамкова програма, не окремий грант.",
+    "repayment_conditions": "Виконання проєкту, належні витрати/результати й звітність; умови кожного конкурсу.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "innovation",
+    "tags": [
+      "EU",
+      "R&D",
+      "consortium"
+    ],
+    "evidence": "ЄК підтверджує асоціацію з 09.06.2022 із ретроактивністю з 01.01.2021.",
+    "verified_at": "2026-11-17",
+    "record_type": "umbrella",
+    "evidence_urls": [
+      "https://research-and-innovation.ec.europa.eu/strategy/strategy-research-and-innovation/europe-world/international-cooperation/association-horizon-europe/ukraine_en"
+    ]
+  },
+  {
+    "id": "eic-accelerator",
+    "title": "EIC Accelerator",
+    "provider": "European Innovation Council",
+    "official_url": "https://eic.ec.europa.eu/eic-funding-opportunities/eic-accelerator_en",
+    "eligibility_ukraine": "Окремі стартапи/МСП держав ЄС та асоційованих країн, включно з Україною; проривні рішення TRL 6–8.",
+    "funding_type": "blended_finance",
+    "amount_text": "Грант до €2.5 млн; інвестиційна частина €1–10 млн.",
+    "repayment_conditions": "Грант передбачає результати й звітність; equity/convertible component має окрему інвестиційну угоду.",
+    "status": "open",
+    "deadline": "2027-01-20T17:00:00+01:00",
+    "category": "innovation",
+    "tags": [
+      "EU",
+      "deeptech",
+      "startup"
+    ],
+    "evidence": "Актуальна сторінка вже описує WP2027: короткі заявки будь-коли, найближчий batching повних заявок 20.01.2027.",
+    "verified_at": "2026-11-17",
+    "record_type": "programme",
+    "evidence_urls": [
+      "https://research-and-innovation.ec.europa.eu/strategy/strategy-research-and-innovation/europe-world/international-cooperation/association-horizon-europe/ukraine_en",
+      "https://eic.ec.europa.eu/eic-funding-opportunities/eic-accelerator_en"
+    ]
+  },
+  {
+    "id": "eic-pathfinder",
+    "title": "EIC Pathfinder",
+    "provider": "European Innovation Council",
+    "official_url": "https://eic.ec.europa.eu/eic-funding-opportunities/eic-pathfinder_en",
+    "eligibility_ukraine": "МСП можуть входити в консорціуми ЄС/асоційованих країн. Open: мінімум 3 незалежні юрособи; Challenges допускає інші формати.",
+    "funding_type": "grant",
+    "amount_text": "До €4 млн на проєкт; більше за належного обґрунтування.",
+    "repayment_conditions": "Високоризикові дослідження TRL 1–4, виконання грантової угоди. Не оборотні кошти бізнесу.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "innovation",
+    "tags": [
+      "EU",
+      "deeptech",
+      "consortium"
+    ],
+    "evidence": "Офіційна сторінка підтверджує гранти й правила консорціуму. Конкурси 2026 завершені; слід відстежити окремі topics WP2027.",
+    "verified_at": "2026-11-17",
+    "record_type": "programme",
+    "evidence_urls": [
+      "https://research-and-innovation.ec.europa.eu/strategy/strategy-research-and-innovation/europe-world/international-cooperation/association-horizon-europe/ukraine_en",
+      "https://eic.ec.europa.eu/eic-funding-opportunities/eic-pathfinder_en"
+    ]
+  },
+  {
+    "id": "eic-transition",
+    "title": "EIC Transition",
+    "provider": "European Innovation Council",
+    "official_url": "https://eic.ec.europa.eu/eic-frequently-asked-questions/faqs-eic-transition_en",
+    "eligibility_ukraine": "Юрособи асоційованих країн за умовами конкурсу; потрібні результати допустимого попереднього проєкту та права на них.",
+    "funding_type": "grant",
+    "amount_text": "€500 тис.–€2.5 млн.",
+    "repayment_conditions": "Комерціалізація результатів eligible linked project; необхідне підтвердження прав/IP; звітність і результати.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "innovation",
+    "tags": [
+      "EU",
+      "deeptech",
+      "technology_transfer"
+    ],
+    "evidence": "FAQ підтверджує діапазон і вимогу прав на результати; у 2027 передбачено mono-beneficiary.",
+    "verified_at": "2026-11-17",
+    "record_type": "programme",
+    "evidence_urls": [
+      "https://research-and-innovation.ec.europa.eu/strategy/strategy-research-and-innovation/europe-world/international-cooperation/association-horizon-europe/ukraine_en",
+      "https://eic.ec.europa.eu/eic-frequently-asked-questions/faqs-eic-transition_en"
+    ]
+  },
+  {
+    "id": "eic-pre-accelerator",
+    "title": "EIC Pre-Accelerator — Widening",
+    "provider": "European Innovation Council / WIDERA",
+    "official_url": "https://eic.ec.europa.eu/eic-funding-opportunities/eic-pre-accelerator_en",
+    "eligibility_ukraine": "Окремі МСП у widening countries; Україну прямо зазначено у переліку.",
+    "funding_type": "grant",
+    "amount_text": "У конкурсі 2027: €500 тис.–€1 млн; €300–500 тис. стосувалося 2025.",
+    "repayment_conditions": "Розвиток TRL4–6 та готовності бізнесу до інвестування; перевірити співфінансування в конкретному WP2027.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "innovation",
+    "tags": [
+      "EU",
+      "deeptech",
+      "widening"
+    ],
+    "evidence": "Офіційна сторінка визначає Україну серед eligible countries. FAQ: конкурсу у 2026 немає, наступний у 2027.",
+    "verified_at": "2026-11-17",
+    "record_type": "programme",
+    "evidence_urls": [
+      "https://eic.ec.europa.eu/eic-funding-opportunities/eic-pre-accelerator_en",
+      "https://eic.ec.europa.eu/eic-frequently-asked-questions/faqs-eic-pre-accelerator_en"
+    ]
+  },
+  {
+    "id": "eic-step-scale-up",
+    "title": "EIC STEP Scale Up",
+    "provider": "European Innovation Council",
+    "official_url": "https://eic.ec.europa.eu/eic-funding-opportunities/step-scale_en",
+    "eligibility_ukraine": "МСП/невеликі mid-caps у eligible associated countries; потрібне значне приватне співінвестування.",
+    "funding_type": "equity",
+    "amount_text": "€10–30 млн equity; цільовий раунд €50–150 млн або більше.",
+    "repayment_conditions": "Це інвестиція за частку, не безповоротний грант. Зобов’язання інвестора мінімум 20% цільового раунду.",
+    "status": "open",
+    "deadline": null,
+    "category": "investment",
+    "tags": [
+      "EU",
+      "scaleup",
+      "deeptech",
+      "green"
+    ],
+    "evidence": "Сторінка WP2027 дозволяє подання будь-коли та визначає equity-only форму.",
+    "verified_at": "2026-11-17",
+    "record_type": "programme",
+    "evidence_urls": [
+      "https://research-and-innovation.ec.europa.eu/strategy/strategy-research-and-innovation/europe-world/international-cooperation/association-horizon-europe/ukraine_en",
+      "https://eic.ec.europa.eu/eic-funding-opportunities/step-scale_en"
+    ]
+  },
+  {
+    "id": "eic-step-defence-2026",
+    "title": "EIC STEP Scale Up Defence 2026",
+    "provider": "European Innovation Council",
+    "official_url": "https://eic.ec.europa.eu/news/eic-step-scale-defence-call-opens-today-2026-07-01_en",
+    "eligibility_ukraine": "Компанії в Україні прямо eligible разом із ЄС та асоційованими країнами ЄЕЗ.",
+    "funding_type": "equity",
+    "amount_text": "До €30 млн прямих equity інвестицій.",
+    "repayment_conditions": "Інвестиції за частку; умови власності/контролю й due diligence.",
+    "status": "closed",
+    "deadline": "2026-10-28",
+    "category": "defence",
+    "tags": [
+      "EU",
+      "equity",
+      "scaleup"
+    ],
+    "evidence": "Офіційне оголошення визначає Україну; головна STEP сторінка повідомляє про завершення конкурсу 29.10.2026.",
+    "verified_at": "2026-11-17",
+    "record_type": "call",
+    "evidence_urls": [
+      "https://eic.ec.europa.eu/news/eic-step-scale-defence-call-opens-today-2026-07-01_en"
+    ]
+  },
+  {
+    "id": "ukraine-tech-eic-2025",
+    "title": "Support for Ukrainian tech SMEs and start-ups — завершений відбір",
+    "provider": "EISMEA / EIC",
+    "official_url": "https://eismea.ec.europa.eu/funding-opportunities/calls-proposals/support-ukrainian-tech-smes-and-start-ups_en",
+    "eligibility_ukraine": "Спеціальний конкурс українських deep-tech стартапів/МСП; детальні умови первинного call.",
+    "funding_type": "grant",
+    "amount_text": "€300–500 тис. на компанію (за підсумками відбору).",
+    "repayment_conditions": "Проєктні результати та грантова угода; не вважати поточним відкритим набором.",
+    "status": "closed",
+    "deadline": null,
+    "category": "innovation",
+    "tags": [
+      "EU",
+      "Ukraine_specific",
+      "deeptech"
+    ],
+    "evidence": "ЄК 01.04.2026 оголосила результати: фінансування 41 компанії.",
+    "verified_at": "2026-11-17",
+    "record_type": "call",
+    "evidence_urls": [
+      "https://eic.ec.europa.eu/news/commission-boosts-support-ukrainian-deep-tech-innovators-2026-04-01_en"
+    ]
+  },
+  {
+    "id": "digital-europe",
+    "title": "Digital Europe Programme",
+    "provider": "European Commission",
+    "official_url": "https://digital-strategy.ec.europa.eu/en/faqs/questions-and-answers-digital-europe-programme",
+    "eligibility_ukraine": "Україна асоційована; українські компанії можуть брати участь у відповідних конкурсах. Cybersecurity та security-sensitive topics мають обмеження.",
+    "funding_type": "grant",
+    "amount_text": "Залежить від конкретного topic та ставки співфінансування.",
+    "repayment_conditions": "Проєктне фінансування цифровізації; часто потрібен консорціум, співфінансування та звітність.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "digitalisation",
+    "tags": [
+      "EU",
+      "AI",
+      "digital_skills"
+    ],
+    "evidence": "ЄК підтверджує Україну в associated countries; український EEPO окремо зазначає виключення cybersecurity.",
+    "verified_at": "2026-11-17",
+    "record_type": "umbrella",
+    "evidence_urls": [
+      "https://digital-strategy.ec.europa.eu/en/faqs/questions-and-answers-digital-europe-programme",
+      "https://export.gov.ua/dep-application-guide"
+    ]
+  },
+  {
+    "id": "life",
+    "title": "LIFE — довкілля, клімат і чиста енергетика",
+    "provider": "European Commission / CINEA",
+    "official_url": "https://cinea.ec.europa.eu/programmes/life/life-support-applicants_en",
+    "eligibility_ukraine": "Юрособи асоційованих країн, включаючи Україну; приватний бізнес за відповідності конкретному call.",
+    "funding_type": "grant",
+    "amount_text": "За умовами конкретного LIFE topic; загальний бюджет програми не є сумою гранту компанії.",
+    "repayment_conditions": "Співфінансування, реалізація екологічного/кліматичного проєкту і звітність; перевірити rate у topic.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "green",
+    "tags": [
+      "EU",
+      "climate",
+      "circular_economy",
+      "energy"
+    ],
+    "evidence": "CINEA допускає entities associated countries; список LIFE V10 01.03.2026 прямо підтверджує участь України.",
+    "verified_at": "2026-11-17",
+    "record_type": "umbrella",
+    "evidence_urls": [
+      "https://cinea.ec.europa.eu/programmes/life/life-support-applicants_en",
+      "https://ec.europa.eu/info/funding-tenders/opportunities/docs/2021-2027/life/guidance/list-3rd-country-participation_life_en.pdf"
+    ]
+  },
+  {
+    "id": "creative-europe",
+    "title": "Creative Europe — Culture / Cross-Sectoral",
+    "provider": "European Commission / EACEA",
+    "official_url": "https://ec.europa.eu/info/funding-tenders/opportunities/docs/2021-2027/crea/guidance/list-3rd-country-participation_crea_en.pdf",
+    "eligibility_ukraine": "Україна є учасницею; культурні/креативні підприємства перевіряють вимоги юросіб та консорціуму для кожного конкурсу.",
+    "funding_type": "grant",
+    "amount_text": "Залежить від action/call.",
+    "repayment_conditions": "Проєктні результати, співфінансування і звітність відповідно до грантової угоди.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "creative",
+    "tags": [
+      "EU",
+      "culture",
+      "creative_industries"
+    ],
+    "evidence": "Перелік країн CREA V10 15.01.2026 підтверджує участь України.",
+    "verified_at": "2026-11-17",
+    "record_type": "umbrella",
+    "evidence_urls": [
+      "https://ec.europa.eu/info/funding-tenders/opportunities/docs/2021-2027/crea/guidance/list-3rd-country-participation_crea_en.pdf"
+    ]
+  },
+  {
+    "id": "creative-europe-media",
+    "title": "Creative Europe MEDIA",
+    "provider": "European Commission / EACEA",
+    "official_url": "https://enlargement.ec.europa.eu/news/ukraine-joins-media-strand-creative-europe-programme-2024-12-12_en",
+    "eligibility_ukraine": "Українські аудіовізуальні організації можуть подаватися на всі релевантні MEDIA calls; конкретні умови продюсерів/прав у topic.",
+    "funding_type": "grant",
+    "amount_text": "Залежить від конкурсу: development, distribution, TV/online, tools/business models.",
+    "repayment_conditions": "Грантові проєкти з можливим співфінансуванням, вимогами до прав та звітності.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "creative",
+    "tags": [
+      "EU",
+      "film",
+      "media"
+    ],
+    "evidence": "ЄК підтвердила повну участь; актуальний CREA country list фіксує набрання чинності зміною 22.09.2025.",
+    "verified_at": "2026-11-17",
+    "record_type": "programme",
+    "evidence_urls": [
+      "https://enlargement.ec.europa.eu/news/ukraine-joins-media-strand-creative-europe-programme-2024-12-12_en",
+      "https://ec.europa.eu/info/funding-tenders/opportunities/docs/2021-2027/crea/guidance/list-3rd-country-participation_crea_en.pdf"
+    ]
+  },
+  {
+    "id": "eit-food-poc-2026",
+    "title": "EIT Food Proof-of-Concept Co-Financing Instrument 2026",
+    "provider": "EIT Food",
+    "official_url": "https://www.eitfood.eu/open-calls/proof-of-concept-co-financing-instrument-2",
+    "eligibility_ukraine": "Мікро/малі компанії у EU/HE eligible countries, діяльність ≥12 місяців; один заявник і корпоративний клієнт. Україна eligible через Horizon Europe.",
+    "funding_type": "grant",
+    "amount_text": "До €60 тис. на проєкт.",
+    "repayment_conditions": "Стартап реалізує пілот і звітує; корпоративний партнер укладає окрему угоду та сплачує EIT Food fee 60% бюджету. Частину виплати можуть зменшити за невиконані deliverables.",
+    "status": "open",
+    "deadline": "2026-11-30T12:00:00+01:00",
+    "category": "agriculture",
+    "tags": [
+      "EU",
+      "agrifood",
+      "startup",
+      "corporate_pilot"
+    ],
+    "evidence": "Guidelines v3/2026: географія, ≥12 місяців, corporate turnover ≥€1 млрд або доведені open-innovation capabilities; fee покладено на corporate counterpart.",
+    "verified_at": "2026-11-17",
+    "record_type": "call",
+    "evidence_urls": [
+      "https://assets.eitfood.eu/files/OPEN-CALLS/4.-2026_Call-Guidelines_PoC_co-financing.pdf",
+      "https://research-and-innovation.ec.europa.eu/strategy/strategy-research-and-innovation/europe-world/international-cooperation/association-horizon-europe/ukraine_en"
+    ]
+  },
+  {
+    "id": "eit-urban-market-expansion-2027",
+    "title": "EIT Urban Mobility SME Market Expansion 2027",
+    "provider": "EIT Urban Mobility",
+    "official_url": "https://www.eiturbanmobility.eu/call-for-proposals/sme-market-expansion-open-call-2027/",
+    "eligibility_ukraine": "МСП EU/HE associated countries, ≥3 FTE, TRL≥7 та committed end-client. Географію потрібно підтвердити фінальною версією Call Manual перед публікацією.",
+    "funding_type": "grant",
+    "amount_text": "До €60 тис.",
+    "repayment_conditions": "Перед публікацією перевірити FSA/revenue-sharing agreement; це не слід маркувати як підтримку без фінансових зобов’язань.",
+    "status": "unverified",
+    "deadline": "2026-12-01T17:00:00+01:00",
+    "category": "mobility",
+    "tags": [
+      "EU",
+      "export",
+      "pilot",
+      "requires_contract_review"
+    ],
+    "evidence": "Офіційна сторінка підтверджує відкритий call та deadline; офіційна новина — €60 тис., ≥3 FTE, TRL7. PDF manual v1.3 не відкрився для перевірки revenue share.",
+    "verified_at": "2026-11-17",
+    "record_type": "call",
+    "evidence_urls": [
+      "https://www.eiturbanmobility.eu/call-for-proposals/sme-market-expansion-open-call-2027/",
+      "https://www.eiturbanmobility.eu/sme-market-expansion-open-call-2027/"
+    ]
+  },
+  {
+    "id": "eit-urban-startup-investment-2026",
+    "title": "EIT Urban Mobility Financial Support to Startups 2026",
+    "provider": "EIT Urban Mobility",
+    "official_url": "https://www.eit.europa.eu/our-activities/opportunities/financial-support-startups-open-call-2026",
+    "eligibility_ukraine": "Юрособи EU/HE associated countries; pre-seed/seed/Series A з активним раундом, MVP і обмеженнями cap table/valuation.",
+    "funding_type": "equity",
+    "amount_text": "До €2.5 млн на компанію.",
+    "repayment_conditions": "Співінвестиція разом із приватними інвесторами; не lead investor зазвичай; не безповоротний грант.",
+    "status": "closed",
+    "deadline": "2026-11-16T17:00:00+01:00",
+    "category": "mobility",
+    "tags": [
+      "EU",
+      "startup",
+      "equity"
+    ],
+    "evidence": "EIT дає чотири cut-offs 2026, останній 16.11.2026, та прямо називає co-investment у поточний раунд.",
+    "verified_at": "2026-11-17",
+    "record_type": "call",
+    "evidence_urls": [
+      "https://research-and-innovation.ec.europa.eu/strategy/strategy-research-and-innovation/europe-world/international-cooperation/association-horizon-europe/ukraine_en",
+      "https://www.eit.europa.eu/our-activities/opportunities/financial-support-startups-open-call-2026"
+    ]
+  },
+  {
+    "id": "eit-jumpstarter",
+    "title": "EIT Jumpstarter",
+    "provider": "EIT Community",
+    "official_url": "https://www.eitfood.eu/projects/ris-support-for-startups-and-innovators",
+    "eligibility_ukraine": "Україна прямо в eligible countries; команди інноваторів/науковців з ідеєю бізнесу, sector cohorts.",
+    "funding_type": "prize_and_in_kind",
+    "amount_text": "Розмір призу залежить від поточного конкурсу; навчання й менторство.",
+    "repayment_conditions": "Проходження програми та конкурсу; суми/умови конкретного року потрібно перевірити.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "innovation",
+    "tags": [
+      "EU",
+      "preseed",
+      "training"
+    ],
+    "evidence": "Офіційний EIT Food перелік містить Україну; EIT Jumpstarter 2026 визнає українських інноваторів.",
+    "verified_at": "2026-11-17",
+    "record_type": "programme",
+    "evidence_urls": [
+      "https://www.eitfood.eu/projects/ris-support-for-startups-and-innovators",
+      "https://www.eit.europa.eu/our-activities/opportunities/eit-jumpstarter-2026"
+    ]
+  },
+  {
+    "id": "ebrd-direct-financing",
+    "title": "EBRD Direct Financing Framework — Україна",
+    "provider": "EBRD",
+    "official_url": "https://www.ebrd.com/home/what-we-do/products-and-services/support-for-start-ups-and-msmes/access-finance/financial-products-for-ukrainian-smes.html",
+    "eligibility_ukraine": "Українські приватні МСП; комплексна оцінка банком.",
+    "funding_type": "loan_or_equity",
+    "amount_text": "Інвестиційна сума від еквівалента €5 млн для direct financing / individual RSF.",
+    "repayment_conditions": "Кредит повертається; equity/quasi-equity — за інвестиційною угодою. Не грант.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "investment",
+    "tags": [
+      "EBRD",
+      "loan",
+      "equity",
+      "scaleup"
+    ],
+    "evidence": "Офіційна українська продуктова сторінка описує прямі позики, quasi-equity та minority equity.",
+    "verified_at": "2026-11-17",
+    "record_type": "programme",
+    "evidence_urls": [
+      "https://www.ebrd.com/home/what-we-do/products-and-services/support-for-start-ups-and-msmes/access-finance/financial-products-for-ukrainian-smes.html"
+    ]
+  },
+  {
+    "id": "ebrd-risk-sharing",
+    "title": "EBRD Risk Sharing Framework — Україна",
+    "provider": "EBRD / партнерські банки",
+    "official_url": "https://www.ebrd.com/home/what-we-do/products-and-services/support-for-start-ups-and-msmes/access-finance/risk-sharing-facility.html",
+    "eligibility_ukraine": "Приватна компанія, зареєстрована і переважно працююча в країні операцій ЄБРР; в Україні є partner banks.",
+    "funding_type": "loan_guarantee",
+    "amount_text": "До €25 млн; строки до 15 років за типом проєкту; кредитний ліміт визначає банк.",
+    "repayment_conditions": "Позичальник повертає кредит. Гарантія розподіляє ризик банку, а не списує борг бізнесу.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "credit",
+    "tags": [
+      "EBRD",
+      "guarantee",
+      "working_capital"
+    ],
+    "evidence": "RSF офіційно охоплює всі countries of operations; українська сторінка підтверджує наявність індивідуального RSF.",
+    "verified_at": "2026-11-17",
+    "record_type": "programme",
+    "evidence_urls": [
+      "https://www.ebrd.com/home/what-we-do/products-and-services/support-for-start-ups-and-msmes/access-finance/risk-sharing-facility.html",
+      "https://www.ebrd.com/home/what-we-do/products-and-services/support-for-start-ups-and-msmes/access-finance/financial-products-for-ukrainian-smes.html"
+    ]
+  },
+  {
+    "id": "eu4business-ebrd-credit-line",
+    "title": "EU4Business–EBRD Credit Line",
+    "provider": "EBRD / EU / українські partner banks",
+    "official_url": "https://www.ebrd.com/home/what-we-do/products-and-services/support-for-start-ups-and-msmes/access-finance/financial-products-for-ukrainian-smes.html",
+    "eligibility_ukraine": "Українські МСП, інвестиційні кредити; пріоритет вразливим підприємствам.",
+    "funding_type": "loan_with_grant",
+    "amount_text": "Investment incentive grants 10–30% інвестиційних витрат за відповідною програмою/вікном.",
+    "repayment_conditions": "Грант пов’язаний з інвестиційним кредитом та перевіркою інвестиції; залишок кредиту повертається.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "credit",
+    "tags": [
+      "EU",
+      "EBRD",
+      "equipment",
+      "recovery"
+    ],
+    "evidence": "ЄБРР прямо вказує 10–30% investment grants через Credit Line; конкретну ставку треба підтвердити в банку.",
+    "verified_at": "2026-11-17",
+    "record_type": "programme",
+    "evidence_urls": [
+      "https://www.ebrd.com/home/what-we-do/products-and-services/support-for-start-ups-and-msmes/access-finance/financial-products-for-ukrainian-smes.html"
+    ]
+  },
+  {
+    "id": "eu4business-eib-guarantee",
+    "title": "EU4Business Guarantee Facility — Україна",
+    "provider": "EIB / EIF / European Commission",
+    "official_url": "https://www.eif.org/guarantee-products/all/eu4business-guarantee-facility",
+    "eligibility_ukraine": "МСП у target countries, включно з Україною, через фінансових посередників.",
+    "funding_type": "loan_guarantee",
+    "amount_text": "На сторінці facility максимальний principal €5 млн, maturity до 10 років; конкретні умови банку.",
+    "repayment_conditions": "Повернення кредиту за банківським договором; гарантія може поліпшувати забезпечення/ціну.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "credit",
+    "tags": [
+      "EU",
+      "EIB",
+      "EIF",
+      "guarantee"
+    ],
+    "evidence": "EIF підтверджує Україну, фінансування через банки та параметри facility.",
+    "verified_at": "2026-11-17",
+    "record_type": "programme",
+    "evidence_urls": [
+      "https://www.eif.org/guarantee-products/all/eu4business-guarantee-facility"
+    ]
+  },
+  {
+    "id": "ebrd-star-venture-ukraine-2026",
+    "title": "EBRD Star Venture Ukraine 2026",
+    "provider": "EBRD / EU",
+    "official_url": "https://eu4business.eu/find-support-2026/ukraine/",
+    "eligibility_ukraine": "Українські стартапи з високим потенціалом зростання.",
+    "funding_type": "in_kind",
+    "amount_text": "Послуги підтримки вартістю до €50 тис.; не грошовий грант на рахунок.",
+    "repayment_conditions": "Консультації, менторство й міжнародні мережі за правилами участі.",
+    "status": "closed",
+    "deadline": "2026-10-30",
+    "category": "innovation",
+    "tags": [
+      "EBRD",
+      "EU",
+      "startup",
+      "advisory"
+    ],
+    "evidence": "EU4Business вказує deadline 30.10.2026. Позначка now open на сторінці вже застаріла станом на 17.11.2026.",
+    "verified_at": "2026-11-17",
+    "record_type": "call",
+    "evidence_urls": [
+      "https://eu4business.eu/find-support-2026/ukraine/"
+    ]
+  },
+  {
+    "id": "ifc-ukraine-private-sector",
+    "title": "IFC — фінансування приватного сектору України",
+    "provider": "International Finance Corporation",
+    "official_url": "https://www.ifc.org/en/where-we-work/country/ukraine",
+    "eligibility_ukraine": "Банківські за якістю приватні проєкти в Україні; МСП переважно через partner banks/leasing.",
+    "funding_type": "loan_equity_guarantee",
+    "amount_text": "Визначається індивідуально; суми портфеля IFC не є грантами одному бізнесу.",
+    "repayment_conditions": "Кредит/інвестиційний договір, due diligence; не безповоротна підтримка.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "investment",
+    "tags": [
+      "IFC",
+      "energy",
+      "agribusiness",
+      "reconstruction"
+    ],
+    "evidence": "IFC описує прямі інвестиції, гарантії та фінансування через банки, з акцентом на енергетику.",
+    "verified_at": "2026-11-17",
+    "record_type": "umbrella",
+    "evidence_urls": [
+      "https://www.ifc.org/en/where-we-work/country/ukraine"
+    ]
+  },
+  {
+    "id": "developpp-classic-ukraine",
+    "title": "develoPPP Classic — проєкти в Україні",
+    "provider": "BMZ / DEG Impulse / GIZ",
+    "official_url": "https://wirtschaft-entwicklung.de/en/services/global-advisory-services/ukraine/infodesk-ukraine/project-funding/",
+    "eligibility_ukraine": "Європейські й українські компанії з економічно життєздатним проєктом та вимірюваним development impact в Україні.",
+    "funding_type": "cofinancing_grant",
+    "amount_text": "€100 тис.–€2 млн; компанія покриває щонайменше 50% витрат.",
+    "repayment_conditions": "Співфінансування ≥50%, додатковість та розвитковий ефект, конкурсна проєктна угода й звітність.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "business_development",
+    "tags": [
+      "Germany",
+      "BMZ",
+      "cofinancing",
+      "sustainability"
+    ],
+    "evidence": "Офіційний AWE Ukraine InfoDesk підтверджує участь українських компаній, діапазон та половину власного внеску.",
+    "verified_at": "2026-11-17",
+    "record_type": "programme",
+    "evidence_urls": [
+      "https://wirtschaft-entwicklung.de/en/services/global-advisory-services/ukraine/infodesk-ukraine/project-funding/"
+    ]
+  },
+  {
+    "id": "eu4innovation-east",
+    "title": "EU4Innovation East — підтримка стартапів",
+    "provider": "EU / France / Expertise France",
+    "official_url": "https://eu4innovationeast.eu/from-wartime-challenges-to-new-opportunities-for-ukrainian-startups/",
+    "eligibility_ukraine": "Україна — одна з цільових країн; доступ стартапів через конкретні програми/субгранти.",
+    "funding_type": "grant_or_in_kind",
+    "amount_text": "Визначається конкурсом; €23.1 млн є бюджетом всього проєкту, не грантом компанії.",
+    "repayment_conditions": "Перевірка конкретного subcall; частина конкурсів лише для ecosystem operators, не напряму стартапів.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "innovation",
+    "tags": [
+      "EU",
+      "France",
+      "startup",
+      "ecosystem"
+    ],
+    "evidence": "Виконавець підтверджує Україну серед target countries; EU4Business підтверджує конкурсні грантові можливості.",
+    "verified_at": "2026-11-17",
+    "record_type": "umbrella",
+    "evidence_urls": [
+      "https://eu4innovationeast.eu/from-wartime-challenges-to-new-opportunities-for-ukrainian-startups/",
+      "https://eu4business.eu/find-support-2026/ukraine/"
+    ]
+  }
+]
