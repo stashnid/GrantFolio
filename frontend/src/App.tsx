@@ -95,10 +95,6 @@ export function App() {
   );
   useEffect(() => {
     if (!user) return;
-    if (autoSendEmailCode.current) {
-      setConfirmation("required");
-      return;
-    }
     const controller = new AbortController();
     authenticatedRequest(user, "/api/auth/email-code/status", { signal: controller.signal })
       .then(async response => {
