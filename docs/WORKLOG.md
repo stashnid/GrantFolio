@@ -283,3 +283,5 @@ Sol координував три Terra-виконання: chat/history, search
 Користувач прив’язав білінг до `grantfolio-pp-ua`. CLI підтвердив активний білінг і проєкт. Стан OAuth та наступні кроки оновлено у [звіті](agents/2026-11-17-gcp-release-preparation.md).
 
 Увімкнено Firebase Google Sign-In. `grantfoliomanager@gmail.com` збережено як контакт підтримки, а `grantfolio.pp.ua` додано до дозволених доменів. Тимчасову роль OAuth знято. [Передача](agents/2026-11-17-gcp-release-preparation.md).
+
+Погоджено перші 30 днів розгортання і створено бюджет сповіщень про витрати після кредитів. Образ першої хмарної збірки запушено в Artifact Registry. Розгорнуто завдання міграцій і запущено створення бази. [Передача](agents/2026-11-17-gcp-release-preparation.md).
