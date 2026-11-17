@@ -30,3 +30,7 @@ Cloud SQL завершив створення. Cloud Run execution `grantfolio-m
 Після виправлення URL ручні тригери Cloud Scheduler запустили успішні виконання `grantfolio-grant-sync-8nrg6` і `grantfolio-funding-monitor-7cx86`. Для HTTPS створено `grantfolio-web-neg`, `grantfolio-web-backend` і `grantfolio-web-map`. Публічне правило пересилання та DNS ще не налаштовано.
 
 Увімкнено Gmail API. Власник створив клієнт OAuth `GrantFolio Mail Authorization`. OAuth Audience має статус Testing, а кнопка Publish app вимагає завершити Branding. Потрібно завершити Branding, отримати згоду відправника на `gmail.send`, зберегти конфігурацію в Secret Manager, перевірити доставку, публічний HTTPS і тест 30 користувачів.
+
+Створено HTTPS forwarding rule `grantfolio-https`, глобальну IPv4 `136.81.8.112` та керований сертифікат для `grantfolio.pp.ua`. Сертифікат очікує DNS. Під час переходу до параметрів домену NIC.UA повернув на сторінку входу. Користувачу передано відкриту вкладку для відновлення сесії.
+
+Підготовано `frontend/public/privacy.html`, `frontend/public/terms.html` і спільний стиль. Додано посилання на головній сторінці. Typecheck і production build пройшли, збірка містить обидві сторінки. Google Branding зберіг URL головної сторінки, конфіденційності й умов, а також домен `grantfolio.pp.ua`. Публічну доступність сторінок та верифікацію домену ще треба підтвердити.

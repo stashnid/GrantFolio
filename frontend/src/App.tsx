@@ -476,7 +476,8 @@ export function App() {
       </main>
       <footer className={user ? "app-footer" : undefined}>
         <span>© GrantFolio</span>
-        <span>Гранти та фінансова підтримка бізнесу</span>
+        <a href="/privacy.html">Конфіденційність</a>
+        <a href="/terms.html">Умови використання</a>
       </footer>
     </>
   );
