@@ -291,3 +291,5 @@ Sol координував три Terra-виконання: chat/history, search
 Створено HTTPS frontend балансувальника. Додано сторінки конфіденційності та умов для Google OAuth і збережено посилання в Branding. DNS очікує входу до NIC.UA. [Передача](agents/2026-11-17-gcp-release-preparation.md).
 
 Збережено DNS у NIC.UA, опубліковано Google OAuth і перевірено сторінки конфіденційності та умов у приватній ревізії. Збережено результати двох прогонів 30 паралельних сесій читання. [Передача](agents/2026-11-17-gcp-release-preparation.md).
+
+Власник авторизував `gmail.send` для `grantfoliomanager@gmail.com`. Секрет збережено в Secret Manager, доступ надано лише Cloud Run service account, а вимогу коду підтвердження ввімкнено у приватній ревізії `grantfolio-web-00003-n9g`. `/api/health` повернув `ok`. Публічний HTTPS і фактичну доставку тестового листа ще не підтверджено. [Передача](agents/2026-11-17-gcp-release-preparation.md).
