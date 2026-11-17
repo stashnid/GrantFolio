@@ -1,3 +1,4 @@
+import { ReplyReveal } from "./ReplyReveal";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import "./Assistant.css";
 import { readableApiError } from "./api";
@@ -203,6 +204,10 @@ export function Assistant({
   canApplySuggestions = false,
 }: Props) {
   const starterPrompts = getStarterPrompts(programTitle, programSelected);
+  const [revealingId, setRevealingId] = useState<string | null>(null);
+  const scrollArea = useRef<HTMLDivElement>(null);
+  const nearBottom = useRef(true);
+  const followReply = () => { if (nearBottom.current && scrollArea.current) scrollArea.current.scrollTop = scrollArea.current.scrollHeight; };
   const [message, setMessage] = useState("");
   const [exchanges, setExchanges] = useState<Exchange[]>([]);
   const [error, setError] = useState("");
@@ -284,6 +289,8 @@ export function Assistant({
   useEffect(() => {
     active.current = true;
     setExchanges([]);
+    setRevealingId(null);
+    nearBottom.current = true;
     setMessage("");
     setError("");
     setLoading(false);
@@ -325,7 +332,7 @@ export function Assistant({
 
   useEffect(() => {
     if (scrollToBottom.current) {
-      chatBottomRef.current?.scrollIntoView({ block: "nearest" });
+      followReply();
       scrollToBottom.current = false;
     }
   }, [exchanges, loading]);
@@ -337,6 +344,7 @@ export function Assistant({
     submitController.current = controller;
     const submittedRevision = revision;
     const submittedMessage = text.trim();
+    nearBottom.current = true;
     scrollToBottom.current = true;
     setPendingQuestion(submittedMessage);
     setLoading(true);
@@ -386,6 +394,7 @@ export function Assistant({
       if (!active.current || controller.signal.aborted) return;
       const exchange = (result as { exchange: Exchange }).exchange;
       scrollToBottom.current = true;
+      setRevealingId(exchanges.some(item => item.id === exchange.id) ? null : exchange.id);
       setExchanges((current) => mergeExchanges(current, [exchange]));
       setMessage("");
     } catch (error) {
@@ -432,11 +441,11 @@ export function Assistant({
         <h4 id="live-chat-heading">Асистент</h4>
         <span className="chat-status-indicator">Відповідає на основі збереженої версії проєкту</span>
       </div></header>
-      <div className="chat-scroll-area" role="log" aria-live="polite">
+      <div ref={scrollArea} className="chat-scroll-area" role="log" aria-live="polite" onScroll={e => { const el = e.currentTarget; nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100; }}>
         {historyLoading && <p className="chat-status-msg" role="status">Завантажуємо історію розмови…</p>}
         {historyError && <div className="chat-status-msg" role="alert">Не вдалося завантажити історію. <button type="button" className="link" onClick={() => void loadHistory(nextBefore)}>Спробувати ще раз</button></div>}
         {hasMore && !historyError && <button type="button" className="link load-more-history-btn" disabled={historyLoading} onClick={() => void loadHistory(nextBefore)}>Показати попередні повідомлення</button>}
-        {exchanges.length === 0 && !historyLoading && !historyError && <div className="chat-welcome-card"><div className="welcome-content">
+        {exchanges.length === 0 && !loading && !historyLoading && !historyError && <div className="chat-welcome-card"><div className="welcome-content">
           <span className="welcome-eyebrow">ВАШ ПРОЄКТ · АСИСТЕНТ</span><h2>З чого почнемо?</h2>
           <p>{welcomePrompt ?? ("Обговоріть ідею, кошторис або наступні кроки. Асистент використовує збережені дані проєкту; його відповіді та умови програми варто перевіряти.")}</p>
           {goalText && <p className="chat-goal-text">{goalText}</p>}
@@ -449,10 +458,10 @@ export function Assistant({
             <div className="chat-bubble assistant-bubble">
               <div className="assistant-bubble-author"><span className="author-name">Асистент</span><span className="revision-badge">Версія {exchange.revision}</span></div>
               {(exchange.stale || exchange.revision !== revision) && <div className="stale-alert">Ця відповідь стосується попередніх даних профілю або проєкту.</div>}
-              <div className="bubble-text assistant-text"><FormattedReply text={exchange.reply} /></div>
+              <div className="bubble-text assistant-text"><ReplyReveal text={exchange.reply} animate={revealingId === exchange.id} onComplete={() => setRevealingId(id => id === exchange.id ? null : id)} onProgress={followReply}>{visible => <FormattedReply text={visible} />}</ReplyReveal></div>
               <div className="assistant-bubble-actions"><button type="button" className="bubble-copy-btn" onClick={() => void copyReply(exchange)}>{copiedId === exchange.id ? "Скопійовано" : "Копіювати"}</button></div>
-              {exchange.suggestions && exchange.suggestions.length > 0 && <div className="chat-actionable-card suggestion-list"><strong>Текст для заявки</strong><p>Перегляньте пропозицію перед перенесенням у чернетку.</p>{exchange.suggestions.map((suggestion, index) => <button type="button" key={`${suggestion.field}-${index}`} className="suggestion-review" onClick={e => openPreview(suggestion, exchange.id, e.currentTarget)}>Переглянути текст для заявки · {fieldLabels[suggestion.field]}</button>)}</div>}
-              {suggestedItems.length > 0 && onImportBudgetItems && <div className="chat-actionable-card">
+              {revealingId !== exchange.id && exchange.suggestions && exchange.suggestions.length > 0 && <div className="chat-actionable-card suggestion-list"><strong>Текст для заявки</strong><p>Перегляньте пропозицію перед перенесенням у чернетку.</p>{exchange.suggestions.map((suggestion, index) => <button type="button" key={`${suggestion.field}-${index}`} className="suggestion-review" onClick={e => openPreview(suggestion, exchange.id, e.currentTarget)}>Переглянути текст для заявки · {fieldLabels[suggestion.field]}</button>)}</div>}
+              {revealingId !== exchange.id && suggestedItems.length > 0 && onImportBudgetItems && <div className="chat-actionable-card">
                 <div className="actionable-card-info"><strong>Можливі статті витрат · {suggestedItems.length}</strong><span>Перевірте пропозиції перед додаванням до бюджету.</span></div>
                 <div className="suggested-items-preview">{suggestedItems.map((item, idx) => <div key={idx} className="suggested-item-chip"><span>{item.name} · {item.quantity} шт.</span><span>{Number(item.price).toLocaleString("uk-UA")} грн</span></div>)}</div>
                 <button type="button" className="actionable-import-btn" disabled={blocked || loading || exchange.stale || exchange.revision !== revision} onClick={() => handleImport(suggestedItems)}>Додати до бюджету</button>
@@ -494,7 +503,7 @@ export function Assistant({
           <textarea ref={inputRef} rows={2} maxLength={2000} aria-label="Ваше запитання" value={message} disabled={loading} onChange={(event) => setMessage(event.target.value)} placeholder="Запитайте про ваш проєкт…" onKeyDown={(e) => {
             if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) { e.preventDefault(); void sendQuestion(message); }
           }} />
-          <div className="chat-input-footer"><span>Enter — надіслати · Shift + Enter — новий рядок</span><button type="submit" className="chat-send-btn" disabled={blocked || loading || !message.trim()}>{loading ? "Очікуйте…" : "Надіслати"}</button></div>
+          <div className="chat-input-footer"><span>Enter — надіслати · Shift + Enter — новий рядок</span><button type="submit" className="chat-send-btn" aria-label="Надіслати запитання" title="Надіслати запитання" disabled={blocked || loading || !message.trim()}><svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg></button></div>
         </form>
         <p className="chat-disclaimer">Відповіді можуть містити помилки. Перевіряйте важливу інформацію.</p>
       </div>
