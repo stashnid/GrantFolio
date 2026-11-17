@@ -1,8 +1,10 @@
 import React, { useEffect, useRef, useState, lazy, Suspense } from "react";
 import {
   createUserWithEmailAndPassword,
+  GoogleAuthProvider,
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  signInWithPopup,
   sendPasswordResetEmail,
   signOut,
   type User,
@@ -153,6 +155,24 @@ export function App() {
           ? "Не вдалося створити акаунт. Перевірте email і пароль (не менше 6 символів)."
           : "Не вдалося увійти. Перевірте email і пароль.",
       );
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function loginWithGoogle() {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await signInWithPopup(auth, new GoogleAuthProvider());
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      if (code === "auth/popup-blocked") {
+        setError("Дозвольте спливні вікна для GrantFolio та спробуйте ще раз.");
+      } else if (code !== "auth/popup-closed-by-user" && code !== "auth/cancelled-popup-request") {
+        setError("Не вдалося увійти через Google. Спробуйте ще раз.");
+      }
     } finally {
       setBusy(false);
     }
@@ -342,6 +362,9 @@ export function App() {
                       ? "Створити акаунт"
                       : "Увійти"}{" "}
                   <span>↗</span>
+                </button>
+                <button type="button" className="secondary" disabled={busy} onClick={() => void loginWithGoogle()}>
+                  Продовжити через Google
                 </button>
                 {!register && <button type="button" className="link" disabled={busy} onClick={() => void resetPassword()}>Забули пароль?</button>}
               </form>
