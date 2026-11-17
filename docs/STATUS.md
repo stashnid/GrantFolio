@@ -2,7 +2,7 @@
 
 ## Темно-синя тема — 17.11.2026
 
-Від актуальної main c4d8d49 підготовлено темно-синю тему з синьо-блакитними градієнтами: вхід, кабінет, каталог, профіль, проєкти, legal pages та favicon. Typecheck/build і локальна browser QA; виправлено контраст кнопок і номерів кроків. Без змін auth/API чи production deployment. [Передача](agents/2026-11-17-navy-gradient-theme.md).
+Від актуальної main c4d8d49 підготовлено темно-синю тему з синьо-блакитними градієнтами: вхід, кабінет, каталог, профіль, проєкти, legal pages та favicon. Typecheck/build і локальна browser QA; виправлено контраст кнопок і номерів кроків. Без змін auth/API чи production deployment. Опубліковано [PR №10](https://github.com/stashnid/GrantFolio/pull/10), код `51a8ce9`. [Передача](agents/2026-11-17-navy-gradient-theme.md).
 
 
 ## Розширений каталог фінансування та автоматичне виявлення — 17.11.2026

@@ -30,3 +30,8 @@ UI/UX Pro Max пошук `dark financial dashboard` підтвердив dark na
 ## Фінальна незалежна QA
 
 Sol: print через CDP — h1/h2/th rgb(17,17,17) на білому; PASS. Active step numeral темний alpha фон підтверджений, найнижчий перевірений desktop contrast4.85:1. Mobile menu open/close, focus3px, scrollWidth=viewport1440/768/390 PASS. Основні screenshots перевірені координатором. Є наявний local-only404 POST `/api/auth/email-code/clear` під час logout; source auth/API цим завданням не змінювався. Live OTP delivery/Google OAuth не повторювалися, тому нова перевірка їх поведінки не заявляється. Повноцінний WCAG аудит не виконувався.
+
+
+## Публікація
+
+GitHub прийняв `51a8ce95914e0da53211d34c7f5219573d87eb6e`; свіжий ls-remote підтвердив SHA. [PR №10](https://github.com/stashnid/GrantFolio/pull/10) до main, без merge/deploy. Цей запис передається наступним документаційним комітом; remote CI ще не заявляється PASS.
