@@ -1,12 +1,15 @@
 :root {
   font-family: system-ui, sans-serif;
-  color: #16352a;
-  background: #f7f8f3;
+  color: #edf4ff;
+  background: #14243d;
   line-height: 1.65;
 }
 
 body { margin: 0; }
 main { max-width: 42rem; margin: 0 auto; padding: 3rem 1.25rem; }
-a { color: #21543b; text-underline-offset: .2em; }
+a { color: #edf4ff; text-underline-offset: .2em; }
 h1, h2 { line-height: 1.25; }
 h2 { margin-top: 1.75rem; }
+body { min-height:100vh; background:radial-gradient(ellipse at 10% 0%,#193652,transparent 70%),linear-gradient(145deg,#0d1c32,#080f20); }
+a { color:#89d3f3; }
+:focus-visible { outline:3px solid #77d3f2; outline-offset:4px; }
