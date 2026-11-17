@@ -1,5 +1,9 @@
 # Поточний стан GrantFolio
 
+## Спрощення меню акаунта — 17.11.2026
+
+У гілці `codex/simplify-account-navigation` прибрано статичний блок «Мій кабінет», а пункт редагування має назву «Профіль бізнесу». Збірка й перевірка типів пройшли. [Звіт](agents/2026-11-17-account-navigation.md).
+
 ## Автоматичне розгортання з GitHub
 
 Підготовлено [PR №13](https://github.com/stashnid/GrantFolio/pull/13) з GitHub Actions для релізів із `main` після проходження тестів. Для активації потрібні зв’язок Google Cloud із GitHub через Workload Identity Federation і перший успішний запуск. [Передача](agents/2026-11-17-automatic-deploy.md).

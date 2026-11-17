@@ -226,12 +226,7 @@
 .app-sidebar .nav-tab[aria-current="page"] { background:#284264; color:#ffffff; box-shadow:none; font-weight:750; }
 .app-sidebar .nav-tab[aria-current="page"] svg { color:#ffffff; }
 .app-sidebar #advisor-history-slot { display:flex; flex-direction:column; min-height:120px; flex:1; margin-top:26px; overflow:hidden; }
-.sidebar-account { display:flex; align-items:center; gap:10px; margin-top:auto; border-top:1px solid #426bb1; padding:18px 8px 8px; }
-.account-avatar { display:grid; place-items:center; width:34px; height:34px; flex:none; border-radius:50%; background:#194f91; color:#f3f7ff; font-size:13px; font-weight:700; }
-.sidebar-account > div { min-width:0; display:grid; gap:2px; }
-.sidebar-account strong { color:#f3f7ff; font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.sidebar-account div > span { font-size:10px; color:#90a9c7; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.app-sidebar .account-logout { display:flex; align-items:center; gap:12px; flex:none; margin:6px 0 0; width:100%; border:0; color:#90a9c7; padding:11px 12px; font-size:12px; text-align:left; border-radius:8px; background:transparent; }
+.app-sidebar .account-logout { display:flex; align-items:center; gap:12px; flex:none; margin:auto 0 0; width:100%; border:0; color:#90a9c7; padding:11px 12px; font-size:12px; text-align:left; border-radius:8px; background:transparent; }
 .app-sidebar .account-logout:hover { color:#f3f7ff; background:#194f91; }
 .app-sidebar :focus-visible { outline-color:#77d3f2; }
 main.workspace { margin-left:252px; min-width:0; min-height:100dvh; background:#ffffff; }
@@ -272,7 +267,7 @@ main.workspace { margin-left:252px; min-width:0; min-height:100dvh; background:#
  .app-sidebar { position:relative; inset:auto; width:100%; height:auto; min-height:66px; padding:14px 18px; display:grid; grid-template-columns:minmax(0,1fr) auto auto; gap:0 8px; overflow:visible; }
  .app-sidebar .brand { grid-column:1; grid-row:1; padding:0; font-size:21px; }
  .app-sidebar .brand-symbol { width:30px; height:30px; }
- .nav-section-label, .sidebar-account, .app-sidebar #advisor-history-slot { display:none !important; }
+ .nav-section-label, .app-sidebar #advisor-history-slot { display:none !important; }
  .app-sidebar .mobile-nav-toggle { grid-column:2; grid-row:1; color:#f3f7ff; background:#194f91; border:1px solid #426bb1; padding:10px; min-height:44px; }
  .app-sidebar .account-logout { grid-column:3; grid-row:1; margin:0; padding:10px; min-width:44px; width:auto; font-size:0; }
  .app-sidebar .account-logout svg { width:19px; height:19px; }
