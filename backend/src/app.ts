@@ -7,6 +7,7 @@ import { advisorRouter } from "./advisor.js";
 import { casesRouter } from "./cases.js";
 import { feedbackRouter } from "./feedback.js";
 import { donationsRouter } from "./donations.js";
+import { configuredEmailLoginCode } from "./email-login-code.js";
 import { profileDetails } from "./profile-details.js";
 
 const profile = z
@@ -21,8 +22,13 @@ function presentProfile(row: { businessName: string; description: string; region
   const { details, revision: _revision, ...base } = row;
   return Object.keys(details).length ? { ...base, details } : base;
 }
-export function createApp(db: Pool, catalogStatus: () => unknown[] | Promise<unknown[]> = () => []) {
+export function createApp(
+  db: Pool,
+  catalogStatus: () => unknown[] | Promise<unknown[]> = () => [],
+  emailCode = configuredEmailLoginCode(db),
+) {
   const app = express();
+  const privateRoutes = ["/api/advisor", "/api/me", "/api/cases", "/api/feedback", "/api/donations"];
   app.disable("x-powered-by");
   app.use(express.json({ limit: "128kb" }));
   app.get("/api/grants", async (_req,res,next) => {try { const sources=await catalogStatus();res.set("Cache-Control","no-store").json({programs:GRANT_CATALOG,sources}); }catch(e){next(e);} });
@@ -34,7 +40,7 @@ export function createApp(db: Pool, catalogStatus: () => unknown[] | Promise<unk
       res.status(503).json({ status: "db_unavailable" });
     }
   });
-  app.use(["/api/advisor", "/api/me", "/api/cases", "/api/feedback", "/api/donations"], async (req, res, next) => {
+  app.use([...privateRoutes, "/api/auth/email-code"], async (req, res, next) => {
     res.set("Cache-Control", "no-store");
     const match = /^Bearer ([^\s]+)$/.exec(req.header("authorization") ?? "");
     if (!match) {
@@ -42,7 +48,9 @@ export function createApp(db: Pool, catalogStatus: () => unknown[] | Promise<unk
       return;
     }
     try {
-      res.locals.uid = (await getAuth().verifyIdToken(match[1])).uid;
+      const token = await getAuth().verifyIdToken(match[1]);
+      res.locals.uid = token.uid;
+      res.locals.firebaseToken = token;
       next();
     } catch (error) {
       const code = (error as { code?: string }).code;
@@ -50,6 +58,18 @@ export function createApp(db: Pool, catalogStatus: () => unknown[] | Promise<unk
       res.status(invalid ? 401 : 503).json({ error: invalid ? "unauthorized" : "auth_unavailable" });
     }
   });
+  if (emailCode) {
+    app.use("/api/auth/email-code", emailCode.router);
+    app.use(privateRoutes, (req, res, next) => {
+      if (emailCode.requiresCode(res.locals.firebaseToken, req)) {
+        res.status(403).json({ error: "email_code_required" });
+        return;
+      }
+      next();
+    });
+  } else {
+    app.get("/api/auth/email-code/status", (_req, res) => res.json({ required: false }));
+  }
   app.get("/api/me", async (_req, res, next) => {
     try {
       const result = await db.query(

@@ -1,0 +1,12 @@
+:root {
+  font-family: system-ui, sans-serif;
+  color: #16352a;
+  background: #f7f8f3;
+  line-height: 1.65;
+}
+
+body { margin: 0; }
+main { max-width: 42rem; margin: 0 auto; padding: 3rem 1.25rem; }
+a { color: #21543b; text-underline-offset: .2em; }
+h1, h2 { line-height: 1.25; }
+h2 { margin-top: 1.75rem; }

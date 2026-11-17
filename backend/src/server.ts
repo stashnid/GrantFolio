@@ -17,11 +17,11 @@ try {
     await db.query("INSERT INTO grant_source_checks(program_id,source_url,availability,last_attempt_at,last_error) VALUES($1,$2,$3::jsonb,$4,NULL) ON CONFLICT(program_id) DO NOTHING",[program.id,a.sourceUrl,JSON.stringify(a),a.checkedAt]);
   }
   await grantSync.hydrate();
-  grantSync.start();
+  if (config.runCatalogTimers) grantSync.start();
 } catch { console.warn("Grant source sync unavailable; apply database migrations."); }
 try {
   await fundingMonitor.hydrate();
-  fundingMonitor.start();
+  if (config.runCatalogTimers) fundingMonitor.start();
 } catch { console.warn("New funding discovery unavailable; apply database migrations."); }
 const app = createApp(db, async () => {
   await grantSync.hydrate();

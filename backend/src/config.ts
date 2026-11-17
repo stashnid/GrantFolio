@@ -15,5 +15,6 @@ export function configuration() {
   return {
     projectId: process.env.FIREBASE_PROJECT_ID,
     databaseUrl: process.env.DATABASE_URL,
+    runCatalogTimers: process.env.CATALOG_REFRESH_MODE !== "scheduled",
   };
 }

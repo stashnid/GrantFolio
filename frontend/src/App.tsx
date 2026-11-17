@@ -1,14 +1,17 @@
 import React, { useEffect, useRef, useState, lazy, Suspense } from "react";
 import {
   createUserWithEmailAndPassword,
+  GoogleAuthProvider,
   onAuthStateChanged,
   signInWithEmailAndPassword,
+  signInWithPopup,
   sendPasswordResetEmail,
   signOut,
   type User,
 } from "firebase/auth";
 import { auth } from "./firebase";
 import { authenticatedRequest, ApiError, readableApiError } from "./api";
+import { EmailLoginCode } from "./EmailLoginCode";
 import "./style.css";
 import "./workspace.css";
 import type { GrantProgram } from "./grants";
@@ -36,6 +39,9 @@ function NavIcon({kind}: {kind: WorkspaceTab | "logout"}) {
 }
 export function App() {
   const emailInput = useRef<HTMLInputElement>(null);
+  const autoSendEmailCode = useRef(false);
+  const [confirmation, setConfirmation] = useState<"checking" | "required" | "ready" | "unavailable">("checking");
+  const [confirmationAttempt, setConfirmationAttempt] = useState(0);
   const [user, setUser] = useState<User | null>(null),
     [loading, setLoading] = useState(true),
     [register, setRegister] = useState(false),
@@ -64,7 +70,9 @@ export function App() {
   useEffect(
     () =>
       onAuthStateChanged(auth, (u) => {
+        if (!u) autoSendEmailCode.current = false;
         setUser(u);
+        setConfirmation("checking");
         setTab(window.location.hash === "#grants" || window.location.hash.startsWith("#grants/") ? "catalog" : rememberedTab(u?.uid));
         setProfileReady(false);
         setProfileConflict(false);
@@ -87,6 +95,23 @@ export function App() {
   );
   useEffect(() => {
     if (!user) return;
+    const controller = new AbortController();
+    authenticatedRequest(user, "/api/auth/email-code/status", { signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw Error("confirmation_status_unavailable");
+        const status = await response.json();
+        if (typeof status.required !== "boolean") throw Error("invalid_confirmation_status");
+        if (!controller.signal.aborted && auth.currentUser === user) {
+          setConfirmation(status.required ? "required" : "ready");
+        }
+      })
+      .catch(() => {
+        if (!controller.signal.aborted && auth.currentUser === user) setConfirmation("unavailable");
+      });
+    return () => controller.abort();
+  }, [user, confirmationAttempt]);
+  useEffect(() => {
+    if (!user || confirmation !== "ready") return;
     let active = true;
     const controller = new AbortController();
     setProfileLoading(true);
@@ -111,7 +136,7 @@ export function App() {
       active = false;
       controller.abort();
     };
-  }, [user, retry]);
+  }, [user, retry, confirmation]);
   useEffect(() => {
     const syncCatalog = () => {
       if (window.location.hash === "#grants" || window.location.hash.startsWith("#grants/")) setTab("catalog");
@@ -137,22 +162,43 @@ export function App() {
   }, [hasUnsavedChanges]);
   async function logout() {
     if (hasUnsavedChanges && !window.confirm("Є незбережені зміни або ненадіслане запитання. Вийти без збереження?")) return;
+    if (user) await authenticatedRequest(user, "/api/auth/email-code/clear", { method: "POST" }, 1500).catch(() => {});
     try { await signOut(auth); } catch { setError("Не вдалося вийти. Спробуйте ще раз."); }
   }
   async function login(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError("");
+    autoSendEmailCode.current = true;
     try {
       if (register) await createUserWithEmailAndPassword(auth, email, password);
       else await signInWithEmailAndPassword(auth, email, password);
     } catch (error) {
+      autoSendEmailCode.current = false;
       const code = (error as { code?: string }).code;
       setError(code === "auth/network-request-failed" ? "Немає зв’язку із сервісом входу. Перевірте з’єднання й спробуйте ще раз." : code === "auth/too-many-requests" ? "Забагато спроб входу. Зачекайте трохи й спробуйте ще раз." :
         register
           ? "Не вдалося створити акаунт. Перевірте email і пароль (не менше 6 символів)."
           : "Не вдалося увійти. Перевірте email і пароль.",
       );
+    } finally {
+      setBusy(false);
+    }
+  }
+  async function loginWithGoogle() {
+    if (busy) return;
+    setBusy(true);
+    setError("");
+    setMessage("");
+    try {
+      await signInWithPopup(auth, new GoogleAuthProvider());
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      if (code === "auth/popup-blocked") {
+        setError("Дозвольте спливні вікна для GrantFolio та спробуйте ще раз.");
+      } else if (code !== "auth/popup-closed-by-user" && code !== "auth/cancelled-popup-request") {
+        setError("Не вдалося увійти через Google. Спробуйте ще раз.");
+      }
     } finally {
       setBusy(false);
     }
@@ -212,6 +258,25 @@ export function App() {
     } finally {
       setBusy(false);
     }
+  }
+  if (user && confirmation === "required") {
+    return <EmailLoginCode key={user.uid} user={user} autoSend={autoSendEmailCode.current} onVerified={() => {
+      autoSendEmailCode.current = false;
+      setConfirmation("checking");
+      setConfirmationAttempt(attempt => attempt + 1);
+    }} onExit={() => void logout()} />;
+  }
+  if (user && confirmation !== "ready") {
+    return <main className="panel"><section className="card auth-card">
+      {confirmation === "checking" ? <p role="status">Перевіряємо вхід…</p> : <>
+        <p role="alert">Не вдалося перевірити вхід.</p>
+        <button type="button" className="primary" onClick={() => {
+          setConfirmation("checking");
+          setConfirmationAttempt(attempt => attempt + 1);
+        }}>Спробувати ще раз</button>
+        <button type="button" className="link" onClick={() => void logout()}>Вийти</button>
+      </>}
+    </section></main>;
   }
   return (
     <>
@@ -343,6 +408,9 @@ export function App() {
                       : "Увійти"}{" "}
                   <span>↗</span>
                 </button>
+                <button type="button" className="secondary" disabled={busy} onClick={() => void loginWithGoogle()}>
+                  Продовжити через Google
+                </button>
                 {!register && <button type="button" className="link" disabled={busy} onClick={() => void resetPassword()}>Забули пароль?</button>}
               </form>
               <div className="switch">
@@ -408,7 +476,8 @@ export function App() {
       </main>
       <footer className={user ? "app-footer" : undefined}>
         <span>© GrantFolio</span>
-        <span>Гранти та фінансова підтримка бізнесу</span>
+        <a href="/privacy.html">Конфіденційність</a>
+        <a href="/terms.html">Умови використання</a>
       </footer>
     </>
   );
