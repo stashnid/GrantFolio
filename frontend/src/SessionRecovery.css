@@ -1,10 +1,10 @@
 .session-recovery, .session-recovery-warning {
   margin: 0 0 1rem;
   padding: 1rem;
-  border: 1px solid #365477;
+  border: 1px solid #dbe3ed;
   border-radius: 0.75rem;
-  background: #14243d;
-  color: #f2c879;
+  background: #ffffff;
+  color: #855b10;
 }
 .session-recovery h3 { margin: 0 0 0.4rem; }
 .session-recovery p { margin: 0.4rem 0; }

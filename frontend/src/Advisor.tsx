@@ -7,6 +7,7 @@ import { authenticatedRequest, ApiError, readableApiError } from "./api";
 import type { GrantProgram } from "./grants";
 import type { SearchResult } from "../../backend/src/grant-discovery";
 import { FormattedReply } from "./Assistant";
+import { ReplyReveal } from "./ReplyReveal";
 import "./Advisor.css";
 import { advisorSessionKey, createAdvisorSession, parseAdvisorSession } from "./advisor-session";
 type Message = {
@@ -45,6 +46,11 @@ export function Advisor({
     [error, setError] = useState(""),
     [hasMore, setHasMore] = useState(false),
     [cursor, setCursor] = useState<string | null>(null);
+  const [revealingId, setRevealingId] = useState<string | null>(null);
+  const [pendingQuestion, setPendingQuestion] = useState("");
+  const scrollArea = useRef<HTMLDivElement>(null);
+  const nearBottom = useRef(true);
+  const followReply = () => { if (nearBottom.current && scrollArea.current) scrollArea.current.scrollTop = scrollArea.current.scrollHeight; };
   const [historySlot, setHistorySlot] = useState<HTMLElement | null>(null);
   useEffect(() => { setHistorySlot(document.getElementById("advisor-history-slot")); }, []);
   const [historySearch, setHistorySearch] = useState("");
@@ -165,6 +171,8 @@ export function Advisor({
     if (!conversation) return;
     const controller = new AbortController();
     setMessages([]);
+    setRevealingId(null);
+    nearBottom.current = true;
     setError("");
     void history(conversation, null, controller.signal);
     return () => controller.abort();
@@ -183,7 +191,7 @@ export function Advisor({
     onClearPrefilled();
   }, [prefilledMessage, prefillConversationId, busy, conversation, onClearPrefilled]);
   useEffect(() => {
-    bottom.current?.scrollIntoView({ block: "nearest" });
+    followReply();
   }, [messages, busy]);
   function updateText(value: string) {
     textRef.current = value;
@@ -212,6 +220,8 @@ export function Advisor({
     sending.current = true;
     const question = text.trim(),
       id = conversation;
+    setPendingQuestion(question);
+    nearBottom.current = true;
     setBusy(true);
     setError("");
     if (!attempts.current[id] || attempts.current[id].text !== question)
@@ -242,6 +252,7 @@ export function Advisor({
       )
         throw Error();
       if (current.current !== id) return;
+      setRevealingId(messages.some(item => item.id === m.id) ? null : m.id);
       setMessages((previous) => [...previous.filter((x) => x.id !== m.id), m]);
       updateText("");
       delete drafts.current[id];
@@ -258,6 +269,7 @@ export function Advisor({
       );
     } finally {
       setBusy(false);
+      setPendingQuestion("");
       sending.current = false;
     }
   }
@@ -301,9 +313,9 @@ export function Advisor({
         className="live-chat-container"
         aria-label="Підбір фінансування з асистентом"
       >
-        <div className="chat-scroll-area" role="log" aria-live="polite">
+        <div ref={scrollArea} className="chat-scroll-area" role="log" aria-live="polite" onScroll={e => { const el = e.currentTarget; nearBottom.current = el.scrollHeight - el.scrollTop - el.clientHeight < 100; }}>
           {loading && <p role="status">Завантажуємо розмову…</p>}
-          {!loading && messages.length === 0 && (
+          {!loading && !busy && messages.length === 0 && (
             <div className="chat-welcome-card">
               <div className="welcome-content">
                 <span className="welcome-eyebrow">ВАША ІДЕЯ · НАСТУПНИЙ КРОК</span>
@@ -362,9 +374,9 @@ export function Advisor({
                   </small>
                 </div>
                 <div className="assistant-text">
-                  <FormattedReply text={m.reply} />
+                  <ReplyReveal text={m.reply} animate={revealingId === m.id} onComplete={() => setRevealingId(id => id === m.id ? null : id)} onProgress={followReply}>{visible => <FormattedReply text={visible} />}</ReplyReveal>
                 </div>
-                {m.search.matches.length > 0 && (
+                {revealingId !== m.id && m.search.matches.length > 0 && (
                   <div
                     className="advisor-recommendations"
                     aria-label="Можливі програми"
@@ -400,7 +412,7 @@ export function Advisor({
                     })}
                   </div>
                 )}
-                <div className="advisor-followups">
+                {revealingId !== m.id && <div className="advisor-followups">
                   {(m.search.intents.includes("transport")
                     ? /фоп/i.test(m.seed)
                       ? [
@@ -427,12 +439,12 @@ export function Advisor({
                       {q}
                     </button>
                   ))}
-                </div>
+                </div>}
               </div>
             </div>
           ))}
           {busy && (
-            <p role="status">Шукаю можливі програми й готую відповідь…</p>
+            <div className="chat-turn"><div className="chat-bubble user-bubble"><span className="message-label">Ви</span><div className="bubble-text">{pendingQuestion}</div></div><div className="chat-pending" role="status"><strong>Асистент</strong><span>Шукаю можливі програми й готую відповідь…</span></div></div>
           )}
           <div ref={bottom} />
         </div>
@@ -483,10 +495,10 @@ export function Advisor({
               <span>Enter — надіслати · Shift + Enter — новий рядок</span>
               <button
                 type="submit"
-                className="chat-send-btn"
+                className="chat-send-btn" aria-label="Надіслати запитання" title="Надіслати запитання"
                 disabled={busy || loading || !text.trim()}
               >
-                {busy ? "Очікуйте…" : "Надіслати"}
+                <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19V5M5 12l7-7 7 7" /></svg>
               </button>
             </div>
           </form>
