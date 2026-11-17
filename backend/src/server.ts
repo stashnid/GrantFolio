@@ -1,3 +1,4 @@
+import { createFundingMonitor } from "./funding-monitor.js";
 import {createGrantSync} from "./grant-sync.js";
 import {GRANT_CATALOG} from "./grant-catalog-data.js";
 import { initializeApp } from "firebase-admin/app";
@@ -9,6 +10,7 @@ const config = configuration();
 initializeApp({ projectId: config.projectId });
 const db = new pg.Pool({ connectionString: config.databaseUrl, max: 5 });
 const grantSync = createGrantSync(db);
+const fundingMonitor = createFundingMonitor(db);
 try {
   for (const program of GRANT_CATALOG.filter(p=>p.availability)) {
     const a=program.availability!;
@@ -17,7 +19,18 @@ try {
   await grantSync.hydrate();
   grantSync.start();
 } catch { console.warn("Grant source sync unavailable; apply database migrations."); }
-const app = createApp(db, async () => { await grantSync.hydrate(); return grantSync.status().map(s=>({programId:s.programId,url:s.sourceUrl,lastAttemptAt:s.lastAttemptAt,lastSuccessAt:s.availability?.checkedAt??null,error:s.lastError})); });
+try {
+  await fundingMonitor.hydrate();
+  fundingMonitor.start();
+} catch { console.warn("New funding discovery unavailable; apply database migrations."); }
+const app = createApp(db, async () => {
+  await grantSync.hydrate();
+  await fundingMonitor.hydrate();
+  return [
+    ...grantSync.status().map(s=>({programId:s.programId,url:s.sourceUrl,lastAttemptAt:s.lastAttemptAt,lastSuccessAt:s.availability?.checkedAt??null,error:s.lastError})),
+    ...fundingMonitor.status().map(s=>({programId:s.programId,url:s.sourceUrl,lastAttemptAt:s.lastAttemptAt,lastSuccessAt:s.lastSuccessAt,error:s.lastError,counts:s.counts,truncated:s.truncated})),
+  ];
+});
 app.use(express.static("frontend/dist"));
 app.get("/{*path}", (_req, res) =>
   res.sendFile("index.html", { root: "frontend/dist" }),

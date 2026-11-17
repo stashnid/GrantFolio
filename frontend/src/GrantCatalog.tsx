@@ -3,7 +3,11 @@ import { GRANT_PROGRAMS, type GrantProgram } from "./grants";
 import "./GrantCatalog.css";
 import { useGrantPrograms } from "./GrantPrograms";
 import { isGrantAvailable } from "../../backend/src/grant-availability";
-import { searchGrants, friendlyTitle } from "../../backend/src/grant-discovery";
+import {
+  searchGrants,
+  friendlyTitle,
+  normalize,
+} from "../../backend/src/grant-discovery";
 
 export { GRANT_PROGRAMS, type GrantProgram } from "./grants";
 
@@ -22,25 +26,135 @@ const catalogId = () => {
 };
 const formatDate = (value: string) =>
   value.replace(/^(\d{4})-(\d{2})-(\d{2})$/, "$3.$2.$1");
-const deadlineText = (p: GrantProgram) =>
-  p.availability?.rolling
-    ? "Постійний прийом"
-    : p.availability?.deadlineAt
-      ? `Подати до ${new Date(p.availability.deadlineAt).toLocaleString("uk-UA", { dateStyle: "medium", ...(p.availability?.deadlinePrecision === "minute" ? { timeStyle: "short" as const } : {}), timeZone: "Europe/Kyiv" })} (Київ)`
-      : "Строк прийому уточнюється";
-const intakeLabel = (p: GrantProgram) =>
-  p.availability?.basis === "calendar"
-    ? "Період подання за календарем"
-    : "Прийом відкрито";
+const fundingLabels: Record<
+  NonNullable<GrantProgram["fundingType"]> | "unknown",
+  string
+> = {
+  unknown: "Тип фінансування уточнюється",
+  grant: "Грант",
+  reimbursement: "Компенсація витрат",
+  cofinancing: "Співфінансування",
+  loan: "Кредит",
+  equity: "Інвестиція в капітал",
+  guarantee: "Гарантія",
+  prize: "Грошова премія",
+  voucher: "Ваучер",
+  "in-kind": "Послуги та ресурси",
+  "recoverable-grant": "Поворотний грант",
+  blended: "Змішане фінансування",
+  leasing: "Лізинг",
+  factoring: "Факторинг",
+  insurance: "Страхування",
+};
+const categoryLabels: Record<GrantProgram["category"], string> = {
+  erobota: "Державні програми",
+  veteran: "Ветеранський бізнес",
+  production: "Виробництво",
+  agro: "Агробізнес",
+  international: "Міжнародні програми",
+  startup: "Стартапи та інновації",
+  women: "Жіноче підприємництво",
+  social: "Соціальний бізнес",
+  green: "Енергія та довкілля",
+  export: "Експорт",
+  finance: "Кредити та інші фінанси",
+  creative: "Креативні індустрії",
+  digital: "Цифровізація",
+  regional: "Регіональна підтримка",
+  displaced: "ВПО та релокація",
+};
+const fundingLabel = (p: GrantProgram) =>
+  fundingLabels[p.fundingType ?? "unknown"] ?? "Тип уточнюється";
+const canPrepare = (p: GrantProgram) =>
+  p.reviewStatus !== "needs-review" &&
+  p.programKind !== "program" &&
+  isGrantAvailable(p);
+const currentAvailability = (p: GrantProgram) => {
+  const a = p.availability;
+  return a &&
+    Number.isFinite(Date.parse(a.checkedAt)) &&
+    Date.parse(a.validUntil) > Date.now()
+    ? a
+    : undefined;
+};
+const pausedIntake = (p: GrantProgram) =>
+  p.intakeStatus === "paused" ||
+  /призупин|suspend|paused/iu.test(currentAvailability(p)?.evidence ?? "");
+const availabilityDate = (value: string, precision?: "day" | "minute") =>
+  new Date(value).toLocaleString("uk-UA", {
+    dateStyle: "medium",
+    ...(precision === "minute" ? { timeStyle: "short" as const } : {}),
+    timeZone: "Europe/Kyiv",
+  });
+const nextIntake = (p: GrantProgram) => {
+  const a = currentAvailability(p);
+  return a?.basis === "calendar" &&
+    a.startsAt &&
+    Date.parse(a.startsAt) > Date.now()
+    ? a
+    : undefined;
+};
+const deadlineText = (p: GrantProgram) => {
+  const a = currentAvailability(p);
+  const next = nextIntake(p);
+  if (next && !pausedIntake(p)) {
+    const start = availabilityDate(next.startsAt!);
+    const end = next.deadlineAt
+      ? ` — ${availabilityDate(next.deadlineAt)}`
+      : "";
+    return `Наступний прийом за календарем: ${start}${end}`;
+  }
+  if (a?.deadlineAt && Number.isFinite(Date.parse(a.deadlineAt))) {
+    const label = canPrepare(p)
+      ? "Подати до"
+      : "Строк за останньою перевіркою:";
+    const precision =
+      a.deadlinePrecision === "minute"
+        ? " (Київ)"
+        : " · час уточніть у джерелі";
+    return `${label} ${availabilityDate(a.deadlineAt, a.deadlinePrecision)}${precision}`;
+  }
+  if (canPrepare(p) && a?.rolling) return "Постійний прийом";
+  if (a && pausedIntake(p))
+    return "Нову дату відновлення прийому уточнюйте в офіційному джерелі.";
+  if (a?.basis === "calendar")
+    return "Новий період у перевіреному календарі не визначено.";
+  return p.deadline;
+};
+const intakeLabel = (p: GrantProgram) => {
+  if (p.reviewStatus === "needs-review")
+    return "Нова знахідка · потребує перевірки";
+  if (p.programKind === "program")
+    return "Програма · окремий набір уточнюється";
+  if (canPrepare(p))
+    return p.availability?.basis === "calendar"
+      ? "Період подання за календарем"
+      : "Прийом відкрито";
+  if (pausedIntake(p)) return "Прийом призупинено";
+  const next = nextIntake(p);
+  if (next) return `Наступний прийом з ${availabilityDate(next.startsAt!)}`;
+  if (
+    p.intakeStatus === "archived" ||
+    p.availability?.state === "closed" ||
+    (p.availability?.deadlineAt &&
+      Date.parse(p.availability.deadlineAt) <= Date.now())
+  )
+    return "Прийом завершено";
+  return "Відкритий прийом не підтверджено";
+};
 const checkTime = (p: GrantProgram) =>
   p.availability?.checkedAt
-    ? new Date(p.availability.checkedAt).toLocaleString("uk-UA", {
-        dateStyle: "short",
-        timeStyle: "short",
-        timeZone: "Europe/Kyiv",
-      })
-    : p.checkedAt;
+    ? `Статус перевірено ${new Date(p.availability.checkedAt).toLocaleString(
+        "uk-UA",
+        {
+          dateStyle: "short",
+          timeStyle: "short",
+          timeZone: "Europe/Kyiv",
+        },
+      )}`
+    : `Дані опрацьовано ${formatDate(p.checkedAt)}`;
 const urgent = (p: GrantProgram) =>
+  canPrepare(p) &&
   !!p.availability?.deadlineAt &&
   Date.parse(p.availability.deadlineAt) - Date.now() <= 7 * 86400000;
 
@@ -52,6 +166,9 @@ export function GrantCatalog({
   const { programs, availablePrograms, loading, error, reload, sources } =
     useGrantPrograms();
   const [search, setSearch] = useState("");
+  const [category, setCategory] = useState("all");
+  const [funding, setFunding] = useState("all");
+  const [onlyOpen, setOnlyOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(catalogId);
   const lastCard = useRef<string | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -81,14 +198,65 @@ export function GrantCatalog({
     window.location.hash = "grants";
   };
   const selected = programs.find((p) => p.id === selectedId);
-  const result = searchGrants(search, availablePrograms);
-  const candidates = search.trim()
-    ? result.matches.map((match) => ({
-        program: availablePrograms.find((p) => p.id === match.programId)!,
-        match,
-      }))
-    : availablePrograms.map((program) => ({ program, match: undefined }));
-  const filtered = candidates.filter(({program}) => !!program);
+  // The recommendation engine deliberately excludes closed/unverified records.
+  // Catalogue browsing also searches the full sourced directory.
+  const result = searchGrants(search, availablePrograms.filter(canPrepare));
+  const matches = new Map(
+    result.matches.map((match) => [match.programId, match]),
+  );
+  const queryWords = normalize(search)
+    .split(" ")
+    .filter(
+      (word) =>
+        word.length > 1 && !["для", "на", "та", "і", "у", "в"].includes(word),
+    );
+  const categories = [...new Set(programs.map((p) => p.category))];
+  const fundingTypes = [
+    ...new Set(programs.map((p) => p.fundingType ?? "unknown")),
+  ];
+  const confirmedIds = new Set(
+    availablePrograms.filter(canPrepare).map((p) => p.id),
+  );
+  const filtered = programs
+    .filter((p) => {
+      if (category !== "all" && p.category !== category) return false;
+      if (funding !== "all" && (p.fundingType ?? "unknown") !== funding)
+        return false;
+      if (onlyOpen && !confirmedIds.has(p.id)) return false;
+      if (!search.trim()) return true;
+      if (matches.has(p.id)) return true;
+      const text = normalize(
+        [
+          p.title,
+          friendlyTitle(p),
+          p.provider,
+          p.summary,
+          p.targetAudience,
+          p.categoryLabel,
+          categoryLabels[p.category],
+          fundingLabel(p),
+          p.keyCondition,
+          p.eligibilityUkraine ?? "",
+          p.repayment ?? "",
+          p.details.overview,
+          ...p.eligibleCosts,
+          ...p.details.eligibility,
+          ...p.details.funding,
+          ...(p.tags ?? []),
+          ...(p.searchTerms ?? []),
+        ].join(" "),
+      );
+      return (
+        queryWords.length > 0 && queryWords.every((word) => text.includes(word))
+      );
+    })
+    .map((program) => ({ program, match: matches.get(program.id) }));
+  const resetFilters = () => {
+    setSearch("");
+    setCategory("all");
+    setFunding("all");
+    setOnlyOpen(false);
+  };
   const list = (items: readonly string[]) => (
     <ul>
       {items.map((item, i) => (
@@ -110,7 +278,7 @@ export function GrantCatalog({
         </div>
       );
     const d = selected.details;
-    const available = isGrantAvailable(selected);
+    const available = confirmedIds.has(selected.id);
     const sectionId = (section: string) =>
       `grant-section-${selected.id}-${section}`;
     const jumpTo = (section: string) => {
@@ -137,27 +305,38 @@ export function GrantCatalog({
           <p className="grant-official-name">
             Офіційна програма: {selected.title}
           </p>
+          <div className="grant-badges">
+            <span>{fundingLabel(selected)}</span>
+            <span>
+              {selected.programKind === "program"
+                ? "Програма підтримки"
+                : "Конкурс / набір"}
+            </span>
+          </div>
           <p className="grant-page-amount">{selected.amount}</p>
           <p className="grant-official-name">
             Умови й суми опрацьовано {formatDate(selected.checkedAt)}.
-            Автоматично перевіряємо статус прийому та дедлайн.
+            Доступність залежить від поточного набору та правил надавача.
           </p>
           <p className="grant-status">
-            <strong>
-              {available
-                ? intakeLabel(selected)
-                : "Прийом зараз не підтверджено або завершено"}
-            </strong>{" "}
-            · Статус перевірено {checkTime(selected)}
+            <strong>{intakeLabel(selected)}</strong> · {checkTime(selected)}
           </p>
-          <p>{available ? deadlineText(selected) : selected.deadline}</p>
+          <p>{deadlineText(selected)}</p>
+          <a
+            className="grant-source-link"
+            href={selected.officialUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            Перейти до надавача ↗
+          </a>
           {available ? (
             <>
               <button
                 type="button"
                 className="primary grant-prepare"
                 onClick={() => {
-                  if (isGrantAvailable(selected))
+                  if (confirmedIds.has(selected.id) && canPrepare(selected))
                     onApplyProgram?.(selected, search.trim());
                 }}
               >
@@ -169,8 +348,11 @@ export function GrantCatalog({
             </>
           ) : (
             <p className="grant-action-note">
-              Підготовка нової заявки недоступна, доки актуальний прийом не
-              підтверджено.
+              {selected.reviewStatus === "needs-review"
+                ? "Нову можливість знайдено автоматично. Умови та право українського бізнесу на участь ще потребують перевірки."
+                : selected.programKind === "program"
+                  ? "Це програма підтримки. Перевірте в надавача доступні конкурси та інструменти."
+                  : "Підготовка нової заявки недоступна, доки актуальний прийом не підтверджено."}
             </p>
           )}
         </header>
@@ -196,6 +378,12 @@ export function GrantCatalog({
             <h3 id={sectionId("eligibility")} tabIndex={-1}>
               Хто може подати заявку
             </h3>
+            {selected.eligibilityUkraine && (
+              <p className="grant-ukraine-eligibility">
+                <strong>Участь українського бізнесу:</strong>{" "}
+                {selected.eligibilityUkraine}
+              </p>
+            )}
             {list(d.eligibility)}
             {d.exclusions.length > 0 && (
               <>
@@ -208,6 +396,11 @@ export function GrantCatalog({
             <h3 id={sectionId("funding")} tabIndex={-1}>
               Фінансування та власний внесок
             </h3>
+            <p className="grant-finance-note">
+              <strong>{fundingLabel(selected)}.</strong>{" "}
+              {selected.repayment ??
+                "Вимоги до власного внеску, цільового використання, звітності та повернення коштів уточнюйте в правилах і договорі програми."}
+            </p>
             {list(d.funding)}
           </section>
           <section>
@@ -270,7 +463,7 @@ export function GrantCatalog({
               type="button"
               className="primary grant-prepare"
               onClick={() => {
-                if (isGrantAvailable(selected))
+                if (confirmedIds.has(selected.id) && canPrepare(selected))
                   onApplyProgram?.(selected, search.trim());
               }}
             >
@@ -285,19 +478,104 @@ export function GrantCatalog({
     <div className="grant-catalog">
       <header className="grant-list-header">
         <p className="catalog-eyebrow">Каталог грантів</p>
-        <h2>Знайдіть фінансування<br />для своєї ідеї</h2>
+        <h2>
+          Знайдіть фінансування
+          <br />
+          для своєї ідеї
+        </h2>
         <p>
-          Опишіть потребу своїми словами. Назву програми знати не потрібно.
+          Гранти, премії, кредити й інші інструменти для українського бізнесу.
+          Оберіть напрям і перевірте умови участі.
         </p>
-        <form className="catalog-search-form" role="search" onSubmit={(event) => { event.preventDefault(); resultsHeading.current?.focus(); }}>
-          <label className="grant-search-label" htmlFor="grant-search">Що ви хочете профінансувати?</label>
+        <form
+          className="catalog-search-form"
+          role="search"
+          onSubmit={(event) => {
+            event.preventDefault();
+            resultsHeading.current?.focus();
+          }}
+        >
+          <label className="grant-search-label" htmlFor="grant-search">
+            Що ви хочете профінансувати?
+          </label>
           <div className="catalog-search-controls">
-            <input id="grant-search" maxLength={500} type="search" placeholder="Наприклад: обладнання для кав’ярні" value={search} onChange={(event) => setSearch(event.target.value)} />
-            {search && <button type="button" className="catalog-clear" onClick={() => setSearch("")}>Очистити</button>}
-            <button type="submit" className="catalog-search-submit">Знайти</button>
+            <input
+              id="grant-search"
+              maxLength={500}
+              type="search"
+              aria-describedby="grant-search-help"
+              placeholder="Назва, надавач або потреба: обладнання"
+              value={search}
+              onChange={(event) => setSearch(event.target.value)}
+            />
+            {search && (
+              <button
+                type="button"
+                className="catalog-clear"
+                onClick={() => setSearch("")}
+              >
+                Очистити
+              </button>
+            )}
+            <button type="submit" className="catalog-search-submit">
+              Знайти
+            </button>
           </div>
-          <p>Результати оновлюються під час введення.</p>
+          <p id="grant-search-help">
+            Шукаємо в назвах, описах, умовах і ключових словах усього каталогу.
+            Результати оновлюються під час введення.
+          </p>
         </form>
+        <div
+          className="catalog-filters"
+          role="group"
+          aria-label="Фільтри фінансування"
+        >
+          <label htmlFor="grant-category-filter">
+            Напрям
+            <select
+              id="grant-category-filter"
+              value={category}
+              onChange={(event) => setCategory(event.target.value)}
+            >
+              <option value="all">Усі напрями</option>
+              {categories.map((value) => (
+                <option key={value} value={value}>
+                  {categoryLabels[value] ?? value}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label htmlFor="grant-funding-filter">
+            Тип фінансування
+            <select
+              id="grant-funding-filter"
+              value={funding}
+              onChange={(event) => setFunding(event.target.value)}
+            >
+              <option value="all">Усі типи</option>
+              {fundingTypes.map((value) => (
+                <option key={value} value={value}>
+                  {fundingLabels[value] ?? value}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="catalog-open-filter" htmlFor="grant-open-filter">
+            <input
+              id="grant-open-filter"
+              type="checkbox"
+              checked={onlyOpen}
+              onChange={(event) => setOnlyOpen(event.target.checked)}
+            />
+            Лише підтверджений відкритий прийом
+          </label>
+        </div>
+        <p className="catalog-scope-note">
+          {onlyOpen
+            ? "Показуємо лише набори з актуальним підтвердженням прийому. Це не гарантує відповідності вашого бізнесу умовам."
+            : "Усі можливості: відкриті й завершені конкурси, програми підтримки та нові знахідки. Статус зазначено в кожній картці."}
+        </p>
       </header>
       {loading && <p role="status">Оновлюємо програми…</p>}
       {error && (
@@ -308,35 +586,34 @@ export function GrantCatalog({
           </button>
         </p>
       )}
-      {sources.some(
-        (s) => s.error && availablePrograms.some((p) => p.id === s.programId),
-      ) && (
+      {sources.some((s) => s.error) && (
         <p role="status" className="grant-query-explanation">
           Повторна перевірка деяких джерел тимчасово недоступна. Час останнього
-          успішного підтвердження показано біля програми; прострочені
-          підтвердження не потрапляють до каталогу.
+          успішного підтвердження показано біля програми. Без актуального
+          підтвердження можливість не вважається відкритою для підготовки
+          заявки.
         </p>
       )}
-      {!search.trim() && <div className="grant-search-help">
-        {[
-          "Авто для роботи",
-          "Бізнес для молоді",
-          "Кав’ярня",
-          "Виробництво",
-        ].map((q) => (
-          <button
-            type="button"
-            key={q}
-            onClick={() => {
-              setSearch(q);
-            }}
-          >
-            {q}
-          </button>
-        ))}
-      </div>}
+      {!search.trim() && (
+        <div className="grant-search-help">
+          {["Обладнання", "Жінки", "Стартап", "Виробництво"].map((q) => (
+            <button
+              type="button"
+              key={q}
+              onClick={() => {
+                setSearch(q);
+              }}
+            >
+              {q}
+            </button>
+          ))}
+        </div>
+      )}
       {search.trim() && filtered.length === 0 && (
-        <p className="grant-query-explanation">{result.explanation}</p>
+        <p className="grant-query-explanation">
+          За цими словами та фільтрами збігів немає. Спробуйте коротшу назву,
+          надавача або інший напрям.
+        </p>
       )}
       {search.trim() && (
         <button
@@ -347,17 +624,28 @@ export function GrantCatalog({
           Обговорити потребу з асистентом
         </button>
       )}
-      <div className="grant-results-heading"><div><p className="catalog-eyebrow">Доступні програми</p><h3>Можливості для вас</h3></div><p ref={resultsHeading} tabIndex={-1} role="status" className="grant-count">Можливих напрямів: {filtered.length}</p></div>
+      <div className="grant-results-heading">
+        <div>
+          <p className="catalog-eyebrow">
+            {onlyOpen ? "Підтверджений прийом" : "Каталог фінансування"}
+          </p>
+          <h3>Можливості для бізнесу</h3>
+        </div>
+        <p
+          ref={resultsHeading}
+          tabIndex={-1}
+          role="status"
+          className="grant-count"
+        >
+          Можливих напрямів: {filtered.length}
+        </p>
+      </div>
       {filtered.length === 0 && (
         <p>
-          Зараз немає підтверджених відкритих програм за цим запитом. Це не означає, що фінансування взагалі не існує.{" "}
-          <button
-            type="button"
-            className="catalog-back"
-            onClick={() => {
-              setSearch("");
-            }}
-          >
+          {onlyOpen
+            ? "Підтверджених відкритих наборів за цими фільтрами немає."
+            : "Можливостей за цими фільтрами не знайдено."}{" "}
+          <button type="button" className="catalog-back" onClick={resetFilters}>
             Показати весь каталог
           </button>
         </p>
@@ -369,6 +657,17 @@ export function GrantCatalog({
               <p className="grant-category">
                 {p.categoryLabel} · {p.provider}
               </p>
+              <div className="grant-badges">
+                <span>{fundingLabel(p)}</span>
+                <span>
+                  {p.programKind === "program"
+                    ? "Програма підтримки"
+                    : "Конкурс / набір"}
+                </span>
+                {p.reviewStatus === "needs-review" && (
+                  <span>Потребує перевірки</span>
+                )}
+              </div>
               <h3>{friendlyTitle(p)}</h3>
               <p>{p.summary}</p>
               <p>
@@ -377,7 +676,17 @@ export function GrantCatalog({
               <p>
                 <strong>На що:</strong> {p.eligibleCosts.join(", ")}
               </p>
-              {search.trim() && match && (
+              {p.repayment && (
+                <p>
+                  <strong>Умови коштів:</strong> {p.repayment}
+                </p>
+              )}
+              {p.eligibilityUkraine && (
+                <p>
+                  <strong>Участь з України:</strong> {p.eligibilityUkraine}
+                </p>
+              )}
+              {search.trim() && match && confirmedIds.has(p.id) && (
                 <div className="grant-match-reason">
                   <strong>Чому це може підійти</strong>
                   <p>{match.reason}</p>
@@ -392,8 +701,7 @@ export function GrantCatalog({
                 </div>
               )}
               <p className="grant-status">
-                <strong>{intakeLabel(p)}</strong> · Статус перевірено{" "}
-                {checkTime(p)} ·{" "}
+                <strong>{intakeLabel(p)}</strong> · {checkTime(p)} ·{" "}
                 <a
                   href={p.availability?.sourceUrl ?? p.officialUrl}
                   target="_blank"

@@ -16,6 +16,7 @@ test("catalog hides unknown, stale, closed, future and deadline-expired opportun
     { startsAt: "2026-11-17T00:00:00Z" },
     { deadlineAt: null, rolling: false },
     { deadlineAt: "garbage" },
+    { checkedAt: "2026-11-17T12:00:00Z" },
   ]) {
     const p = {
       ...original,
@@ -80,4 +81,11 @@ test("deployed source rules capture exact English deadlines with required time z
     new RegExp(eit.deadlinePattern!, "iu").exec(text)?.[1],
     "1 December 2026 at 17.00 CET",
   );
+});
+
+
+test("discovery review and umbrella programme cannot claim verified open even with source availability", () => {
+  const base=GRANT_CATALOG.find(p=>p.id==="vlasna-sprava")!;
+  assert.equal(isGrantAvailable({...base,reviewStatus:"needs-review"},now),false);
+  assert.equal(isGrantAvailable({...base,programKind:"program"},now),false);
 });

@@ -1,3 +1,4 @@
+import { EXPANDED_FUNDING_CATALOG } from "./expanded-funding-catalog.js";
 /** Shared, curated program information. Not an automated eligibility decision. */
 export type GrantCatalogEntry = {
   id: string;
@@ -11,7 +12,8 @@ export type GrantCatalogEntry = {
     | "production"
     | "agro"
     | "international"
-    | "startup";
+    | "startup"
+    | "women" | "social" | "green" | "export" | "finance" | "creative" | "digital" | "regional" | "displaced";
   categoryLabel: string;
   targetAudience: string;
   keyCondition: string;
@@ -22,7 +24,12 @@ export type GrantCatalogEntry = {
   intakeStatus: "open" | "unconfirmed" | "paused" | "archived";
   planningLimitKopecks?: number;
   currency?: "UAH" | "USD" | "EUR";
-  fundingType?: "grant" | "reimbursement" | "cofinancing";
+  fundingType?: "grant" | "reimbursement" | "cofinancing" | "loan" | "equity" | "guarantee" | "prize" | "voucher" | "in-kind" | "recoverable-grant" | "blended" | "leasing" | "factoring" | "insurance";
+  repayment?: string;
+  programKind?: "program" | "call";
+  eligibilityUkraine?: string;
+  reviewStatus?: "curated" | "needs-review";
+  tags?: string[];
   searchTerms?: string[];
   availability?: {
     state: "open" | "closed" | "unknown";
@@ -705,4 +712,15 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
       ],
     },
   },
+  ...EXPANDED_FUNDING_CATALOG,
 ];
+
+// Preserve one set of sourced facts for catalog filters, project planning and assistant.
+for (const program of GRANT_CATALOG) {
+  program.programKind ??= "call";
+  program.fundingType ??= "grant";
+  program.reviewStatus ??= "curated";
+  program.repayment ??= program.details.obligations.join(" ");
+  program.eligibilityUkraine ??= program.targetAudience;
+  program.tags ??= program.searchTerms ?? [];
+}

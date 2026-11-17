@@ -1,0 +1,544 @@
+[
+  {
+    "id": "ua-own-business-start",
+    "title": "Започаткування власної справи",
+    "provider": "Державний центр зайнятості / Дія",
+    "official_url": "https://diia.gov.ua/services/zapochatkuvannia-ta-masshtabuvannia-vlasnoi-spravy",
+    "eligibility_ukraine": "Громадяни України 18+, фізичні особи, ФОП та юридичні особи; обмеження КВЕДів.",
+    "funding_type": "conditional_grant",
+    "amount_text": "До 500 000 грн",
+    "repayment_conditions": "Без повернення за виконання договору; робочі місця залежно від суми, діяльність протягом договірного строку, сплата податків.",
+    "status": "open",
+    "deadline": "2026-11-27",
+    "category": "startup",
+    "tags": [
+      "Ukraine",
+      "microbusiness",
+      "IDP",
+      "veterans"
+    ],
+    "evidence": "Офіційний нормативний календар установлює друге листопадове вікно 16–27 числа; поточне призупинення не підтверджено.",
+    "verified_at": "2026-11-17",
+    "record_type": "programme_stream",
+    "schedule_url": "https://zakon.rada.gov.ua/laws/show/z1185-26",
+    "status_note": "Нормативний календар: 16–27 листопада; Дія показує застарілий етап до 27 жовтня без банера призупинення. Онлайн-приймання в особистому кабінеті не перевірено."
+  },
+  {
+    "id": "ua-own-business-scale",
+    "title": "Масштабування власної справи",
+    "provider": "Державний центр зайнятості / Дія",
+    "official_url": "https://diia.gov.ua/services/zapochatkuvannia-ta-masshtabuvannia-vlasnoi-spravy",
+    "eligibility_ukraine": "Чинний український бізнес, за умовами програми.",
+    "funding_type": "conditional_grant",
+    "amount_text": "До 2 500 000 грн",
+    "repayment_conditions": "Обов’язкове нове робоче місце; робочі місця створюють протягом 3 місяців; податки та строк діяльності за договором.",
+    "status": "open",
+    "deadline": "2026-11-27",
+    "category": "business_growth",
+    "tags": [
+      "Ukraine",
+      "SME",
+      "jobs"
+    ],
+    "evidence": "Офіційний нормативний календар установлює друге листопадове вікно 16–27 числа; поточне призупинення не підтверджено.",
+    "verified_at": "2026-11-17",
+    "record_type": "programme_stream",
+    "schedule_url": "https://zakon.rada.gov.ua/laws/show/z1185-26",
+    "status_note": "Нормативний календар: 16–27 листопада; Дія показує застарілий етап до 27 жовтня без банера призупинення. Онлайн-приймання в особистому кабінеті не перевірено."
+  },
+  {
+    "id": "ua-processing-grant",
+    "title": "Грант на виробництво переробної промисловості",
+    "provider": "Мінекономіки / ДЦЗ",
+    "official_url": "https://diia.gov.ua/services/grant-na-pererobne-pidpriyemstvo",
+    "eligibility_ukraine": "Українські ФОП/юрособи, без бюджетного боргу, санкцій та діяльності на ТОТ/у РФ.",
+    "funding_type": "conditional_grant",
+    "amount_text": "До 8 млн грн; до 16 млн грн для відновлення пошкоджених виробничих активів",
+    "repayment_conditions": "Від 5 робочих місць, діяльність 3 роки, податки; переважно співфінансування 50/50, окремі категорії 80/20. Порушення спричиняє повернення.",
+    "status": "closed",
+    "deadline": null,
+    "category": "manufacturing",
+    "tags": [
+      "equipment",
+      "recovery",
+      "cofinancing"
+    ],
+    "evidence": "Дія прямо повідомляє: прийом заяв призупинено.",
+    "verified_at": "2026-11-17",
+    "status_note": "Призупинено до нормативних документів; не оголошувати відкритим."
+  },
+  {
+    "id": "ua-orchard-grant",
+    "title": "Грант на сад, ягідник або виноградник",
+    "provider": "Мінекономіки / Дія",
+    "official_url": "https://diia.gov.ua/services/grant-na-sad",
+    "eligibility_ukraine": "ФОП/юрособи; 1–25 га, право на землю щонайменше 7 років.",
+    "funding_type": "conditional_grant",
+    "amount_text": "140 000–400 000 грн/га; до 70% кошторису",
+    "repayment_conditions": "Власний внесок, робочі місця, зрошення за вимогами, 5 років діяльності, сплата податків; повернення за порушення.",
+    "status": "closed",
+    "deadline": null,
+    "category": "agriculture",
+    "tags": [
+      "horticulture",
+      "berries",
+      "vineyards"
+    ],
+    "evidence": "Офіційний портал повідомляє про призупинення прийому.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-greenhouse-grant",
+    "title": "Грант на модульну теплицю",
+    "provider": "Мінекономіки / Дія",
+    "official_url": "https://diia.gov.ua/services/grant-na-teplicyu",
+    "eligibility_ukraine": "ФОП/юрособи, площа 0,4–2,4 га; земля у власності/користуванні від 7 років.",
+    "funding_type": "conditional_grant",
+    "amount_text": "2 млн / 3,5 млн / 7 млн грн за площею; до 70% проєкту",
+    "repayment_conditions": "Від 4 постійних і 10 сезонних місць на гектар; 3 роки діяльності після будівництва, зрошення, податки та співфінансування.",
+    "status": "closed",
+    "deadline": null,
+    "category": "agriculture",
+    "tags": [
+      "greenhouse",
+      "jobs",
+      "cofinancing"
+    ],
+    "evidence": "Дія повідомляє про призупинення прийому.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-affordable-loans-579",
+    "title": "Доступні кредити 5-7-9%",
+    "provider": "Національна установа розвитку",
+    "official_url": "https://bdf.gov.ua/programs/dostupni-kredyty-5-7-9/",
+    "eligibility_ukraine": "Українські підприємці через уповноважені банки; кредитоспроможність і напрями за програмою.",
+    "funding_type": "loan",
+    "amount_text": "Сума і ставка залежать від напряму, регіону та рішення банку",
+    "repayment_conditions": "Кредит повертається; відсотки, забезпечення та комісії за банківським договором.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "credit_leasing",
+    "tags": [
+      "SME",
+      "state",
+      "investment"
+    ],
+    "evidence": "Офіційна сторінка позначена «активна».",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-affordable-leasing",
+    "title": "Доступний фінансовий лізинг 5-7-9%",
+    "provider": "Національна установа розвитку",
+    "official_url": "https://bdf.gov.ua/programs/prohrama-dostupnyy-finansovyy-lizynh-5-7-9/",
+    "eligibility_ukraine": "Українські МСП через уповноважених лізингодавців.",
+    "funding_type": "leasing",
+    "amount_text": "Ліміт та власний аванс за чинними правилами й оцінкою лізингодавця",
+    "repayment_conditions": "Платежі за лізингом обов’язкові; субсидується вартість фінансування.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "credit_leasing",
+    "tags": [
+      "equipment",
+      "state"
+    ],
+    "evidence": "Оператор позначає програму активною.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-affordable-factoring",
+    "title": "Доступний факторинг",
+    "provider": "Національна установа розвитку",
+    "official_url": "https://bdf.gov.ua/programs/prohrama-finansovoi-derzhavnoi-pidtrymky-sub-iektiv-pidpryiemnytstva-za-dohovoramy-faktorynhu-dostupnyy-faktorynh/",
+    "eligibility_ukraine": "Українські виробники товарів, послуг і робіт українського походження.",
+    "funding_type": "factoring",
+    "amount_text": "За договором фактора, загального грантового ліміту немає",
+    "repayment_conditions": "Фінансування під вимоги до дебіторів; комісії, регрес і ставки за договором; не безповоротний грант.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "credit_leasing",
+    "tags": [
+      "working_capital",
+      "receivables"
+    ],
+    "evidence": "Активна урядова програма підтримки за договорами факторингу.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-compensation-industry15",
+    "title": "Компенсація 15% української промислової техніки",
+    "provider": "Мінекономіки",
+    "official_url": "https://madeinukraine.gov.ua/kompensatsiya-15-ukr-obladnannya",
+    "eligibility_ukraine": "Український покупець допустимої техніки з офіційного переліку, без податкового боргу та санкцій.",
+    "funding_type": "reimbursement",
+    "amount_text": "15% вартості допустимої української техніки за правилами програми",
+    "repayment_conditions": "Спочатку придбати допустиму техніку; цільове використання, не продавати 3 роки; фінансування в межах бюджету.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "equipment_compensation",
+    "tags": [
+      "manufacturing",
+      "equipment",
+      "Ukraine"
+    ],
+    "evidence": "Офіційна сторінка містить критерії покупця та перелік техніки.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-compensation-agri25",
+    "title": "Компенсація 25% української сільгосптехніки",
+    "provider": "Мінекономіки",
+    "official_url": "https://madeinukraine.gov.ua/kompensatsiya-25-ukr-obladnannya",
+    "eligibility_ukraine": "Українські агровиробники й агропереробники; придбання техніки з переліку.",
+    "funding_type": "reimbursement",
+    "amount_text": "25% вартості допустимої сільгосптехніки за правилами програми",
+    "repayment_conditions": "Підтверджене придбання та відповідність переліку; заявка через уповноважений банк, бюджетні обмеження.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "agriculture",
+    "tags": [
+      "equipment",
+      "compensation"
+    ],
+    "evidence": "Офіційна сторінка прямо зазначає підтримку українських агровиробників.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-disability-workplace",
+    "title": "Компенсація облаштування місця праці для людини з інвалідністю",
+    "provider": "Державна служба зайнятості",
+    "official_url": "https://don.dcz.gov.ua/novyna/onovleno-umovy-kompensaciyi-za-oblashtuvannya-robochyh-misc-dlya-lyudey-z-invalidnistyu",
+    "eligibility_ukraine": "Роботодавці й підприємці з інвалідністю; відповідність медичному висновку та чинному порядку.",
+    "funding_type": "reimbursement",
+    "amount_text": "Граничні суми залежать від групи; ІІІ група — до 5 мінімальних зарплат за оновленням 12.11.2026",
+    "repayment_conditions": "Відшкодування документованих фактичних витрат; медичне підтвердження потреби; заява та строки за порядком.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "employment_inclusion",
+    "tags": [
+      "disability",
+      "equipment",
+      "employers"
+    ],
+    "evidence": "ДЦЗ 12.11.2026 повідомив про розширення на ІІІ групу; старі сторінки можуть бути не оновлені.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-idp-wage-compensation",
+    "title": "Компенсація роботодавцям за працевлаштування ВПО під час воєнного стану",
+    "provider": "Державна служба зайнятості",
+    "official_url": "https://www.dcz.gov.ua/employer/choiceprofit/vpowar",
+    "eligibility_ukraine": "Українські роботодавці, які працевлаштовують допустимих ВПО.",
+    "funding_type": "wage_subsidy",
+    "amount_text": "За чинним порядком; точні суми потребують перевірки",
+    "repayment_conditions": "Підтвердження працевлаштування, зарплати та відповідності умовам.",
+    "status": "unverified",
+    "deadline": null,
+    "category": "employment_inclusion",
+    "tags": [
+      "IDP",
+      "wages"
+    ],
+    "evidence": "Офіційний маршрут підтверджений обласними джерелами; основна сторінка JS-only, чинні суми не перевірені.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-usf-startup-edge",
+    "title": "Startup EDGE",
+    "provider": "Український фонд стартапів / EU4Innovation East",
+    "official_url": "https://usf.com.ua/programs/startup-edge",
+    "eligibility_ukraine": "Українські early-stage стартапи Deep Tech, Green Tech та EdTech; комплаєнс за правилами.",
+    "funding_type": "grant",
+    "amount_text": "Pre-seed до €20 000, Seed до €40 000",
+    "repayment_conditions": "Цільові витрати й грантовий договір; не позначати як безумовно безповоротний.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "innovation",
+    "tags": [
+      "deeptech",
+      "greentech",
+      "edtech",
+      "startup"
+    ],
+    "evidence": "Офіційна сторінка пропонує попередню реєстрацію та сповіщення про наступний open call.",
+    "verified_at": "2026-11-17",
+    "status_note": "Програма для моніторингу; відкритий конкурс не підтверджено."
+  },
+  {
+    "id": "ua-brave1-core",
+    "title": "Brave1 — основна грантова програма",
+    "provider": "Brave1 / Український фонд стартапів",
+    "official_url": "https://grants.brave1.tech/",
+    "eligibility_ukraine": "Українські defense-tech розробники за критеріями Brave1.",
+    "funding_type": "conditional_grant",
+    "amount_text": "До 500 тис., 2 млн, 4 млн або 8 млн грн",
+    "repayment_conditions": "Цільове використання, звітність, результат; для 4–8 млн обов’язковий аудит.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "defence_innovation",
+    "tags": [
+      "R&D",
+      "Ukraine"
+    ],
+    "evidence": "Діє подання через portal.usf.com.ua; сума залежить від готовності технології.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-bravetech-eu",
+    "title": "BraveTech EU — спеціальна програма",
+    "provider": "Brave1 / USF",
+    "official_url": "https://grants.brave1.tech/",
+    "eligibility_ukraine": "Defense-tech пріоритетні технології, відбір експертами.",
+    "funding_type": "conditional_grant",
+    "amount_text": "До 8 млн грн",
+    "repayment_conditions": "Грантова угода, експертиза та звіти; конкретний цикл слід перевіряти.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "defence_innovation",
+    "tags": [
+      "deeptech",
+      "EU"
+    ],
+    "evidence": "Окремий розділ офіційної сторінки визначає спеціальну програму до 8 млн.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-brave-competitions",
+    "title": "Brave Конкурси",
+    "provider": "Brave1 / USF",
+    "official_url": "https://grants.brave1.tech/",
+    "eligibility_ukraine": "Розробники, що відповідають конкретним технічним умовам конкурсу.",
+    "funding_type": "conditional_grant",
+    "amount_text": "За кошторисом; максимальні суми визначає конкретний конкурс",
+    "repayment_conditions": "Результат і звітність за конкурсом; наявність актуального прийому перевіряти окремо.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "defence_innovation",
+    "tags": [
+      "competitions",
+      "R&D"
+    ],
+    "evidence": "Офіційний портал виділяє цільове конкурсне фінансування окремим інструментом.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-bloom-sme-2026",
+    "title": "BLOOM — підтримка малого та середнього бізнесу, цикл 2026",
+    "provider": "Mercy Corps / консорціум BLOOM / UK Aid",
+    "official_url": "https://bloom.mercycorps.org/en_GB/about/gJmqxeVR",
+    "eligibility_ukraine": "Місцевий/релокований бізнес у визначених областях; ФОП із допустимих груп.",
+    "funding_type": "grant",
+    "amount_text": "$17 000–30 000 у гривневому еквіваленті",
+    "repayment_conditions": "Закупівля виробничих основних засобів; робочі місця й договірні обов’язки, власний внесок за правилами.",
+    "status": "closed",
+    "deadline": "2026-09-30",
+    "category": "recovery",
+    "tags": [
+      "IDP",
+      "SME",
+      "frontline"
+    ],
+    "evidence": "Офіційний цикл: 21.07–30.09.2026.",
+    "verified_at": "2026-11-17",
+    "source_note": "Головний домен перенаправляє на bloom.prosperglobal.org; не переносити старий дедлайн на нові конкурси."
+  },
+  {
+    "id": "ua-bloom-micro-2026",
+    "title": "BLOOM — мікробізнес та самозайнятість",
+    "provider": "Mercy Corps / консорціум BLOOM",
+    "official_url": "https://me.gov.ua/News/Detail/80075ee1-da1c-4568-b58c-4906cb3b5271",
+    "eligibility_ukraine": "Постраждалі від війни, ВПО, ветерани й місцеві мешканці у визначених областях.",
+    "funding_type": "grant",
+    "amount_text": "$1 000–3 000 самозайнятим; $1 000–5 000 ФОП",
+    "repayment_conditions": "Цільове використання і життєздатний бізнес-план; умови повернення визначає угода.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "microbusiness",
+    "tags": [
+      "self_employment",
+      "IDP",
+      "veterans"
+    ],
+    "evidence": "Мінекономіки описує підтримку; кілька хвиль, перший дедлайн 10.07.2026 за ДЦЗ.",
+    "verified_at": "2026-11-17",
+    "status_note": "Новий відкритий етап не підтверджено."
+  },
+  {
+    "id": "ua-redcross-reboot-may2026",
+    "title": "Перезавантаження — мікрогранти, травень 2026",
+    "provider": "Український Червоний Хрест / Іспанський Червоний Хрест",
+    "official_url": "https://redcross.org.ua/en/news/2026/05/148860/",
+    "eligibility_ukraine": "Особи 18–65 з уразливих категорій, постраждалі від війни; географія за умовами.",
+    "funding_type": "grant",
+    "amount_text": "До 120 000 грн",
+    "repayment_conditions": "Два транші 50/50; другий після підтвердження виконання першої частини бізнес-плану.",
+    "status": "closed",
+    "deadline": "2026-05-22",
+    "category": "microbusiness",
+    "tags": [
+      "recovery",
+      "self_employment"
+    ],
+    "evidence": "Офіційне оголошення: заявки 15–22.05.2026, можливе дострокове закриття.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-moving-forward-2026",
+    "title": "Рухайся вперед: гранти й консультації для мікропідприємств",
+    "provider": "НУР / GIZ EMPOWER / BMZ",
+    "official_url": "https://bdf.gov.ua/en/moving-forward-ndi-launches-microenterprise-support-program-for-women-entrepreneurs-veterans-and-idps/",
+    "eligibility_ukraine": "Жінки, ветерани, ВПО; 7 зазначених прифронтових областей.",
+    "funding_type": "grant",
+    "amount_text": "До €8 000",
+    "repayment_conditions": "Обґрунтовані витрати, співфінансування за правилами і грантова угода.",
+    "status": "closed",
+    "deadline": null,
+    "category": "recovery",
+    "tags": [
+      "women",
+      "IDP",
+      "veterans",
+      "microbusiness"
+    ],
+    "evidence": "Прийом із 21.05.2026 протягом трьох тижнів; поточний прийом не підтверджений.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-farmer-interestfree2026",
+    "title": "Безвідсотковий кредит фермерським господарствам, конкурс 2026",
+    "provider": "Укрдержфонд / ДАР",
+    "official_url": "https://www.dar.gov.ua/news-list/fermery-zmozhut-otrymaty-do-1-mln-grn-bezvidsotkovogo-kredytu-na-rozvytok-gospodarstva-startuye-pryjom-zayavok-u-dar-2/",
+    "eligibility_ukraine": "Фермерські та сімейні господарства, зареєстровані в ДАР; без податкових боргів.",
+    "funding_type": "loan",
+    "amount_text": "До 1 млн грн, до 5 років, без відсотків",
+    "repayment_conditions": "Повне повернення бюджетних коштів із забезпеченням зобов’язань.",
+    "status": "closed",
+    "deadline": "2026-07-02",
+    "category": "agriculture",
+    "tags": [
+      "farms",
+      "interest_free"
+    ],
+    "evidence": "Офіційний ДАР: подання 02.06–02.07.2026.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-fao-eu-cycle4-2026",
+    "title": "ФАО та ЄС — 4-й грантовий цикл для агровиробників",
+    "provider": "ФАО / ЄС / ДАР",
+    "official_url": "https://www.eeas.europa.eu/delegations/ukraine/фао-та-європейський-союз-запускають-четвертий-грантовий-цикл-у-державному-аграрному-реєстрі-для_uk",
+    "eligibility_ukraine": "Агровиробники визначених ланцюгів у 8 областях; подання через ДАР.",
+    "funding_type": "matching_grant",
+    "amount_text": "До $10 000 малим виробникам; до $25 000 агропідприємствам і кооперативам",
+    "repayment_conditions": "Обов’язковий власний внесок залежить від ланцюга доданої вартості; інвестиційний план і звітність.",
+    "status": "closed",
+    "deadline": "2026-06-14",
+    "category": "agriculture",
+    "tags": [
+      "cooperatives",
+      "equipment",
+      "value_chains"
+    ],
+    "evidence": "Делегація ЄС 15.05.2026: останній термін 14.06.2026.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-demining-compensation",
+    "title": "Компенсація гуманітарного розмінування сільгоспземель",
+    "provider": "Центр гуманітарного розмінування / Мінекономіки",
+    "official_url": "https://demine.gov.ua/",
+    "eligibility_ukraine": "Фермери з допустимими земельними ділянками; заявка та перевірка через ДАР.",
+    "funding_type": "in_kind_subsidy",
+    "amount_text": "Вартість допустимих послуг за програмою; точний відсоток перевіряти за чинним порядком",
+    "repayment_conditions": "Кошти виплачують оператору розмінування, не як вільний грант фермеру; безпекові обмеження.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "agriculture",
+    "tags": [
+      "demining",
+      "land_recovery"
+    ],
+    "evidence": "Офіційний портал описує подання через ДАР, закупівлю послуг і оплату оператору.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-eca-investment-insurance",
+    "title": "ЕКА — страхування інвестиційних кредитів",
+    "provider": "Експортно-кредитне агентство",
+    "official_url": "https://www.eca.gov.ua/produkty/strahuvannya-investyczijnyh-kredytiv/",
+    "eligibility_ukraine": "Український суб’єкт господарювання понад 12 місяців; інвестиція у розвиток експорту.",
+    "funding_type": "credit_insurance",
+    "amount_text": "За погодженим кредитом і страховим лімітом",
+    "repayment_conditions": "Кредит повертається; власний внесок від 15%, забезпечення та страхова премія за договором.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "export_finance",
+    "tags": [
+      "war_risk",
+      "credit",
+      "investment"
+    ],
+    "evidence": "ЕКА страхує банківський ризик непогашення при воєнних/політичних подіях.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-eca-easyzed",
+    "title": "ЕКА EASY ЗЕД — захист експортної виручки",
+    "provider": "Експортно-кредитне агентство",
+    "official_url": "https://www.eca.gov.ua/produkty/rishennya-dlya-eksporteriv/easyzed/",
+    "eligibility_ukraine": "Українські експортери допустимих товарів, робіт і послуг.",
+    "funding_type": "export_insurance",
+    "amount_text": "Покриття до 85% інвойсу, до 400 000 грн за офіційним описом",
+    "repayment_conditions": "Страхова премія та договір; відшкодування тільки при страховій події, не грант.",
+    "status": "recurring",
+    "deadline": null,
+    "category": "export_finance",
+    "tags": [
+      "export",
+      "receivables"
+    ],
+    "evidence": "Онлайн продукт; покриття дебіторської заборгованості до 180 днів.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-undp-digitalization2026",
+    "title": "ПРООН — цифровізація мікробізнесу, 2026",
+    "provider": "ПРООН / уряд Японії",
+    "official_url": "https://www.undp.org/uk/ukraine/news/pryymayemo-zayavky-na-prohramu-z-pidtrymky-tsyfrovizatsiyi-pidpryyemtsiv-yaki-postrazhdaly-vid-viyny",
+    "eligibility_ukraine": "Мікробізнес до 10 працівників, постраждалий від війни, в Україні поза ТОТ.",
+    "funding_type": "technical_assistance",
+    "amount_text": "Цифрова підтримка; пряма грошова сума не підтверджена",
+    "repayment_conditions": "Послуги за програмою; не позначати як виплату готівкового гранту.",
+    "status": "closed",
+    "deadline": "2026-07-31",
+    "category": "digitalization",
+    "tags": [
+      "microbusiness",
+      "ecommerce"
+    ],
+    "evidence": "Офіційний анонс встановлює дедлайн 31.07.2026 о 23:59.",
+    "verified_at": "2026-11-17"
+  },
+  {
+    "id": "ua-core-programme",
+    "title": "CORE — Competitiveness for Recovery Ukraine",
+    "provider": "Helvetas / NIRAS / ILO / SECO",
+    "official_url": "https://www.helvetas.org/en/eastern-europe/ukraine/who-we-are/news/Switzerland%20launches%20the%20CORE%20Program%20in%20Ukraine-%20CHF%2030%20million%20for%20Ukraine%27s%20competitiveness",
+    "eligibility_ukraine": "Українські МСП та приватний сектор у майбутніх заходах; конкретний конкурс не оголошений у джерелі.",
+    "funding_type": "technical_assistance",
+    "amount_text": "Програмний бюджет CHF30 млн; це НЕ сума гранту одному бізнесу",
+    "repayment_conditions": "Умови окремих майбутніх конкурсів; безповоротна виплата підприємству не підтверджена.",
+    "status": "unverified",
+    "deadline": null,
+    "category": "business_growth",
+    "tags": [
+      "SME",
+      "productivity",
+      "monitor_only"
+    ],
+    "evidence": "Офіційний запуск 04.11.2026; переважно системна підтримка конкурентоспроможності.",
+    "verified_at": "2026-11-17",
+    "record_type": "monitoring_programme"
+  }
+]
