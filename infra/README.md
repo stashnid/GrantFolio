@@ -79,7 +79,13 @@ gcloud secrets versions list "$DB_SECRET" --project="$PROJECT_ID" --format='tabl
 
 Pin the confirmed numeric `DB_SECRET_VERSION` in both job and service. Never use `latest` for a reproducible release; no service account JSON key is needed. Review [Run SQL connection](https://docs.cloud.google.com/sql/docs/postgres/connect-run) and [secret configuration](https://docs.cloud.google.com/run/docs/configuring/services/secrets).
 
-## Build once, migrate, then deploy the same digest
+## Automatic production deployment from GitHub
+
+The `Prototype checks` workflow runs the release job after tests pass for a push to `main` in `stashnid/GrantFolio`. An operator can also rerun it from **Actions → Prototype checks → Run workflow** on `main`. Run `bash infra/configure-github-deploy.sh` once as an authorized project administrator before merging the workflow. It sets up Workload Identity Federation for this repository, workflow and branch. It grants the deployer access to the existing registry, web service and migration job and allows it to run as the current Cloud Run runtime account.
+
+GitHub runners build the checked commit with the public Firebase Web App config and push the image to Artifact Registry. The release applies database migrations, creates a revision, switches traffic and checks public HTTPS health. A failed health check restores the previous revision. Migrations must remain compatible with the previous web revision because a traffic rollback does not revert SQL. To pause releases, disable provider `github-main` in the `grantfolio-github` identity pool. API, hosting and production secret settings continue to live in Cloud Run.
+
+## Manual fallback: build once, migrate, then deploy the same digest
 
 Keep Firebase build inputs exported. Do not use `.env.example` values or emulator variables. Docker excludes `.env*` and `.local`; inspect the build context before push. `--platform linux/amd64` is needed when building on Apple Silicon. These commands publish an image and can incur costs; execute only within the approved scope.
 
