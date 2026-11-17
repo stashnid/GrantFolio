@@ -54,18 +54,48 @@ export function EmailLoginCode({ user, autoSend, onVerified, onExit }: {
   return (
     <main className="panel">
       <section className="card auth-card">
+        <div className="card-top">
+          <span>ПІДТВЕРДЖЕННЯ ВХОДУ</span>
+        </div>
         <h1>Підтвердьте вхід</h1>
         <p>Введіть код із листа на {user.email}.</p>
         <form onSubmit={submit}>
-          <button type="button" className="secondary" disabled={busy} onClick={() => void confirm("send")}>Надіслати код</button>
-          <label>
+          <button type="button" className="secondary" disabled={busy} onClick={() => void confirm("send")}>
+            Надіслати код
+          </button>
+          <label htmlFor="login-code">
             Код із листа
-            <input value={code} onChange={event => setCode(event.target.value)} required inputMode="numeric" autoComplete="one-time-code" pattern="[0-9]{6}" maxLength={6} />
+            <input
+              id="login-code"
+              value={code}
+              onChange={event => setCode(event.target.value)}
+              required
+              inputMode="numeric"
+              autoComplete="one-time-code"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              placeholder="000000"
+              aria-invalid={!!error}
+              aria-describedby={error ? "code-error" : message ? "code-status" : undefined}
+            />
           </label>
-          {message && <p role="status">{message}</p>}
-          {error && <p className="error" role="alert">{error}</p>}
-          <button className="primary" disabled={busy}>Підтвердити</button>
-          <button type="button" className="link" disabled={busy} onClick={onExit}>Вийти</button>
+          {message && (
+            <p id="code-status" className="success" role="status">
+              {message}
+            </p>
+          )}
+          {error && (
+            <p id="code-error" className="error" role="alert">
+              {error}
+            </p>
+          )}
+          <button type="submit" className="primary" disabled={busy}>
+            <span>Підтвердити</span>
+            <span className="primary-cta-arrow" aria-hidden="true">→</span>
+          </button>
+          <button type="button" className="link" disabled={busy} onClick={onExit}>
+            Вийти
+          </button>
         </form>
       </section>
     </main>

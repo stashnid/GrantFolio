@@ -1,3 +1,4 @@
+import { assessBudget, readiness as snapshotReadiness } from "../../backend/src/project-details";
 import {isGrantAvailable} from "../../backend/src/grant-availability";
 import {useGrantPrograms} from "./GrantPrograms";
 import { useEffect, useRef, useState } from "react";
@@ -117,13 +118,29 @@ function readCase(value: unknown): Case {
       }) || !c.details || typeof c.details !== "object" || Array.isArray(c.details)) throw Error("invalid_case_response");
   return value as Case;
 }
-type DraftItem = { name: string; quantity: string; price: string };
+type DraftItem = { clientId: string; name: string; quantity: string; price: string };
 const toDraft = (items: Item[]): DraftItem[] =>
   items.map((i) => ({
+    clientId: crypto.randomUUID(),
     name: i.name,
     quantity: String(i.quantity),
     price: (i.unitPriceKopecks / 100).toFixed(2),
   }));
+const hydrateDraft = (
+  rows: readonly { clientId?: unknown; name: string; quantity: string; price: string }[],
+): DraftItem[] =>
+  rows.map((row) => ({
+    clientId:
+      typeof row.clientId === "string" && row.clientId
+        ? row.clientId
+        : crypto.randomUUID(),
+    name: row.name,
+    quantity: row.quantity,
+    price: row.price,
+  }));
+const serializeBudget = (
+  rows: readonly { name: string; quantity: string; price: string }[],
+) => rows.map(({ name, quantity, price }) => ({ name, quantity, price }));
 const money = (n: number) =>
   `${Math.floor(n / 100).toLocaleString("uk-UA")},${String(n % 100).padStart(2, "0")} грн`;
 export function Cases({
@@ -221,7 +238,14 @@ export function Cases({
   }, [user]);
   const budgetDirty =
     selected !== null &&
-    JSON.stringify(draft) !== JSON.stringify(toDraft(selected.items));
+    JSON.stringify(serializeBudget(draft)) !==
+      JSON.stringify(
+        selected.items.map((i) => ({
+          name: i.name,
+          quantity: String(i.quantity),
+          price: (i.unitPriceKopecks / 100).toFixed(2),
+        })),
+      );
   const detailsDirty =
     selected !== null &&
     JSON.stringify(details) !==
@@ -552,6 +576,20 @@ export function Cases({
       setBusy(false);
     }
   }
+  const revokeTimer = useRef<number | null>(null);
+  const pendingBlobUrl = useRef<string | null>(null);
+  useEffect(() => {
+    return () => {
+      if (revokeTimer.current !== null) {
+        window.clearTimeout(revokeTimer.current);
+        revokeTimer.current = null;
+      }
+      if (pendingBlobUrl.current !== null) {
+        URL.revokeObjectURL(pendingBlobUrl.current);
+        pendingBlobUrl.current = null;
+      }
+    };
+  }, []);
   async function downloadDraft() {
     if (!selected || dirty || pending) {
       setError("Спочатку збережіть зміни в описі та бюджеті.");
@@ -563,14 +601,27 @@ export function Cases({
     try {
       const response = await request(`/api/cases/${selected.id}/draft-export`);
       if (!response.ok) throw Error();
+      if (revokeTimer.current !== null) {
+        window.clearTimeout(revokeTimer.current);
+        revokeTimer.current = null;
+      }
+      if (pendingBlobUrl.current !== null) {
+        URL.revokeObjectURL(pendingBlobUrl.current);
+        pendingBlobUrl.current = null;
+      }
       const url = URL.createObjectURL(await response.blob());
+      pendingBlobUrl.current = url;
       const link = document.createElement("a");
       link.href = url;
       link.download = "grantfolio-project.txt";
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      revokeTimer.current = window.setTimeout(() => {
+        URL.revokeObjectURL(url);
+        if (pendingBlobUrl.current === url) pendingBlobUrl.current = null;
+        revokeTimer.current = null;
+      }, 1000);
       setNotice("Чернетку підготовлено до завантаження.");
     } catch (error) {
       setError(readableApiError(error, "Не вдалося завантажити чернетку. Спробуйте ще раз."));
@@ -602,15 +653,15 @@ export function Cases({
       setBusy(false);
     }
   }
-  function edit(index: number, patch: Partial<DraftItem>) {
+  function edit(index: number, patch: Partial<Omit<DraftItem, "clientId">>) {
     if (sessionDraft.recovery) return;
-    setDraft(draft.map((r, i) => (i === index ? { ...r, ...patch } : r)));
+    setDraft((prev) => prev.map((r, i) => (i === index ? { ...r, ...patch } : r)));
     setPending(null);
     setNotice("");
   }
   function addBudgetItem(name = "", price = "0.00", quantity = "1") {
     if (sessionDraft.recovery || draft.length >= 100) return;
-    setDraft([...draft, { name, quantity, price }]);
+    setDraft((prev) => [...prev, { clientId: crypto.randomUUID(), name, quantity, price }]);
     setPending(null);
     setNotice("");
   }
@@ -620,7 +671,10 @@ export function Cases({
   }
   function importSuggestedBudgetItems(items: { name: string; quantity: string; price: string }[]) {
     if (!selected || busy || pending || conflict || sessionDraft.recovery || draft.length + items.length > 100) return false;
-    setDraft((prev) => [...prev, ...items]);
+    setDraft((prev) => [
+      ...prev,
+      ...items.map((item) => ({ ...item, clientId: crypto.randomUUID() })),
+    ]);
     setPending(null);
     setNotice(`Успішно імпортовано ${items.length} статей до бюджету. Перейдіть на Крок 3 для збереження.`);
     return true;
@@ -660,6 +714,9 @@ export function Cases({
     : !draft.length ? { label: "Скласти кошторис", description: "Додайте потрібні витрати й підтвердьте суми перед переходом до документів.", onOpen: () => setActiveStep("budget") }
     : { label: "Перевірити документи та подання", description: "Звірте офіційну форму, перелік додатків і строки обраного конкурсу.", onOpen: openDocuments };
 
+  const printReadiness = selected ? snapshotReadiness({ revision: selected.revision, details: selected.details, items: selected.items, total_kopecks: selected.totalKopecks }) : null;
+  const printBudget = selected ? assessBudget(selected.items, selected.totalKopecks) : null;
+
   const isStep1Done = Boolean(details.projectDescription.trim() && details.customers.trim());
   const isStep2Done = Boolean(details.implementationPlan.trim());
   const isStep3Done = draft.length > 0;
@@ -673,6 +730,8 @@ export function Cases({
           <h1>{selected.title}</h1>
           <p>{activeProgram ? `Цільова програма: ${activeProgram.title} (${activeProgram.provider})` : "Фінансування підберемо далі"}</p>
           <p>Збережена версія: {selected.revision}. Документ не замінює офіційної форми заявки.</p>
+          <p>Джерело відомостей про проєкт і бюджет: збережені дані заявника. Перевірте факти та узгодженість перед використанням.</p>
+          {printReadiness && <p>{printReadiness.checks.some(check => check.status === "missing") ? `Потребує доопрацювання: ${printReadiness.checks.filter(check => check.status === "missing").map(check => check.label).join(", ")}.` : "Базову перевірку заповнення пройдено; зміст і факти ще потрібно перевірити."}</p>}
           {[...basicsFields, ...planFields].map((field) => (
             <section key={field.key}>
               <h2>{field.label}</h2>
@@ -680,11 +739,11 @@ export function Cases({
             </section>
           ))}
           <h2>{"Бюджет"}</h2>
-          <table>
+          {printBudget?.validItems && selected.items.length > 0 ? <table>
             <thead><tr><th>Витрата</th><th>Кількість</th><th>Ціна за одиницю</th><th>Сума</th></tr></thead>
             <tbody>{selected.items.map((item, index) => <tr key={index}><td>{item.name}</td><td>{item.quantity}</td><td>{money(item.unitPriceKopecks)}</td><td>{money(item.quantity * item.unitPriceKopecks)}</td></tr>)}</tbody>
-          </table>
-          <p><strong>Разом: {money(selected.totalKopecks)}</strong></p>
+          </table> : <p>{printBudget?.validItems ? "Не вказано" : "Позиції бюджету пошкоджені; перевірте та збережіть кошторис повторно."}</p>}
+          <p><strong>{printBudget?.totalMatches ? `Разом: ${money(selected.totalKopecks)}` : "Підсумок потребує перевірки: збережена сума не збігається з позиціями або бюджет пошкоджений."}</strong></p>
           {activeProgram && <><h2>Документи та наступні кроки</h2>
           <ul>{activeProgram.details.documents.map(document => <li key={document}>{document}</li>)}</ul>
           <ol>{activeProgram.details.steps.map(step => <li key={step}>{step}</li>)}</ol>
@@ -695,7 +754,7 @@ export function Cases({
       )}
       <div className="cases-toolbar">
         <div><h2>Мої проєкти</h2><p>Підготовка матеріалів з асистентом</p></div>
-        <button type="button" className="secondary-btn" disabled={!ready || !!programTarget} onClick={() => { setShowCreate((open) => !open); if (showCreate) onClearProgram?.(); else requestAnimationFrame(() => createTitleInput.current?.focus()); }} aria-expanded={showCreate}>
+        <button type="button" className="secondary-btn" disabled={!ready || !!programTarget} onClick={() => { setShowCreate((open) => !open); if (showCreate) onClearProgram?.(); else requestAnimationFrame(() => createTitleInput.current?.focus()); }} aria-expanded={showCreate} aria-controls="create-case-panel">
           {showCreate ? "Закрити" : "+ Новий проєкт"}
         </button>
       </div>
@@ -747,7 +806,7 @@ export function Cases({
           </section>
         </div>
       )}
-      <div hidden={!showCreate} className="create-case-disclosure">
+      <div id="create-case-panel" hidden={!showCreate} className="create-case-disclosure">
         <h3>Новий проєкт</h3>
         <p>{selectedProgram ? `Готуємо новий проєкт для програми «${selectedProgram.title}». Перевірте назву й почніть роботу з асистентом.` : "Назвіть проєкт і, за бажанням, опишіть потребу. Фінансування можна підібрати пізніше."}</p>
       <form onSubmit={create} className="create-case-form">
@@ -766,7 +825,7 @@ export function Cases({
           <textarea value={initialNeed} onChange={e => setInitialNeed(e.target.value)} maxLength={2000} placeholder="Наприклад, обладнання для майстерні" />
         </label>
         {selectedProgram && <p>Обрана програма: {friendlyTitle(selectedProgram)}</p>}
-        <button className="primary" disabled={busy || !ready}>
+        <button type="submit" className="primary" disabled={busy || !ready}>
           Створити чернетку <span>↗</span>
         </button>
       </form>
@@ -807,7 +866,7 @@ export function Cases({
                 <button type="button" disabled={busy || !!pending || conflict} onClick={() => {
                   if (dirty && !window.confirm("Замінити поточні незбережені зміни знайденою копією?")) return;
                   setDetails(sessionDraft.recovery!.details);
-                  setDraft(sessionDraft.recovery!.budget);
+                  setDraft(hydrateDraft(sessionDraft.recovery!.budget));
                   sessionDraft.resolved();
                   setNotice("Зміни відновлено у формі. Перевірте й збережіть їх.");
                 }}>Відновити зміни</button>
@@ -833,6 +892,7 @@ export function Cases({
               className={activeStep === "assistant" ? "step-tab active assistant-tab" : "step-tab assistant-tab"}
               onClick={() => setActiveStep("assistant")}
               aria-pressed={activeStep === "assistant"}
+              aria-current={activeStep === "assistant" ? "step" : undefined}
             >
 
               <span>Асистент</span>
@@ -842,6 +902,7 @@ export function Cases({
               className={activeStep === "basics" ? "step-tab active" : "step-tab"}
               onClick={() => setActiveStep("basics")}
               aria-pressed={activeStep === "basics"}
+              aria-current={activeStep === "basics" ? "step" : undefined}
             >
               <span className="step-num">{isStep1Done ? "✓" : "1"}</span>
               <span>{"Ідея та клієнти"}</span>
@@ -851,6 +912,7 @@ export function Cases({
               className={activeStep === "plan" ? "step-tab active" : "step-tab"}
               onClick={() => setActiveStep("plan")}
               aria-pressed={activeStep === "plan"}
+              aria-current={activeStep === "plan" ? "step" : undefined}
             >
               <span className="step-num">{isStep2Done ? "✓" : "2"}</span>
               <span>{"План запуску"}</span>
@@ -860,6 +922,7 @@ export function Cases({
               className={activeStep === "budget" ? "step-tab active" : "step-tab"}
               onClick={() => setActiveStep("budget")}
               aria-pressed={activeStep === "budget"}
+              aria-current={activeStep === "budget" ? "step" : undefined}
             >
               <span className="step-num">{isStep3Done ? "✓" : "3"}</span>
               <span>{"Бюджет проєкту"}</span>
@@ -869,6 +932,7 @@ export function Cases({
               className={activeStep === "review" ? "step-tab active" : "step-tab"}
               onClick={() => setActiveStep("review")}
               aria-pressed={activeStep === "review"}
+              aria-current={activeStep === "review" ? "step" : undefined}
             >
               <span className="step-num">4</span>
               <span>Готовність та експорт</span>
@@ -916,6 +980,7 @@ export function Cases({
               ))}
               <div className="step-actions">
                 <button
+                  type="button"
                   className="primary"
                   disabled={busy || conflict || !!sessionDraft.recovery || (!!pending && pending.kind !== "details")}
                   onClick={() => void saveDetails()}
@@ -986,6 +1051,7 @@ export function Cases({
                   ← Назад: Ідея
                 </button>
                 <button
+                  type="button"
                   className="primary"
                   disabled={busy || conflict || !!sessionDraft.recovery || (!!pending && pending.kind !== "details")}
                   onClick={() => void saveDetails()}
@@ -1086,7 +1152,7 @@ export function Cases({
               {draft.map((row, index) => (
                 <div
                   className="budget-row"
-                  key={index}
+                  key={row.clientId}
                   role="group"
                   aria-label={`Витрата ${index + 1}`}
                 >
@@ -1121,11 +1187,12 @@ export function Cases({
                     />
                   </label>
                   <button
+                    type="button"
                     className="link remove-item"
                     aria-label={`Видалити витрату ${row.name || index + 1}`}
                     disabled={busy || !!pending || !!sessionDraft.recovery}
                     onClick={() => {
-                      setDraft(draft.filter((_, i) => i !== index));
+                      setDraft((prev) => prev.filter((item) => item.clientId !== row.clientId));
                       setPending(null);
                       setNotice("");
                     }}
@@ -1144,6 +1211,7 @@ export function Cases({
                   {"← Назад: План запуску"}
                 </button>
                 <button
+                  type="button"
                   className="primary"
                   disabled={busy || conflict || !!sessionDraft.recovery || (!!pending && pending.kind !== "budget")}
                   onClick={() => void save()}
@@ -1171,7 +1239,7 @@ export function Cases({
               <div className="step-panel-header">
                 <h4 id="step4-heading">Крок 4: Перевірка готовності та експорт чернетки</h4>
                 <p>
-                  Перевірте заповненість усіх блоків. Після збереження завантажте робочу чернетку для підготовки офіційної заявки.
+                  Доповніть позначені блоки, перевірте факти та узгодженість і збережіть зміни. Потім завантажте чернетку та звірте її з актуальною офіційною формою.
                 </p>
               </div>
 
@@ -1185,7 +1253,7 @@ export function Cases({
                         <li key={check.id}>
                           <button type="button" className="link" onClick={() => check.id === "budget" ? setActiveStep("budget") : openField(check.id as keyof Details)}>{check.label}</button>
                           <strong className={check.status === "complete" ? "check-complete" : "check-missing"}>
-                            {check.status === "complete" ? "✓ Заповнено" : "Потрібно заповнити"}
+                            {check.status === "complete" ? "✓ Базову перевірку пройдено" : "Потрібно доповнити або перевірити"}
                           </strong>
                         </li>
                       ))}
@@ -1200,6 +1268,7 @@ export function Cases({
                   <p>
                     Не вдалося завантажити список.{" "}
                     <button
+                      type="button"
                       className="link"
                       onClick={() => void loadReadiness(selected.id)}
                     >
@@ -1235,6 +1304,7 @@ export function Cases({
                     {"← Назад: Бюджет"}
                   </button>
                   <button
+                    type="button"
                     className="primary export-btn"
                     disabled={busy || dirty || !!pending || conflict}
                     onClick={() => void downloadDraft()}
@@ -1258,6 +1328,7 @@ export function Cases({
               <section className="delete-section" aria-labelledby="delete-heading">
                 <h4 id="delete-heading">Керування чернеткою</h4>
                 <button
+                  type="button"
                   className="link danger"
                   disabled={busy || !!pending || !!sessionDraft.recovery}
                   onClick={() => void deleteDraft()}
@@ -1295,6 +1366,7 @@ export function Cases({
 
           {conflict && (
             <button
+              type="button"
               className="link"
               disabled={busy}
               onClick={() => {

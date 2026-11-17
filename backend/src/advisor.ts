@@ -22,8 +22,10 @@ const view = (r: any) => ({
   createdAt: r.created_at,
 });
 // Ask for one missing fact at a time using the current conversation, not just the last message.
-function nextQuestion(query: string, intents: string[]): string {
+export function nextQuestion(query: string, intents: string[], hasMatches: boolean): string {
   const q = query.toLocaleLowerCase("uk");
+  // A mention of ФОП alone (e.g. “чи потрібен ФОП?”) is not a status.
+  const hasBusinessStatus = /(?:ще\s+)?не\s+(?:є\s+|маю\s+|зареєстрован(?:ий|а)\s+як\s+)?фоп|(?:немає|не маю)\s+(?:зареєстрованого\s+)?фоп|(?:працюю|зареєстрован(?:ий|а)|оформлен(?:ий|а))\s+(?:як\s+)?фоп|(?:маю|відкрив|відкрила|вже)\s+фоп|(?:фоп|бізнес)\s+(?:вже|ще не|немає)|вже працю|планую відкрити/.test(q);
   if (
     /(студент|student)/i.test(q) &&
     !intents.some((i) =>
@@ -41,7 +43,7 @@ function nextQuestion(query: string, intents: string[]): string {
   if (intents.includes("transport")) {
     if (!/(достав|робот|бізнес|підприєм|фоп|особист|для себе)/.test(q))
       return "Для чого саме вам потрібне авто?";
-    if (!/(фоп|підприєм|бізнес|ще не|немає|не маю|планую відкрити)/.test(q))
+    if (!hasBusinessStatus)
       return "Ви вже працюєте як ФОП або тільки плануєте відкрити справу?";
   }
   const withoutAge = q.replace(
@@ -51,18 +53,18 @@ function nextQuestion(query: string, intents: string[]): string {
   if (!/(\d|тисяч|тис\b|мільйон)/.test(withoutAge))
     return "Яка орієнтовна сума вам потрібна?";
   if (
-    !/(регіон|област|київ|львів|одес|харків|дніпр|запоріж|полтав|вінниц|черкас|черніг|чернів|житомир|сум|терноп|луцьк|рівн|ужгород|миколаїв|херсон|кропивницьк|івано|хмельницьк)/.test(
+    !/(регіон|област|ки(?:їв|єв)|льв(?:ів|ов)|одес|хар(?:ків|ков)|дніпр|запоріж|полтав|вінниц|черкас|черніг|чернів|житомир|сум|терноп|луц(?:ьк|к)|рівн|ужгород|микола(?:їв|єв)|херсон|кропивницьк|івано|хмельницьк)/.test(
       q,
     )
   )
     return "У якому регіоні ви плануєте працювати?";
   if (
-    !/(фоп|підприєм|бізнес вже|вже працю|ще не|немає|не маю|планую відкрити)/.test(
-      q,
-    )
+    !hasBusinessStatus
   )
     return "Ви вже працюєте як ФОП або тільки плануєте відкрити справу?";
-  return "Наступний крок — перевірити актуальні умови програми та підготувати опис потреби й орієнтовний кошторис. Які документи або умови розглянемо першими?";
+  return hasMatches
+    ? "Наступний крок — переглянути можливі програми та перевірити їхні актуальні умови. Яку з них розглянемо першою?"
+    : "Уточніть, будь ласка, які витрати потрібні для справи, щоб я міг допомогти з пошуком.";
 }
 export function advisorRouter(
   db: Pool,
@@ -229,7 +231,7 @@ export function advisorRouter(
               : `${search.explanation}\n\n${search.matches
                   .slice(0, 3)
                   .map((m) => `${m.title}. ${m.reason}`)
-                  .join("\n\n")}\n\n${nextQuestion(query, search.intents)}`;
+                  .join("\n\n")}\n\n${nextQuestion(query, search.intents, search.matches.length > 0)}`;
         let mode = "guided";
         if (responder && !personalEducation && !studentNeedsIdea) {
           const controller = new AbortController();

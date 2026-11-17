@@ -87,3 +87,11 @@ User prioritizes finishing the prototype over additional model/provider research
 - Large feature: brief plan → surgical implementation → verification.
 - Do not run duplicate planning processes or duplicate review pipelines.
 - Installed agent definitions do not mean running multiple agents unless explicitly warranted.
+
+
+## Additional design skills (user request, 2026-11-17)
+
+- Project-local `redesign-existing-projects` and `ui-ux-pro-max` supplement ECC/gstack for interface audits, typography, accessibility and targeted improvements. Versions and install paths are in [the install report](docs/agents/2026-11-17-design-skills.md); downloaded tools remain out of Git.
+- These tools are authorized for GrantFolio only. Keep existing user-approved design decisions and functionality; do not change global settings or adopt a new theme merely because an upstream skill prefers it.
+- Design guidance never authorizes fabricated dates, user feedback, financial terms, forecasts or application facts. Source-backed product data and the user's confirmed facts take precedence over decorative examples.
+- Verify advice/document quality separately: grounded facts, explicit unknowns, consistent saved-version totals, professional Ukrainian and a complete client journey. Mock responses prove behavior, not live model quality; record each evidence type accurately.

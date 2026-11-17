@@ -1,5 +1,11 @@
 # Журнал роботи
 
+## 18.11.2026 — Повна UI/UX ревізія, анімації та флагманський ШІ-чат
+
+- Делегований паралельний аудит (`code-explorer`, `a11y-architect`, `react-reviewer`) + живий headless Chrome BEFORE/AFTER прогін кліків і скриншотів (Desktop `1440×900`, Mobile `390×844`).
+- Три паралельні інженери реалізували оновлення UI/UX без конфліктів файлів: чат у стилі ChatGPT/Claude/Gemini, виправлення критичного `ReplyReveal` RAF skip-багу, `::selection`, мобільного хедера, WCAG AA контрасту й touch-targets, компактної панелі фільтрів каталогу, `clientId`-ключів бюджету, сегментованих вкладок профілю та прямої форми відгуків.
+- Перевірки: `npm run typecheck`, `npm run build`, `git diff --check`, `105/105` тестів (`npm test`), незалежний `code-reviewer` (`APPROVE`) та живий Chrome AFTER QA (0 помилок, 0 overflow). [Повний звіт](agents/2026-11-18-ui-revision-chat-polish.md).
+
 ## 17.11.2026 — спрощення меню акаунта
 
 Прибрано дублювання у бічній панелі. [Зміна та перевірки](agents/2026-11-17-account-navigation.md).

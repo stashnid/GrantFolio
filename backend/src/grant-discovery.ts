@@ -180,10 +180,21 @@ export function searchGrants(query: string, programs: readonly GrantCatalogEntry
     /(особист|для себе|власного користування|личн|для себя|personal|for myself)/.test(cleaned) &&
     intents.includes("transport");
   const meaningfulBusiness = intents.some(i => ["business", "production", "garden", "equipment", "veteran"].includes(i));
-  const personalOnly = personal && !meaningfulBusiness;
+  // Mere registration or veteran status does not make personal transport a business expense.
+  const separateBusinessNeed = positiveWords.some(w =>
+    ["business", "production", "garden", "equipment"].some(group =>
+      groups[group].filter(t => !["фоп", "підприєм", "business", "бізнес", "бизнес", "справ"].includes(t)).some(t => match(w, t))));
+  const personalOnly = personal && !separateBusinessNeed;
   const studyOnly = intents.includes("study") && !meaningfulBusiness && !intents.includes("transport");
   const stop = /^(?:грант|гранти|потріб|хочу|мені|для|який|кошти|допом|програма|фінанс|бізнес|справ|відкрит|підприєм|студент|молод|україн|україна|україні|що|how|grant|funding|need|business|бизнес)/;
   const useful = searchableWords.filter(w=>w.length>=4&&!stop.test(w));
+  // Reimbursement concerns purchases already made. Future-only requests must
+  // not rank it as funding for a planned purchase.
+  const futurePurchase = /майбутн|плану(?:ю|ємо|є).*?(?:куп|закуп|придб)|(?:куп|закуп|придб).*?(?:плану|майбутн)|збира(?:юся|ємось).*?(?:куп|закуп|придб)/.test(cleaned);
+  const negatedPurchasePattern = /(?:ще )?не (?:вже )?(?:купив|купила|купили|придбав|придбала|придбали|закупив|закупила|сплатив|сплатила)/g;
+  const explicitlyNotPurchased = negatedPurchasePattern.test(cleaned);
+  const pastStatements = cleaned.replace(negatedPurchasePattern, "");
+  const pastPurchase = /(?:купив|купила|купили|придбав|придбала|придбали|закупив|закупила|сплатив|сплатила|оплатив|оплатила|оплатили|поніс витрати|понесла витрати)/.test(pastStatements);
   const matches: GrantMatch[] = [];
   for (const p of programs) {
     if (!isGrantAvailable(p, now) || personalOnly || studyOnly) continue;
@@ -248,11 +259,33 @@ export function searchGrants(query: string, programs: readonly GrantCatalogEntry
     const applicants=overlap([p.targetAudience,...p.details.eligibility].join(" "));
     const context=overlap([p.summary,p.categoryLabel,p.details.overview,...p.details.funding,...p.details.obligations,...p.details.documents,...p.details.steps].join(" "));
     const excluded=overlap(p.details.exclusions.join(" "));
-    const explicitProvider=overlap([p.title,p.provider].join(" "))>0;
+    // Full names and IDs are specific; a shared word such as «пекарня» or
+    // «бізнесу» is not evidence that the user named the provider.
+    const includesPhrase = (value: string) => {
+      const phrase = normalize(value);
+      return phrase.length > 0 && (` ${cleaned} `).includes(` ${phrase} `);
+    };
+    const explicitProvider = includesPhrase(p.title) || includesPhrase(p.provider) ||
+      includesPhrase(p.id) || (p.id === "uvf-reimbursement" && /(?:^| )(?:uvf|увф)(?: |$)/.test(cleaned));
+    const explicitWomenTech = p.id === "women-techeu-2-eic" && /(?:^| )(?:women ?techeu|women techeu 2 eic)(?: |$)/.test(cleaned);
+    const deepTechNeed = /deep[ -]?tech|діп[ -]?тех|глибок(?:і|их|ими) технолог|trl[ -]?[4-6]/.test(cleaned);
+    if (cleaned && p.id === "women-techeu-2-eic" && !explicitProvider && !explicitWomenTech && !deepTechNeed) continue;
+    if (p.fundingType === "reimbursement" && (futurePurchase || explicitlyNotPurchased) && !pastPurchase) continue;
     if (p.fundingType === "reimbursement" && !intents.includes("veteran") && !explicitProvider) { score=0; reason=""; }
     else if(named||costs||applicants||context) {
       const lexical=Math.min(45,named*16+costs*12+applicants*8+context*5);
       if(lexical>=5) add(lexical, excluded ? "Слова запиту є в описі програми та її обмеженнях. Уважно звірте, чи підходить ваш випадок." : named ? "Назва, організатор або напрям програми відповідає словам запиту; перевірте умови участі." : costs ? "Опис витрат програми згадує ваш запит; перевірте допустимість конкретної витрати." : applicants ? "Опис заявників програми відповідає словам запиту; право на участь потрібно підтвердити." : "Умови або документи програми згадують слова вашого запиту; перевірте контекст у джерелі.");
+    }
+    if (p.id === "women-techeu-2-eic" && score > 0) {
+      reason = "Програма для комерційних deep-tech стартапів; перевірте стадію технології, вік компанії та вимоги до засновниці в джерелі.";
+    }
+    if (p.id === "bloom-sme" && score > 0 && /(?:ще )?не (?:є |маю )?фоп|(?:немає|не маю) (?:зареєстрованого )?фоп/.test(cleaned)) {
+      score = Math.min(score, 20);
+      reason = "Програма для зареєстрованих ФОП або юридичних осіб із соціальним чи екологічним впливом. Ви зазначили, що ще не маєте ФОП; перевірте вимоги до заявника перед підготовкою.";
+    }
+    if (p.fundingType === "reimbursement" && score > 0 && !pastPurchase) {
+      score = Math.min(score, 20);
+      reason = "Уточніть, чи ви вже придбали та оплатили товари для справи: програма відшкодовує минулі покупки, а не фінансує майбутні.";
     }
     if (!words.length)
       add(1, "Перегляньте, що фінансує програма та кому вона доступна.");
@@ -275,7 +308,9 @@ export function searchGrants(query: string, programs: readonly GrantCatalogEntry
             : p.officialUrl,
       });
   }
-  const questions = personal
+  const questions = intents.includes("veteran") && !pastPurchase && !futurePurchase
+    ? ["Ви вже придбали й оплатили товари для справи чи лише плануєте покупку?"]
+    : personal
     ? ["Йдеться про особисте авто чи транспорт для роботи?"]
     : intents.includes("transport")
       ? [

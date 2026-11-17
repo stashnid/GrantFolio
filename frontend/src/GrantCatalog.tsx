@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { GRANT_PROGRAMS, type GrantProgram } from "./grants";
 import "./GrantCatalog.css";
 import { useGrantPrograms } from "./GrantPrograms";
@@ -188,6 +188,17 @@ export function GrantCatalog({
       lastCard.current = null;
     }
   }, [active, selectedId]);
+  useEffect(() => {
+    if (!active || !selectedId) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.defaultPrevented) {
+        event.preventDefault();
+        back();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [active, selectedId]);
   const open = (id: string) => {
     lastCard.current = id;
     if (window.location.hash !== "#grants")
@@ -197,60 +208,101 @@ export function GrantCatalog({
   const back = () => {
     window.location.hash = "grants";
   };
-  const selected = programs.find((p) => p.id === selectedId);
+  const selected = useMemo(
+    () => programs.find((p) => p.id === selectedId),
+    [programs, selectedId],
+  );
   // The recommendation engine deliberately excludes closed/unverified records.
   // Catalogue browsing also searches the full sourced directory.
-  const result = searchGrants(search, availablePrograms.filter(canPrepare));
-  const matches = new Map(
-    result.matches.map((match) => [match.programId, match]),
+  const confirmedPrograms = useMemo(
+    () => availablePrograms.filter(canPrepare),
+    [availablePrograms],
   );
-  const queryWords = normalize(search)
-    .split(" ")
-    .filter(
-      (word) =>
-        word.length > 1 && !["для", "на", "та", "і", "у", "в"].includes(word),
+  const confirmedIds = useMemo(
+    () => new Set(confirmedPrograms.map((p) => p.id)),
+    [confirmedPrograms],
+  );
+  const categories = useMemo(
+    () => [...new Set(programs.map((p) => p.category))],
+    [programs],
+  );
+  const fundingTypes = useMemo(
+    () => [...new Set(programs.map((p) => p.fundingType ?? "unknown"))],
+    [programs],
+  );
+  const searchIndex = useMemo(
+    () =>
+      new Map(
+        programs.map((p) => [
+          p.id,
+          normalize(
+            [
+              p.title,
+              friendlyTitle(p),
+              p.provider,
+              p.summary,
+              p.targetAudience,
+              p.categoryLabel,
+              categoryLabels[p.category],
+              fundingLabel(p),
+              p.keyCondition,
+              p.eligibilityUkraine ?? "",
+              p.repayment ?? "",
+              p.details.overview,
+              ...p.eligibleCosts,
+              ...p.details.eligibility,
+              ...p.details.funding,
+              ...(p.tags ?? []),
+              ...(p.searchTerms ?? []),
+            ].join(" "),
+          ),
+        ]),
+      ),
+    [programs],
+  );
+  const result = useMemo(
+    () => searchGrants(search, confirmedPrograms),
+    [search, confirmedPrograms],
+  );
+  const filtered = useMemo(() => {
+    const matches = new Map(
+      result.matches.map((match) => [match.programId, match]),
     );
-  const categories = [...new Set(programs.map((p) => p.category))];
-  const fundingTypes = [
-    ...new Set(programs.map((p) => p.fundingType ?? "unknown")),
-  ];
-  const confirmedIds = new Set(
-    availablePrograms.filter(canPrepare).map((p) => p.id),
-  );
-  const filtered = programs
-    .filter((p) => {
-      if (category !== "all" && p.category !== category) return false;
-      if (funding !== "all" && (p.fundingType ?? "unknown") !== funding)
-        return false;
-      if (onlyOpen && !confirmedIds.has(p.id)) return false;
-      if (!search.trim()) return true;
-      if (matches.has(p.id)) return true;
-      const text = normalize(
-        [
-          p.title,
-          friendlyTitle(p),
-          p.provider,
-          p.summary,
-          p.targetAudience,
-          p.categoryLabel,
-          categoryLabels[p.category],
-          fundingLabel(p),
-          p.keyCondition,
-          p.eligibilityUkraine ?? "",
-          p.repayment ?? "",
-          p.details.overview,
-          ...p.eligibleCosts,
-          ...p.details.eligibility,
-          ...p.details.funding,
-          ...(p.tags ?? []),
-          ...(p.searchTerms ?? []),
-        ].join(" "),
-      );
-      return (
-        queryWords.length > 0 && queryWords.every((word) => text.includes(word))
-      );
-    })
-    .map((program) => ({ program, match: matches.get(program.id) }));
+    const trimmedSearch = search.trim();
+    const queryWords = trimmedSearch
+      ? normalize(search)
+          .split(" ")
+          .filter(
+            (word) =>
+              word.length > 1 &&
+              !["для", "на", "та", "і", "у", "в"].includes(word),
+          )
+      : [];
+    return programs
+      .filter((p) => {
+        if (category !== "all" && p.category !== category) return false;
+        if (funding !== "all" && (p.fundingType ?? "unknown") !== funding)
+          return false;
+        if (onlyOpen && !confirmedIds.has(p.id)) return false;
+        if (!trimmedSearch) return true;
+        if (matches.has(p.id)) return true;
+        const text = searchIndex.get(p.id) ?? "";
+        return (
+          queryWords.length > 0 &&
+          queryWords.every((word) => text.includes(word))
+        );
+      })
+      .map((program) => ({ program, match: matches.get(program.id) }));
+  }, [
+    programs,
+    category,
+    funding,
+    onlyOpen,
+    confirmedIds,
+    search,
+    result,
+    searchIndex,
+  ]);
   const resetFilters = () => {
     setSearch("");
     setCategory("all");
@@ -290,10 +342,12 @@ export function GrantCatalog({
       <div className="grant-catalog grant-page">
         <nav aria-label="Навігація каталогом">
           <button type="button" className="catalog-back" onClick={back}>
-            ← Каталог грантів
+            <span aria-hidden="true">←</span> Каталог грантів
           </button>
-          <span aria-hidden="true"> / </span>
-          <span>Деталі програми</span>
+          <span className="catalog-breadcrumb-sep" aria-hidden="true">
+            /
+          </span>
+          <span className="catalog-breadcrumb-current">Деталі програми</span>
         </nav>
         <header className="grant-page-header">
           <p className="grant-category">
@@ -478,104 +532,102 @@ export function GrantCatalog({
     <div className="grant-catalog">
       <header className="grant-list-header">
         <p className="catalog-eyebrow">Каталог грантів</p>
-        <h2>
-          Знайдіть фінансування
-          <br />
-          для своєї ідеї
-        </h2>
-        <p>
+        <h2>Знайдіть фінансування для своєї ідеї</h2>
+        <p className="catalog-subtitle">
           Гранти, премії, кредити й інші інструменти для українського бізнесу.
           Оберіть напрям і перевірте умови участі.
         </p>
-        <form
-          className="catalog-search-form"
-          role="search"
-          onSubmit={(event) => {
-            event.preventDefault();
-            resultsHeading.current?.focus();
-          }}
-        >
-          <label className="grant-search-label" htmlFor="grant-search">
-            Що ви хочете профінансувати?
-          </label>
-          <div className="catalog-search-controls">
-            <input
-              id="grant-search"
-              maxLength={500}
-              type="search"
-              aria-describedby="grant-search-help"
-              placeholder="Назва, надавач або потреба: обладнання"
-              value={search}
-              onChange={(event) => setSearch(event.target.value)}
-            />
-            {search && (
-              <button
-                type="button"
-                className="catalog-clear"
-                onClick={() => setSearch("")}
-              >
-                Очистити
+        <div className="catalog-toolbar-panel">
+          <form
+            className="catalog-search-form"
+            role="search"
+            onSubmit={(event) => {
+              event.preventDefault();
+              resultsHeading.current?.focus();
+            }}
+          >
+            <label className="grant-search-label" htmlFor="grant-search">
+              Що ви хочете профінансувати?
+            </label>
+            <div className="catalog-search-controls">
+              <input
+                id="grant-search"
+                maxLength={500}
+                type="search"
+                aria-describedby="grant-search-help"
+                placeholder="Назва, надавач або потреба: обладнання"
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+              />
+              {search && (
+                <button
+                  type="button"
+                  className="catalog-clear"
+                  onClick={() => setSearch("")}
+                >
+                  Очистити
+                </button>
+              )}
+              <button type="submit" className="catalog-search-submit">
+                Знайти
               </button>
-            )}
-            <button type="submit" className="catalog-search-submit">
-              Знайти
-            </button>
+            </div>
+            <p id="grant-search-help">
+              Шукаємо в назвах, описах, умовах і ключових словах усього каталогу.
+              Результати оновлюються під час введення.
+            </p>
+          </form>
+          <div
+            className="catalog-filters"
+            role="group"
+            aria-label="Фільтри фінансування"
+          >
+            <label htmlFor="grant-category-filter">
+              Напрям
+              <select
+                id="grant-category-filter"
+                value={category}
+                onChange={(event) => setCategory(event.target.value)}
+              >
+                <option value="all">Усі напрями</option>
+                {categories.map((value) => (
+                  <option key={value} value={value}>
+                    {categoryLabels[value] ?? value}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label htmlFor="grant-funding-filter">
+              Тип фінансування
+              <select
+                id="grant-funding-filter"
+                value={funding}
+                onChange={(event) => setFunding(event.target.value)}
+              >
+                <option value="all">Усі типи</option>
+                {fundingTypes.map((value) => (
+                  <option key={value} value={value}>
+                    {fundingLabels[value] ?? value}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="catalog-open-filter" htmlFor="grant-open-filter">
+              <input
+                id="grant-open-filter"
+                type="checkbox"
+                checked={onlyOpen}
+                onChange={(event) => setOnlyOpen(event.target.checked)}
+              />
+              <span>Лише підтверджений відкритий прийом</span>
+            </label>
           </div>
-          <p id="grant-search-help">
-            Шукаємо в назвах, описах, умовах і ключових словах усього каталогу.
-            Результати оновлюються під час введення.
+          <p className="catalog-scope-note">
+            {onlyOpen
+              ? "Показуємо лише набори з актуальним підтвердженням прийому. Це не гарантує відповідності вашого бізнесу умовам."
+              : "Усі можливості: відкриті й завершені конкурси, програми підтримки та нові знахідки. Статус зазначено в кожній картці."}
           </p>
-        </form>
-        <div
-          className="catalog-filters"
-          role="group"
-          aria-label="Фільтри фінансування"
-        >
-          <label htmlFor="grant-category-filter">
-            Напрям
-            <select
-              id="grant-category-filter"
-              value={category}
-              onChange={(event) => setCategory(event.target.value)}
-            >
-              <option value="all">Усі напрями</option>
-              {categories.map((value) => (
-                <option key={value} value={value}>
-                  {categoryLabels[value] ?? value}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label htmlFor="grant-funding-filter">
-            Тип фінансування
-            <select
-              id="grant-funding-filter"
-              value={funding}
-              onChange={(event) => setFunding(event.target.value)}
-            >
-              <option value="all">Усі типи</option>
-              {fundingTypes.map((value) => (
-                <option key={value} value={value}>
-                  {fundingLabels[value] ?? value}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="catalog-open-filter" htmlFor="grant-open-filter">
-            <input
-              id="grant-open-filter"
-              type="checkbox"
-              checked={onlyOpen}
-              onChange={(event) => setOnlyOpen(event.target.checked)}
-            />
-            Лише підтверджений відкритий прийом
-          </label>
         </div>
-        <p className="catalog-scope-note">
-          {onlyOpen
-            ? "Показуємо лише набори з актуальним підтвердженням прийому. Це не гарантує відповідності вашого бізнесу умовам."
-            : "Усі можливості: відкриті й завершені конкурси, програми підтримки та нові знахідки. Статус зазначено в кожній картці."}
-        </p>
       </header>
       {loading && <p role="status">Оновлюємо програми…</p>}
       {error && (
@@ -725,6 +777,7 @@ export function GrantCatalog({
               <button
                 id={`grant-${p.id}`}
                 type="button"
+                aria-label={`Деталі програми «${friendlyTitle(p)}»`}
                 onClick={() => open(p.id)}
               >
                 Деталі програми <span aria-hidden="true">→</span>
