@@ -2,7 +2,7 @@
 
 ## Локальний редизайн робочого простору — 17.11.2026
 
-Оновлено навігацію, вхід, асистент, каталог, профіль і оформлення проєкту: смарагдова панель, тепле світле поле, спільна типографіка, чіткі дії й адаптивні форми. Гілка `feat/considered-workspace-redesign`; підготовлено до публікації за новим постійним дозволом користувача, без deploy. Typecheck/build, 66 tests, Chrome desktop/mobile, keyboard focus, save/reload профілю та опису PASS; live AI не викликався. [Передача та межі перевірки](agents/2026-11-17-workspace-redesign.md).
+Оновлено навігацію, вхід, асистент, каталог, профіль і оформлення проєкту: смарагдова панель, тепле світле поле, спільна типографіка, чіткі дії й адаптивні форми. Опубліковано `ab0193a` у `feat/considered-workspace-redesign`, відкрито [PR №5](https://github.com/stashnid/GrantFolio/pull/5), без merge/deploy. Typecheck/build, 66 tests, Chrome desktop/mobile, keyboard focus, save/reload профілю та опису PASS; live AI не викликався. [Передача та межі перевірки](agents/2026-11-17-workspace-redesign.md).
 
 
 ## Передано на GitHub —17.11.2026
