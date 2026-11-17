@@ -1,7 +1,39 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { applicationDefault } from "firebase-admin/app";
 import { configuredGeminiResponder } from "../src/gemini.js";
 import { grantSourceContext } from "../src/grant-sources.js";
+
+test("Vertex configuration uses the EU endpoint and only the runtime bearer token", async (t) => {
+  const previousProject = process.env.GEMINI_VERTEX_PROJECT;
+  const previousKey = process.env.GEMINI_API_KEY;
+  const previousModel = process.env.GEMINI_MODEL;
+  t.after(() => {
+    for (const [name, value] of [
+      ["GEMINI_VERTEX_PROJECT", previousProject],
+      ["GEMINI_API_KEY", previousKey],
+      ["GEMINI_MODEL", previousModel],
+    ] as const) {
+      if (value === undefined) delete process.env[name];
+      else process.env[name] = value;
+    }
+  });
+  process.env.GEMINI_VERTEX_PROJECT = "test-grantfolio";
+  process.env.GEMINI_API_KEY = "unused-key";
+  process.env.GEMINI_MODEL = "gemini-3.5-flash-lite";
+  t.mock.method(applicationDefault(), "getAccessToken", async () => ({
+    access_token: "test-token",
+    expires_in: 3600,
+  }));
+  const respond = configuredGeminiResponder(async (url, options) => {
+    assert.equal(url, "https://aiplatform.eu.rep.googleapis.com/v1/projects/test-grantfolio/locations/eu/publishers/google/models/gemini-3.5-flash-lite:generateContent");
+    const headers = new Headers(options?.headers);
+    assert.equal(headers.get("authorization"), "Bearer test-token");
+    assert.equal(headers.has("x-goog-api-key"), false);
+    return Response.json({ candidates: [{ finishReason: "STOP", content: { parts: [{ text: "Готово" }] } }] });
+  });
+  assert.equal(await respond!({ mode: "discovery" } as never, "Тест", new AbortController().signal), "Готово");
+});
 
 test("configuredGeminiResponder returns undefined when API key is missing or model is invalid", () => {
   const origKey = process.env.GEMINI_API_KEY;

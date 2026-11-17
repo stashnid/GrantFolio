@@ -1,3 +1,4 @@
+import { applicationDefault } from "firebase-admin/app";
 import type { AssistantResponder } from "./assistant.js";
 import { getGrantSourceContext, getProgramDetails } from "./grant-sources.js";
 import { GRANT_CATALOG } from "./grant-catalog-data.js";
@@ -16,17 +17,21 @@ const SYSTEM_PROMPT = `Ти — активний, професійний біз�
 - Відповідай живою, грамотною, доброзичливою діловою українською мовою (до 12000 символів).`;
 
 export function configuredGeminiResponder(fetchImpl: typeof fetch = fetch): AssistantResponder | undefined {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || typeof apiKey !== "string" || !apiKey.trim()) {
-    return undefined;
-  }
+  const vertexProject = process.env.GEMINI_VERTEX_PROJECT?.trim();
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!vertexProject && !apiKey) return undefined;
+  if (vertexProject && !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(vertexProject)) return undefined;
   const model = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
   if (model !== "gemini-3.5-flash-lite") {
     return undefined;
   }
 
+  const credential = vertexProject ? applicationDefault() : undefined;
+  const url = vertexProject
+    ? `https://aiplatform.eu.rep.googleapis.com/v1/projects/${vertexProject}/locations/eu/publishers/google/models/${model}:generateContent`
+    : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+
   return async (snapshot, message, signal) => {
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
     const program = snapshot.mode !== "discovery" && snapshot.program_id && GRANT_CATALOG.some(p => p.id === snapshot.program_id) ? getProgramDetails(snapshot.program_id) : null;
 
     const payload = {
@@ -68,12 +73,16 @@ export function configuredGeminiResponder(fetchImpl: typeof fetch = fetch): Assi
 
     let response: Response;
     try {
+      const headers = new Headers({ "content-type": "application/json" });
+      if (credential) {
+        const token = await credential.getAccessToken();
+        headers.set("authorization", `Bearer ${token.access_token}`);
+      } else {
+        headers.set("x-goog-api-key", apiKey!);
+      }
       response = await fetchImpl(url, {
         method: "POST",
-        headers: {
-          "content-type": "application/json",
-          "x-goog-api-key": apiKey,
-        },
+        headers: Object.fromEntries(headers),
         body: JSON.stringify(payload),
         signal,
         redirect: "error",

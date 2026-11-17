@@ -1,5 +1,11 @@
 # Поточний стан GrantFolio
 
+## Gemini через Vertex AI — 17.11.2026
+
+Сайт оновлено зі свіжого `main` (`197b46f`) з темно-синьою темою. Cloud Run `grantfolio-web-00007-slx` отримує 100% трафіку, публічні health і CSS перевірено.
+
+Gemini 3.5 Flash-Lite через Vertex AI EU активний у production на ревізії `grantfolio-web-00008-xkt` зі 100% трафіку. Підтверджено генерацію з production образу під службовим акаунтом Cloud Run і публічний HTTPS health. Застосування Welcome credit ще не підтверджено у звіті витрат. [Звіт](agents/2026-11-17-live-gemini.md) · [PR №11](https://github.com/stashnid/GrantFolio/pull/11).
+
 ## Темно-синя тема — 17.11.2026
 
 Від актуальної main c4d8d49 підготовлено темно-синю тему з синьо-блакитними градієнтами: вхід, кабінет, каталог, профіль, проєкти, legal pages та favicon. Typecheck/build і локальна browser QA; виправлено контраст кнопок і номерів кроків. Без змін auth/API чи production deployment. Опубліковано [PR №10](https://github.com/stashnid/GrantFolio/pull/10), код `51a8ce9`. [Передача](agents/2026-11-17-navy-gradient-theme.md).
