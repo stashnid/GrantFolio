@@ -1,5 +1,9 @@
 # Журнал роботи
 
+## 17.11.2026 — production-реліз світлого чату
+
+Розгорнуто свіжий `main` (`cd1fd12`) у Cloud Run. Ревізія `grantfolio-web-main-cd1fd12` приймає 100% трафіку. Перевірено публічну сторінку, новий CSS і `/api/health`. [Звіт про реліз](agents/2026-11-17-luminous-chat-release.md).
+
 ## 17.11.2026: Gemini через Vertex AI
 
 Оновлено live-сайт з `main` (`197b46f`) на `grantfolio-web-00007-slx`. Перевірено HTTPS health і публічну видачу стилів нової теми.

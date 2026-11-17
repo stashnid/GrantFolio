@@ -1,5 +1,9 @@
 # Поточний стан GrantFolio
 
+## Production-реліз світлого чату — 17.11.2026
+
+Ревізія `grantfolio-web-main-cd1fd12` із `main` (`cd1fd12`) приймає 100% трафіку. Публічна сторінка віддає новий CSS, `/api/health` повертає `ok`. Налаштування Vertex AI збережено. [Звіт про реліз](agents/2026-11-17-luminous-chat-release.md).
+
 ## Сучасний світлий чат із темно-синьою основою — 17.11.2026
 
 Нова ітерація замінює надмірно синій canvas: біла стрічка, темно-синя навігація/заголовки, фіолетовий лише в градієнтах. Повідомлення асистента без вкладених підкладок. Нові відповіді в обох чатах поступово з’являються з можливістю одразу показати весь текст; історія/reduced-motion без повторної анімації. Typecheck/build,91tests на інтегрованій main та локальна browser QA. [Передача, синтетичні тести та межі](agents/2026-11-17-luminous-chat-interface.md). Оновлений frontend — [PR №12](https://github.com/stashnid/GrantFolio/pull/12). Збережено нову main з Vertex AI; cloud deploy цією задачею не виконувався.
@@ -8,7 +12,7 @@
 
 Сайт оновлено зі свіжого `main` (`197b46f`) з темно-синьою темою. Cloud Run `grantfolio-web-00007-slx` отримує 100% трафіку, публічні health і CSS перевірено.
 
-Gemini 3.5 Flash-Lite через Vertex AI EU активний у production на ревізії `grantfolio-web-00008-xkt` зі 100% трафіку. Підтверджено генерацію з production образу під службовим акаунтом Cloud Run і публічний HTTPS health. Застосування Welcome credit ще не підтверджено у звіті витрат. [Звіт](agents/2026-11-17-live-gemini.md) · [PR №11](https://github.com/stashnid/GrantFolio/pull/11).
+На ревізії `grantfolio-web-00008-xkt` підтверджено генерацію Gemini 3.5 Flash-Lite через Vertex AI EU під службовим акаунтом Cloud Run. Застосування Welcome credit ще не підтверджено у звіті витрат. [Звіт](agents/2026-11-17-live-gemini.md) · [PR №11](https://github.com/stashnid/GrantFolio/pull/11).
 
 ## Темно-синя тема — 17.11.2026
 
