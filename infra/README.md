@@ -50,7 +50,13 @@ gcloud projects add-iam-policy-binding "$PROJECT_ID" --member="serviceAccount:$R
 
 Use the SQL Console to create the dedicated `DB_USER` with a generated password; do not put it in a terminal argument/history or use the `postgres` administrator for the application. This first prototype uses the same dedicated database owner for migrations/runtime; separate grants can be introduced with a reviewed schema policy. Cloud SQL public IP here is used through the authenticated/encrypted Run Cloud SQL connection; add **no authorized external networks**. Choose/review backup retention and deletion protection before creation; deleting a service does not delete SQL or its backups.
 
-In Firebase Console, add Firebase to this same project if absent, register a Web app and enable Authentication → Email/Password. Review authentication quotas and any plan changes; do not enable Identity Platform paid features as a workaround. Obtain the four public web config fields. See [password authentication](https://firebase.google.com/docs/auth/web/password-auth).
+In Firebase Console, add Firebase to this same project if absent and register a Web app. Obtain the four public web config fields. Enable Google Sign-In and prepare the email code integration below before exposing Email/Password to users. [Password authentication](https://firebase.google.com/docs/auth/web/password-auth)
+
+## Email codes for password sign-in
+
+The public web release uses `EMAIL_LOGIN_CODE_REQUIRED=true` and a pinned Secret Manager version mounted as `EMAIL_LOGIN_CODE_CONFIG`. The secret is a JSON object with `signingKey` (at least 32 random characters), `clientId`, `clientSecret`, and `refreshToken`. Authorize the Gmail sender OAuth client as `grantfoliomanager@gmail.com` with `https://www.googleapis.com/auth/gmail.send`. Use an OAuth setup with durable offline access and verify live delivery before enabling password sign-in for users. The OAuth consent and secret values are managed outside Git. Grant the web runtime secret access on this secret alone. [Gmail send API](https://developers.google.com/workspace/gmail/api/reference/rest/v1/users.messages/send)
+
+After applying migration 016, verify that a password Firebase ID token alone receives `403` from a private API, then request a code, complete verification and repeat the request. Also verify Google Sign-In, invalid codes, expiry, reuse, and sign-out. The local regression uses PostgreSQL, Firebase Auth Emulator and an in-memory mail transport: `node --env-file-if-exists=.env --import tsx --test backend/test/email-login-code.test.ts`.
 
 Get the instance connection name (not its IP) and create a private file outside the checkout containing only the following connection string, replacing the user/password/database with **percent-encoded** values. `pg` consumes this Unix socket URL; the web process already has pool max 5.
 
@@ -93,7 +99,8 @@ IMAGE_DIGEST="${IMAGE%:*}@$DIGEST"
 gcloud run jobs deploy "$MIGRATION_JOB" --image="$IMAGE_DIGEST" --region="$REGION" --project="$PROJECT_ID" --service-account="$RUNTIME_SA" --set-cloudsql-instances="$SQL_CONNECTION" --set-secrets="DATABASE_URL=$DB_SECRET:$DB_SECRET_VERSION" --command=npm --args=run,migrate:prod --tasks=1 --parallelism=1 --max-retries=0 --task-timeout=300s --cpu=1 --memory=512Mi
 gcloud run jobs execute "$MIGRATION_JOB" --wait --region="$REGION" --project="$PROJECT_ID"
 # Stop here on any failed migration. Never start web with an unverified schema.
-gcloud run deploy "$SERVICE" --image="$IMAGE_DIGEST" --region="$REGION" --project="$PROJECT_ID" --service-account="$RUNTIME_SA" --execution-environment=gen2 --set-cloudsql-instances="$SQL_CONNECTION" --set-secrets="DATABASE_URL=$DB_SECRET:$DB_SECRET_VERSION" --set-env-vars="NODE_ENV=production,FIREBASE_PROJECT_ID=$PROJECT_ID,CATALOG_REFRESH_MODE=scheduled" --port=8080 --cpu=1 --memory=512Mi --min=0 --max=3 --concurrency=16 --timeout=60s --ingress=internal-and-cloud-load-balancing --allow-unauthenticated
+: "${EMAIL_CODE_SECRET:?Email code Secret Manager name required}" "${EMAIL_CODE_SECRET_VERSION:?Pinned email code secret version required}"
+gcloud run deploy "$SERVICE" --image="$IMAGE_DIGEST" --region="$REGION" --project="$PROJECT_ID" --service-account="$RUNTIME_SA" --execution-environment=gen2 --set-cloudsql-instances="$SQL_CONNECTION" --set-secrets="DATABASE_URL=$DB_SECRET:$DB_SECRET_VERSION,EMAIL_LOGIN_CODE_CONFIG=$EMAIL_CODE_SECRET:$EMAIL_CODE_SECRET_VERSION" --set-env-vars="NODE_ENV=production,FIREBASE_PROJECT_ID=$PROJECT_ID,CATALOG_REFRESH_MODE=scheduled,EMAIL_LOGIN_CODE_REQUIRED=true" --port=8080 --cpu=1 --memory=512Mi --min=0 --max=3 --concurrency=16 --timeout=60s --ingress=internal-and-cloud-load-balancing --allow-unauthenticated
 SERVICE_URL=$(gcloud run services describe "$SERVICE" --region="$REGION" --project="$PROJECT_ID" --format='value(status.url)')
 ```
 
