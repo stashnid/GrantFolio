@@ -7,6 +7,12 @@
 3. Read [current state](docs/STATUS.md), [decisions](docs/DECISIONS.md), [backlog](docs/BACKLOG.md), then the relevant [architecture](docs/architecture.md) or [AI research](docs/ai-model-research.md). Use the latest handoff linked from STATUS.
 4. Record task, branch, base commit and owned paths in a report under `docs/agents/`. Agree ownership before parallel edits; contract changes go through the coordinating person/agent.
 
+## Publish completed changes immediately (user instruction, 2026-11-17)
+
+- After each completed logical change and appropriate checks, commit the task's changes and immediately push its task branch to GitHub without requesting confirmation again. This is standing user authorization for routine commits/pushes in GrantFolio, including documentation and rule updates.
+- Verify fresh remote heads before publishing and preserve team/local changes. Include the task handoff and report the published branch or PR. If a check or push fails, report it accurately and resolve safe, in-scope problems.
+- Keep credentials, private data and downloaded local tools out of Git. This authorization does not include force-push, destructive resets, merging PRs or deploying services.
+
 ## Shared context is part of the work
 
 - Use task branches and pull requests after this documentation bootstrap. Re-fetch before publishing; resolve upstream changes without losing team work. Do not publish merely because this file describes a workflow: follow the user's authorized scope.

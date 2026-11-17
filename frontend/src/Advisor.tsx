@@ -306,6 +306,7 @@ export function Advisor({
           {!loading && messages.length === 0 && (
             <div className="chat-welcome-card">
               <div className="welcome-content">
+                <span className="welcome-eyebrow">ВАША ІДЕЯ · НАСТУПНИЙ КРОК</span>
                 <h1>На що вам потрібні кошти?</h1>
                 <p>
                   Опишіть бізнес-ідею або потребу вашої справи своїми словами.
@@ -313,6 +314,7 @@ export function Advisor({
                   кроком підготувати матеріали. Знати назву гранту чи мати
                   готовий проєкт не потрібно.
                 </p>
+                <p className="welcome-suggestions-label">Або почніть із прикладу</p>
                 <div className="welcome-quick-actions">
                   {[
                     "Хочу відкрити кав’ярню",

@@ -218,10 +218,11 @@ export function App() {
       <a className="skip-link" href="#main-content" onClick={(event) => { event.preventDefault(); document.getElementById("main-content")?.focus(); }}>Перейти до вмісту</a>
       <header className={user ? "app-sidebar" : undefined} data-mobile-open={mobileMenuOpen} onKeyDown={(event) => { if (event.key === "Escape" && mobileMenuOpen) { setMobileMenuOpen(false); document.querySelector<HTMLButtonElement>(".mobile-nav-toggle")?.focus(); } }}>
         <a className="brand" href="/" aria-label="GrantFolio, головна">
-          GrantFolio
+          <span className="brand-symbol" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M5 19V5h14v5h-9v9H5Z" fill="currentColor"/><path d="M14 14h5v5h-5z" fill="currentColor" opacity=".5"/></svg></span>GrantFolio
         </a>
         <span className="header-note">Гранти та фінансова підтримка бізнесу</span>
         {user && <button type="button" className="mobile-nav-toggle" aria-expanded={mobileMenuOpen} aria-controls="app-navigation" aria-label={mobileMenuOpen ? "Закрити меню" : "Відкрити меню"} onClick={() => setMobileMenuOpen(open => !open)}><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M4 6h16M4 12h16M4 18h16" /></svg>Меню</button>}
+        {user && <span className="nav-section-label">РОБОЧИЙ ПРОСТІР</span>}
         {user && (
           <nav id="app-navigation" aria-label="Розділи">
             <button type="button" className="link nav-tab" aria-current={tab === "advisor" ? "page" : undefined} onClick={() => openTab("advisor")}><NavIcon kind="advisor" />Асистент</button>
@@ -256,6 +257,7 @@ export function App() {
           </nav>
         )}
         {user && <div id="advisor-history-slot" hidden={tab !== "advisor"} />}
+        {user && <div className="sidebar-account"><span className="account-avatar" aria-hidden="true">{(savedProfile.businessName || user.email || "G").slice(0,1).toUpperCase()}</span><div><strong>{savedProfile.businessName || "Мій кабінет"}</strong><span>{user.email}</span></div></div>}
         {user && (
           <button
             className="link account-logout"
@@ -267,29 +269,32 @@ export function App() {
         )}
       </header>
       <main id="main-content" tabIndex={-1} className={user ? "workspace" : undefined}>
+        {user && <div className="workspace-topbar"><div><span>Робочий простір</span><span aria-hidden="true">/</span><strong>{({advisor:"Асистент",catalog:"Каталог грантів",cases:"Мої проєкти",profile:"Профіль бізнесу",feedback:"Відгуки"})[tab]}</strong></div><span className="workspace-mode">Прототип</span></div>}
         {!user && <section className="intro">
           <div className="eyebrow">
             <span className="small-dot" /> GrantFolio для бізнесу
           </div>
-          <h1>Підготуйте проєкт для фінансування бізнесу</h1>
-          <p className="intro-lead">ШІ-асистент для підбору грантів і підготовки заявок.</p>
-          <div className="prototype-status">
-            <strong>Зараз доступний прототип</strong>
-            <p>Профіль бізнесу, детальні умови програм, асистент, бюджет і робоча чернетка — в одному кабінеті.</p>
-          </div>
+          <h1>Від бізнес-ідеї<br />до грантової заявки<span className="heading-period">.</span></h1>
+          <p className="intro-lead">Знайдіть фінансування для своєї справи. Зберіть опис, бюджет і робочу чернетку в одному просторі.</p>
+          <ol className="intro-route" aria-label="Як працює GrantFolio">
+            <li><span>01</span><div><strong>Знайдіть свою можливість</strong><p>Обговоріть потребу з асистентом або відкрийте каталог.</p></div></li>
+            <li><span>02</span><div><strong>Підготуйте проєкт</strong><p>Працюйте над описом і бюджетом у власному темпі.</p></div></li>
+            <li><span>03</span><div><strong>Збережіть результат</strong><p>Експортуйте робочу чернетку для подальшої підготовки заявки.</p></div></li>
+          </ol>
           <a className="intro-action" href="#account" onClick={(event) => { event.preventDefault(); setRegister(true); setError(""); emailInput.current?.focus(); emailInput.current?.scrollIntoView({ block: "center" }); }}>
-            Створити акаунт <span aria-hidden="true">↗</span>
+            Почати роботу <span aria-hidden="true">→</span>
           </a>
+          <p className="intro-prototype">Прототип · Подання заявки відбувається в офіційному сервісі програми.</p>
         </section>}
         <section className="panel" id="account">
           <Suspense fallback={<p className="workspace-loading" role="status">Завантажуємо кабінет…</p>}>
           {loading ? (
             <p>Завантаження…</p>
           ) : !user ? (
-            <div className="card">
+            <div className="card auth-card">
               <div className="card-top">
-                <span>ОБЛІКОВИЙ ЗАПИС</span>
-                <span>✳</span>
+                <span>ВАШ ОСОБИСТИЙ ПРОСТІР</span>
+                <span aria-hidden="true">↗</span>
               </div>
               <h2>{register ? "Створіть акаунт" : "Вхід до кабінету"}</h2>
               <p>
