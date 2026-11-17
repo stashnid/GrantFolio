@@ -4,7 +4,7 @@
 
 Сайт оновлено зі свіжого `main` (`197b46f`) з темно-синьою темою. Cloud Run `grantfolio-web-00007-slx` отримує 100% трафіку, публічні health і CSS перевірено.
 
-Vertex AI EU успішно згенерував тестову відповідь Gemini 3.5 Flash-Lite від оператора. Адаптер і тест інтеграції підготовлено в окремій гілці. Для production потрібен дозвіл `aiplatform.endpoints.predict` службовому акаунту Cloud Run. Застосування Welcome credit ще не підтверджено у звіті витрат. [Звіт і наступний крок](agents/2026-11-17-live-gemini.md).
+Gemini 3.5 Flash-Lite через Vertex AI EU активний у production на ревізії `grantfolio-web-00008-xkt` зі 100% трафіку. Підтверджено генерацію з production образу під службовим акаунтом Cloud Run і публічний HTTPS health. Застосування Welcome credit ще не підтверджено у звіті витрат. [Звіт](agents/2026-11-17-live-gemini.md) · [PR №11](https://github.com/stashnid/GrantFolio/pull/11).
 
 ## Темно-синя тема — 17.11.2026
 
