@@ -2,6 +2,8 @@
 
 ## 17.11.2026: Gemini через Vertex AI
 
+Оновлено live-сайт з `main` (`197b46f`) на `grantfolio-web-00007-slx`. Перевірено HTTPS health і публічну видачу стилів нової теми.
+
 Перевірено генерацію Gemini 3.5 Flash-Lite на EU endpoint, налаштовано поріг витрат Vertex AI $40/місяць і підготовлено адаптер з Application Default Credentials. Typecheck і 10 цільових тестів пройшли. [Стан білінгу та блокер IAM](agents/2026-11-17-live-gemini.md).
 
 ## 17.11.2026: Глобальний каталог фінансування та автоматичне виявлення
