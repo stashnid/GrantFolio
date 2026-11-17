@@ -183,10 +183,14 @@ export function searchGrants(query: string, programs: readonly GrantCatalogEntry
   const personalOnly = personal && !meaningfulBusiness;
   const studyOnly = intents.includes("study") && !meaningfulBusiness && !intents.includes("transport");
   const stop = /^(?:грант|гранти|потріб|хочу|мені|для|який|кошти|допом|програма|фінанс|бізнес|справ|відкрит|підприєм|студент|молод|україн|україна|україні|що|how|grant|funding|need|business|бизнес)/;
-  const useful = searchableWords.filter(w=>w.length>=4&&!stop.test(w));
+  const genericFunding = /^(?:грив|тисяч|мільйон|дедлайн|завтра$|сьогодні$|гаранту|гарантован|thousand|million|deadline|guarantee)/;
+  const useful = searchableWords.filter(w => w.length >= 4 && !stop.test(w) && !genericFunding.test(w));
+  const bloomRelevant = /(?:^| )(?:bloom|блум|prosper global|впо|idp)(?: |$)|соціальн\p{L}* (?:вплив|бізнес|підприєм|мет)|екологічн\p{L}* вплив|інклюз|реабілітац|social impact|inclusive employment/iu.test(cleaned);
   const matches: GrantMatch[] = [];
   for (const p of programs) {
     if (!isGrantAvailable(p, now) || personalOnly || studyOnly) continue;
+    if (p.id === "uvf-reimbursement" && !intents.includes("veteran")) continue;
+    if (p.id === "bloom-sme" && !bloomRelevant) continue;
     let score = 0,
       reason = "";
     const add = (n: number, text: string) => {

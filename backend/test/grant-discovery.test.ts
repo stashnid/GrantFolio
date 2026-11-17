@@ -25,7 +25,7 @@ test("business needs, transport, typos and unrelated requests", () => {
   ])
     assert(searchGrants(q).matches.some(m=>m.programId==="vlasna-sprava"),q);
   const production=searchGrants("обладнання для виробництва");
-  assert(production.matches.some(m=>m.programId==="bloom-sme"));
+  assert(!production.matches.some(m=>m.programId==="bloom-sme"));
   assert(!production.matches.some(m=>m.programId==="processing-business"));
   assert(!searchGrants("хочу посадити ягідник").matches.some(m=>m.programId==="agro-gardens"));
   assert.equal(searchGrants("полетіти на марс").matches.length, 0);
@@ -80,6 +80,19 @@ test("business queries tolerate common variants and guard eligibility", () => {
  for(const q of ["особисте авто", "personal car", "стипендія на магістратуру", "scholarship for university", "полетіти на марс"]) assert.equal(searchGrants(q).matches.length,0,q);
  assert(!searchGrants('обладнання для кавярні').matches.some(m=>m.programId==='uvf-reimbursement'));
  const candidates=searchGrants('кавярня').matches;const restricted=candidates.find(m=>m.programId==='bloom-sme');if(restricted)assert.match(restricted.reason,/соціальн/);
+});
+test("amount-only requests and a cafe budget do not imply program fit", () => {
+  const generic = searchGrants("Гарантуй мені 1 мільйон гривень та дедлайн завтра");
+  assert.equal(generic.matches.length, 0);
+  const cafe = searchGrants("Мені 22 роки, навчаюся, хочу 150 тисяч гривень для кав’ярні у Львові");
+  assert.equal(cafe.matches[0]?.programId, "vlasna-sprava");
+  assert(!cafe.matches.some((match) => match.programId === "uvf-reimbursement"));
+  assert(!cafe.matches.some((match) => match.programId === "bloom-sme"));
+  const veteran = searchGrants("Я ветеран, хочу компенсацію за вже придбане обладнання");
+  assert.equal(veteran.matches[0]?.programId, "uvf-reimbursement");
+  const inclusive = searchGrants("Потрібно обладнання для інклюзивної пекарні та наймаємо ВПО");
+  assert(inclusive.matches.some((match) => match.programId === "bloom-sme"));
+  assert(searchGrants("Prosper Global").matches.some((match) => match.programId === "bloom-sme"));
 });
 test("retrieval uses sourced applicant, cost, document and donor fields without treating exclusions as approval", () => {
  const base=GRANT_CATALOG.find(p=>p.id==='vlasna-sprava')!;const p={...base,id:'fixture-search',title:'Програма підтримки',provider:'Організатор Azurium',searchTerms:[],eligibleCosts:['Енергоефективні котли'],targetAudience:'Пасічники',details:{...base.details,costs:['Енергоефективні котли'],eligibility:['Пасічники'],documents:['Довідка про експорт'],exclusions:['Азартні заклади'],funding:[],obligations:[],steps:[],overview:'Фінансування розвитку'}};

@@ -172,13 +172,13 @@ test("guided follow-ups retain the need and advance after amount and location", 
   if (!addr || typeof addr === "string") throw Error();
   const url = `http://127.0.0.1:${addr.port}/`;
   const conversationId = crypto.randomUUID();
-  const send = async (message: string) => {
+  const send = async (message: string, threadId = conversationId) => {
     const response = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         id: crypto.randomUUID(),
-        conversationId,
+        conversationId: threadId,
         message,
       }),
     });
@@ -201,7 +201,17 @@ test("guided follow-ups retain the need and advance after amount and location", 
     assert.match(fourth.seed, /200 тис, Львів/);
     assert.match(fourth.seed, /Я вже ФОП/);
     assert(fourth.search.intents.includes("transport"));
+    const inflectedCity = await send("Потрібно 150 тис. грн на пекарню у Львові", crypto.randomUUID());
+    assert.doesNotMatch(inflectedCity.reply, /У якому регіоні/);
+    await db.query(
+      `INSERT INTO profiles(owner_id,business_name,description,region,details) VALUES($1,'Пекарня','','','{"city":"Львів","legalForm":"fop"}')`,
+      [b],
+    );
+    const withoutRestatingProfile = await send("Потрібно 150 тис. грн на пекарню", crypto.randomUUID());
+    assert.match(withoutRestatingProfile.reply, /Наступний крок/);
+    assert.doesNotMatch(withoutRestatingProfile.reply, /У якому регіоні|Ви вже працюєте як ФОП/);
   } finally {
+    await db.query("DELETE FROM profiles WHERE owner_id=$1", [b]);
     listener.close();
   }
 });

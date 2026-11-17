@@ -126,6 +126,21 @@ const toDraft = (items: Item[]): DraftItem[] =>
   }));
 const money = (n: number) =>
   `${Math.floor(n / 100).toLocaleString("uk-UA")},${String(n % 100).padStart(2, "0")} грн`;
+function preparationTitle(program: GrantProgram, businessName?: string): string {
+  const name = businessName?.trim().replace(/\s+/g, " ");
+  const funding = friendlyTitle(program);
+  const title = name ? `${name} — ${funding}` : funding;
+  if (title.length <= 160) return title;
+  return name || "Матеріали грантового проєкту";
+}
+function printSourceUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password ? url.href : null;
+  } catch {
+    return null;
+  }
+}
 export function Cases({
   user,
   onUnsavedChange,
@@ -295,10 +310,10 @@ export function Cases({
     if (selectedProgram && programTarget) { setShowCreate(false); return; }
     if (selectedProgram) {
       setShowCreate(true);
-      setTitle((current) => (!preparationId && current) || `${preparationSeed ? preparationSeed.slice(0,80) : businessName || "Мій проєкт"} — ${friendlyTitle(selectedProgram)}`.slice(0, 160));
+      setTitle((current) => (!preparationId && current) || preparationTitle(selectedProgram, businessName));
       requestAnimationFrame(() => createTitleInput.current?.focus());
     }
-  }, [selectedProgram, programTarget, businessName, preparationSeed, preparationId]);
+  }, [selectedProgram, programTarget, businessName, preparationId]);
 
   async function create(e?: React.FormEvent, preparation?: { title: string; programId: string; initialDescription: string }) {
     e?.preventDefault();
@@ -348,7 +363,7 @@ export function Cases({
     handledPreparation.current = preparationId;
     if (!mayLeaveDraft()) { setShowCreate(false); onClearProgram?.(); return; }
     void create(undefined, {
-      title: `${preparationSeed ? preparationSeed.slice(0, 80) : businessName || "Мій проєкт"} — ${friendlyTitle(selectedProgram)}`.slice(0, 160),
+      title: preparationTitle(selectedProgram, businessName),
       programId: selectedProgram.id,
       initialDescription: preparationSeed,
     });
@@ -637,37 +652,44 @@ export function Cases({
   const isStep1Done = Boolean(details.projectDescription.trim() && details.customers.trim());
   const isStep2Done = Boolean(details.implementationPlan.trim());
   const isStep3Done = draft.length > 0;
+  const printFields = [...basicsFields, ...planFields].map(({ key, label }) => ({
+    key, label, value: selected?.details[key]?.trim(),
+  }));
+  const incompletePrintFields = printFields.filter(({ value }) => !value);
 
 
   return (
     <div className="card cases-card">
-      {selected && createPortal(
-        <article className="print-document" aria-label="Чернетка проєкту для друку">
+      {selected && !dirty && !pending && !conflict && !sessionDraft.recovery && createPortal(
+        <article className="print-document" lang="uk" aria-label="Робоча чернетка проєкту">
           <header className="print-document-header">
             <div className="print-brand">GRANTFOLIO <span>ПІДГОТОВКА ПРОЄКТУ</span></div>
             <p>РОБОЧИЙ ДОКУМЕНТ · НЕ Є ОФІЦІЙНОЮ ЗАЯВКОЮ</p>
           </header>
           <h1>{selected.title}</h1>
-          <p className="print-document-lead">Матеріали проєкту для перевірки та перенесення до форми організатора програми.</p>
-          <table className="print-metadata"><tbody>
-            <tr><th>Цільова програма</th><td>{activeProgram ? `${activeProgram.title} · ${activeProgram.provider}` : "Не обрано"}</td></tr>
-            <tr><th>Версія матеріалів</th><td>{selected.revision}</td></tr>
-            <tr><th>Дата формування</th><td>{new Date().toLocaleDateString("uk-UA", { day: "numeric", month: "long", year: "numeric" })}</td></tr>
+          <p className="print-document-lead">Опис проєкту та кошторис для підготовки грантової заявки.</p>
+          <table className="print-metadata" aria-label="Відомості про проєкт"><tbody>
+            <tr><th scope="row">Цільова програма</th><td>{activeProgram ? `${activeProgram.title} · ${activeProgram.provider}` : "Не обрано"}</td></tr>
+            <tr><th scope="row">Версія матеріалів</th><td>{selected.revision}</td></tr>
+            <tr><th scope="row">Дата формування</th><td>{new Date().toLocaleDateString("uk-UA", { day: "numeric", month: "long", year: "numeric" })}</td></tr>
           </tbody></table>
           <h2>1. Опис і план проєкту</h2>
-          {[...basicsFields, ...planFields].map((field) => (
+          {printFields.filter(({ value }) => value).map((field) => (
             <section key={field.key}>
               <h3>{field.label}</h3>
-              <p className="print-paragraph">{selected.details[field.key] || "Не заповнено"}</p>
+              <p className="print-paragraph">{field.value}</p>
             </section>
           ))}
+          {incompletePrintFields.length > 0 &&
+            <p className="print-document-note">Поля, які ще потрібно заповнити: {incompletePrintFields.map(({ label }) => label.toLocaleLowerCase("uk-UA")).join(", ")}.</p>}
           <h2>2. План бюджету</h2>
-          <p className="print-document-note">Наведені суми взято зі збереженого кошторису проєкту.</p>
-          <table className="print-budget">
-            <thead><tr><th>Витрата</th><th>Кількість</th><th>Ціна за одиницю</th><th>Сума</th></tr></thead>
-            <tbody>{selected.items.length ? selected.items.map((item, index) => <tr key={index}><td>{item.name}</td><td>{item.quantity}</td><td>{money(item.unitPriceKopecks)}</td><td>{money(item.quantity * item.unitPriceKopecks)}</td></tr>) : <tr><td colSpan={4}>Витрати ще не додані</td></tr>}</tbody>
-          </table>
-          <p className="print-total">Загальна сума бюджету <strong>{money(selected.totalKopecks)}</strong></p>
+          {selected.items.length > 0 ? <>
+            <table className="print-budget" aria-label="Кошторис проєкту">
+              <thead><tr><th scope="col">Стаття витрат</th><th scope="col">Кількість</th><th scope="col">Ціна за одиницю</th><th scope="col">Сума</th></tr></thead>
+              <tbody>{selected.items.map((item, index) => <tr key={index}><td>{item.name}</td><td>{item.quantity}</td><td>{money(item.unitPriceKopecks)}</td><td>{money(item.quantity * item.unitPriceKopecks)}</td></tr>)}</tbody>
+            </table>
+            <p className="print-total">Загальна сума бюджету <strong>{money(selected.totalKopecks)}</strong></p>
+          </> : <p className="print-document-note">Витрати ще не додані.</p>}
           {activeProgram && <>
             <h2>3. Орієнтир щодо програми</h2>
             <p>{activeProgram.keyCondition}</p>
@@ -676,11 +698,18 @@ export function Cases({
             <h3>Наступні кроки</h3>
             <ol>{activeProgram.details.steps.map(step => <li key={step}>{step}</li>)}</ol>
             <h2>4. Офіційні джерела</h2>
-            {activeProgram.details.sources.map(source => <p className="print-source" key={source.url}><strong>{source.title}</strong><br />{source.url}<br />Дата перевірки джерела: {source.checkedAt}</p>)}
+            {activeProgram.details.sources.map(source => {
+              const url = printSourceUrl(source.url);
+              return <p className="print-source" key={source.url}>
+                <strong>{source.title}</strong>{" "}
+                <small>· Перевірено {source.checkedAt}</small>
+                {url && <><br /><a href={url}>{source.url}</a></>}
+              </p>;
+            })}
           </>}
           <footer className="print-document-footer">
-            <strong>Перед використанням перевірте</strong>
-            <p>Це робоча чернетка, сформована збереженими матеріалами проєкту. Вона не є офіційною формою чи підтвердженням подання. Перевірте актуальні умови програми, перелік документів, бюджетні обмеження та правила подання на сайті організатора.</p>
+            <strong>Перевірка перед поданням</strong>
+            <p>Звірте умови участі, перелік документів, бюджетні обмеження та порядок подання на сайті організатора. Перенесіть перевірені матеріали до актуальної форми заявки.</p>
           </footer>
         </article>, document.body
       )}
@@ -1215,7 +1244,7 @@ export function Cases({
               <section className="export-section" aria-labelledby="export-heading">
                 <h4 id="export-heading">Експорт робочої чернетки</h4>
                 <p>
-                  Сформований файл містить структуровані відповіді та бюджет. Перенесіть перевірений текст у форму обраного організатора.
+                  Щоб отримати PDF зі збереженим описом і кошторисом, виберіть «Зберегти як PDF» у вікні друку.
                 </p>
                 <div className="export-buttons-group">
                   <button
@@ -1228,10 +1257,10 @@ export function Cases({
                   <button
                     type="button"
                     className="secondary-btn print-pdf-btn"
-                    disabled={busy || dirty || !!pending || conflict}
+                    disabled={busy || dirty || !!pending || conflict || !!sessionDraft.recovery}
                     onClick={() => window.print()}
                   >
-                    Відкрити друк / PDF ↗
+                    Відкрити збереження PDF
                   </button>
                 </div>
                 {(dirty || pending) && (

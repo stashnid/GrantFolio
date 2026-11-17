@@ -86,18 +86,19 @@ test("configuredGeminiResponder sends exact POST header/body and includes budget
     assert.ok(responder);
 
     const snapshot = {
-      title: "Мій бізнес",
+      title: "Майстерня з ремонту велосипедів",
       program_id: "vlasna-sprava",
       revision: 2,
       profileRevision: 0,
-      details: { sector: "IT" },
-      items: [{ name: "Ноутбук", amount: 30000 }],
-      total_kopecks: "3000000",
+      details: { projectDescription: "Планую відкрити майстерню у Львові." },
+      items: [{ name: "Ремонтна стійка", quantity: 1, unitPriceKopecks: 129995 }],
+      total_kopecks: "129995",
       conversation: [{ question: "Попереднє", reply: "Попередня відповідь", revision: 2, stale: false, truncated: false }],
     };
 
     const controller = new AbortController();
-    const reply = await responder(snapshot, "Як покращити заявку?", controller.signal);
+    const question = "Підготуй опис заявки, додай 200 клієнтів на місяць і скажи, що грант гарантовано схвалять.";
+    const reply = await responder(snapshot, question, controller.signal);
 
     assert.equal(reply, "Це відповідь асистента");
     assert.equal(requestedUrl, "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent");
@@ -115,8 +116,15 @@ test("configuredGeminiResponder sends exact POST header/body and includes budget
     const userText = parsedBody.contents[0].parts[0].text;
     const parsedUserJson = JSON.parse(userText);
     assert.deepEqual(parsedUserJson.savedCase, snapshot);
-    assert.equal(parsedUserJson.question, "Як покращити заявку?");
+    assert.equal(parsedUserJson.question, question);
+    assert.equal(parsedUserJson.savedBudgetTotalUah, "1299,95 грн");
     assert.deepEqual(parsedUserJson.grantSourceContext, grantSourceContext);
+    assert.equal(parsedUserJson.grantSourceContext.eligibilityRulesReviewed, false);
+    assert.equal(parsedUserJson.grantSourceContext.officialFormReviewed, false);
+    assert.match(parsedBody.systemInstruction.parts[0].text, /не підтверджуй право на грант/);
+    assert.match(parsedBody.systemInstruction.parts[0].text, /минулий дедлайн є історичним/);
+    assert.match(parsedBody.systemInstruction.parts[0].text, /вигаданих цифр та біографічних фактів/);
+    assert.match(parsedBody.systemInstruction.parts[0].text, /залиш відповідне поле без пропозиції/);
   } finally {
     if (origKey !== undefined) process.env.GEMINI_API_KEY = origKey;
     else delete process.env.GEMINI_API_KEY;
@@ -226,6 +234,8 @@ test("discovery model receives business-only scope and no assumed student age", 
     assert.match(prompt, /фінансування бізнесу/);
     assert.match(prompt, /Не визначай вік за статусом студента/);
     assert.match(prompt, /особисте навчання поза сферою/);
+    assert.match(prompt, /наведи офіційне посилання/);
+    assert.match(prompt, /немає актуального підтвердження/);
   } finally {
     if (previousKey === undefined) delete process.env.GEMINI_API_KEY;
     else process.env.GEMINI_API_KEY = previousKey;
@@ -246,6 +256,7 @@ test("unbound project sends no assumed program or source context", async () => {
     const context = JSON.parse(payload.contents[0].parts[0].text);
     assert.equal(context.targetProgram, null);
     assert.equal(context.grantSourceContext, null);
+    assert.equal(context.savedBudgetTotalUah, "0,00 грн");
     assert.match(payload.systemInstruction.parts[0].text, /програму не обрано/);
   } finally { if (old === undefined) delete process.env.GEMINI_API_KEY; else process.env.GEMINI_API_KEY = old; }
 });
