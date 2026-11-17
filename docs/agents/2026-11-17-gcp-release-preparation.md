@@ -15,6 +15,8 @@
 
 Додано `CATALOG_REFRESH_MODE=scheduled` для запуску синхронізації зовнішніми завданнями. Локальний режим продовжує використовувати вбудовані таймери за замовчуванням. Оновлено інструкцію для Cloud Scheduler і HTTPS. Typecheck та production build пройшли, хмарні завдання ще не запускалися. Поточний стан оновлено в STATUS і WORKLOG.
 
-Користувач сам прив’язав білінг до `grantfolio-pp-ua`. Google Cloud CLI підтвердив `billingEnabled=True` і стан проєкту `ACTIVE`. Увімкнено й перевірено API Cloud Run, Compute Engine, Cloud SQL, Artifact Registry, Secret Manager, Cloud Scheduler і Certificate Manager. Інстанси й балансувальник ще не створено. Погоджену адресу підтримки внесено у форму Google OAuth. Збереження очікує прийняття Google API Services User Data Policy у консолі.
+Користувач сам прив’язав білінг до `grantfolio-pp-ua`. Google Cloud CLI підтвердив `billingEnabled=True` і стан проєкту `ACTIVE`. Увімкнено й перевірено API Cloud Run, Compute Engine, Cloud SQL, Artifact Registry, Secret Manager, Cloud Scheduler і Certificate Manager. Інстанси й балансувальник ще не створено.
 
-Для наступного етапу потрібні завершення Google Sign-In, інтеграція відправлення кодів і погоджений обсяг витрат для Cloud Run, Cloud SQL та Load Balancer. Після налаштування компонентів перевірити TLS, обидва способи входу, ізоляцію даних і роботу під навантаженням 30 одночасних користувачів.
+Після підтвердження політики Google OAuth зберіг `grantfoliomanager@gmail.com` як адресу підтримки. Роль OAuth Config Editor цього акаунта знято. IAM підтверджує власника `m.stepaniuk.pn@ucu.edu.ua`. У Firebase провайдер Google має стан Enabled, а `grantfolio.pp.ua` є в Authorized domains. Вхід через Google на розгорнутому сайті ще не перевіряли.
+
+Для наступного етапу потрібні інтеграція відправлення кодів і погоджений обсяг витрат для Cloud Run, Cloud SQL та Load Balancer. Після налаштування компонентів перевірити TLS, обидва способи входу, ізоляцію даних і роботу під навантаженням 30 одночасних користувачів.
