@@ -44,3 +44,5 @@ Sol перевірив реальну локальну guided розмову, sk
 Після уточнення navy-primary відновлено й переглянуто координатором фінальні screenshots desktop1440/mobile390; tablet768 та navigation перевірені в тій же верстці. Фінальний вибірковий contrast sweep: мінімум5.01:1 для muted metadata, user label5.25, caution5.53. Primary фокус сильного синього кольору, білий чат без bubble background у assistant; user має одну підкладку без glow. Це не повний WCAG аудит.
 
 GitHub прийняв інтегрований6d15993; відкрито [PR №12](https://github.com/stashnid/GrantFolio/pull/12) до main. Код чинного Vertex AI з main збережений. Новий deployment/merge не виконано. Фінальні preview скопійовано в локальну папку Codex visualizations; у Git — лише код і звіт, без сесій/приватних QA-даних.
+
+Межа project-chat QA: поява synthetic reply і gating пропозицій PASS; фактичний clipboard і застосування suggestion у формі не повторно перевірені після переривання. Зміни стосуються reveal/відображення; чинні backend guards збережено й91регресійний тест PASS. Локальний процес перевірено: GEMINI_API_KEY порожній, GEMINI_BACKEND не заданий.
