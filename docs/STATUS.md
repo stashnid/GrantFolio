@@ -1,5 +1,9 @@
 # Поточний стан GrantFolio
 
+## Автоматичне розгортання з GitHub
+
+Підготовлено [PR №13](https://github.com/stashnid/GrantFolio/pull/13) з GitHub Actions для релізів із `main` після проходження тестів. Для активації потрібні зв’язок Google Cloud із GitHub через Workload Identity Federation і перший успішний запуск. [Передача](agents/2026-11-17-automatic-deploy.md).
+
 ## Сучасний світлий чат із темно-синьою основою — 17.11.2026
 
 Нова ітерація замінює надмірно синій canvas: біла стрічка, темно-синя навігація/заголовки, фіолетовий лише в градієнтах. Повідомлення асистента без вкладених підкладок. Нові відповіді в обох чатах поступово з’являються з можливістю одразу показати весь текст; історія/reduced-motion без повторної анімації. Typecheck/build,91tests на інтегрованій main та локальна browser QA. [Передача, синтетичні тести та межі](agents/2026-11-17-luminous-chat-interface.md). Оновлений frontend — [PR №12](https://github.com/stashnid/GrantFolio/pull/12). Збережено нову main з Vertex AI; cloud deploy цією задачею не виконувався.

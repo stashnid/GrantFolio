@@ -8,7 +8,7 @@ permissions:
   contents: read
 concurrency:
   group: checks-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 jobs:
   verify:
     runs-on: ubuntu-latest
@@ -43,3 +43,32 @@ jobs:
       - name: Stop local test services
         if: always()
         run: docker compose down --volumes
+
+  deploy:
+    name: Deploy to Cloud Run
+    if: >-
+      github.repository_id == '1455222744' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    needs: verify
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      id-token: write
+    concurrency:
+      group: grantfolio-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          workload_identity_provider: projects/202022033476/locations/global/workloadIdentityPools/grantfolio-github/providers/github-main
+          service_account: grantfolio-deployer@grantfolio-pp-ua.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+      - name: Build and release the checked commit
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: bash infra/deploy-main.sh
