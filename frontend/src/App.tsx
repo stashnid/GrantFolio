@@ -317,12 +317,11 @@ export function App() {
               aria-current={tab === "profile" ? "page" : undefined}
               onClick={() => openTab("profile")}
             >
-              <NavIcon kind="profile" />Профіль
+              <NavIcon kind="profile" />Профіль бізнесу
             </button>
           </nav>
         )}
         {user && <div id="advisor-history-slot" hidden={tab !== "advisor"} />}
-        {user && <div className="sidebar-account"><span className="account-avatar" aria-hidden="true">{(savedProfile.businessName || user.email || "G").slice(0,1).toUpperCase()}</span><div><strong>{savedProfile.businessName || "Мій кабінет"}</strong><span>{user.email}</span></div></div>}
         {user && (
           <button
             className="link account-logout"
