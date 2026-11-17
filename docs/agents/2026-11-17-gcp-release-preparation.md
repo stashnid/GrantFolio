@@ -1,7 +1,7 @@
 # Підготовка розгортання GrantFolio
 
 - Codex. Гілка `codex/gcp-release-preparation` від `438553d`, звірено із GitHub `main`. Локальні незатрекані файли збережено.
-- Власність цієї зміни охоплює `frontend/src/App.tsx`, `frontend/README.md`, STATUS, WORKLOG і цей звіт. Контракт приватного API лишається на перевірці Firebase ID token.
+- Власність цієї зміни охоплює `frontend/src/App.tsx`, `frontend/README.md`, `backend/src/config.ts`, `backend/src/server.ts`, `infra/README.md`, STATUS, WORKLOG і цей звіт. Контракт приватного API використовує Firebase ID token.
 
 ## Результати 17.11.2026
 
@@ -11,4 +11,8 @@
 
 ## Передача
 
-Визначити дозволений Cloud Billing для окремого проєкту і перевірити підключення Firebase та доступ до Google Cloud CLI. Після налаштування компонентів перевірити TLS, обидва способи входу, ізоляцію даних та тест із 30 одночасними користувачами. Поточний стан оновлено в STATUS і WORKLOG.
+Після команди продовжити відновлено авторизацію Google Cloud CLI та створено `grantfolio-pp-ua`. CLI підтвердив `billingEnabled=False`. Firebase Management API ввімкнено. REST-виклик додавання Firebase повернув 403, після чого майстер Firebase Console успішно додав Firebase без Analytics і показав план Spark. Зареєстровано GrantFolio Web та ініціалізовано Firebase Authentication. Єдина доступна адреса підтримки для провайдера Google належить оператору. Провайдер не збережено, адресу для публічного використання слід погодити. Cloud Run, Cloud SQL, Load Balancer і DNS залишаються етапами розгортання.
+
+Додано `CATALOG_REFRESH_MODE=scheduled` для запуску синхронізації зовнішніми завданнями. Локальний режим продовжує використовувати вбудовані таймери за замовчуванням. Оновлено інструкцію для Cloud Scheduler і HTTPS. Typecheck та production build пройшли, хмарні завдання ще не запускалися. Поточний стан оновлено в STATUS і WORKLOG.
+
+Для наступного етапу потрібні Firebase Authentication, інтеграція відправлення кодів і погоджений обсяг витрат для Cloud Run, Cloud SQL та Load Balancer. Після налаштування компонентів перевірити TLS, обидва способи входу, ізоляцію даних і роботу під навантаженням 30 одночасних користувачів.

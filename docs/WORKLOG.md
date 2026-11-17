@@ -277,3 +277,5 @@ Sol координував три Terra-виконання: chat/history, search
 ## 17.11: початок підготовки хмарного релізу
 
 Звірено `main`, перевірено сесію Google Cloud та публічний DNS. Користувач обрав окремий проєкт. Додано клієнтський Google sign-in і перевірено типи та збірку. [Стан і наступні кроки](agents/2026-11-17-gcp-release-preparation.md).
+
+Створено `grantfolio-pp-ua`, CLI підтвердив вимкнений білінг. Додано режим запланованого оновлення каталогу для Cloud Run і доповнено інструкції для домену та Cloud Scheduler. Typecheck і production build пройшли. [Передача](agents/2026-11-17-gcp-release-preparation.md).
