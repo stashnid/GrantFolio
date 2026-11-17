@@ -75,7 +75,7 @@ test("negative needs and unrelated missing prerequisites retain positive busines
 
 test("business queries tolerate common variants and guard eligibility", () => {
  for(const q of ["харчування", "пекарня", "швейна майстерня", "кофейня", "bakery", "rfdzhzyz", "обладнання для виробництва"]) assert(searchGrants(q).matches.some(m=>m.programId==='vlasna-sprava'),q);
- for(const q of ["ветеран покупки", "veteran equipment"]) assert.equal(searchGrants(q).matches[0]?.programId,'uvf-reimbursement',q);
+ for(const q of ["ветеран вже купив обладнання", "ветеран вже придбала обладнання"]) assert.equal(searchGrants(q).matches[0]?.programId,'uvf-reimbursement',q);
  for(const q of ["техстартап", "Prosper Global", "міська мобільність"]) assert(searchGrants(q).matches.length>0,q);
  for(const q of ["особисте авто", "personal car", "стипендія на магістратуру", "scholarship for university", "полетіти на марс"]) assert.equal(searchGrants(q).matches.length,0,q);
  assert(!searchGrants('обладнання для кавярні').matches.some(m=>m.programId==='uvf-reimbursement'));

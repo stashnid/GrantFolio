@@ -12,16 +12,17 @@ const TASKS = [
 ] as const;
 
 const RATINGS = [
-  { value: 5, label: "5 — Відмінно" },
-  { value: 4, label: "4 — Добре" },
-  { value: 3, label: "3 — Задовільно" },
-  { value: 2, label: "2 — Погано" },
   { value: 1, label: "1 — Жахливо" },
+  { value: 2, label: "2 — Погано" },
+  { value: 3, label: "3 — Задовільно" },
+  { value: 4, label: "4 — Добре" },
+  { value: 5, label: "5 — Відмінно" },
 ] as const;
 
 export function Feedback({ user }: { user: User }) {
   const [feedbackId, setFeedbackId] = useState(() => crypto.randomUUID());
   const [rating, setRating] = useState<number>(0);
+  const [hoveredRating, setHoveredRating] = useState<number>(0);
   const [task, setTask] = useState<string>("profile");
   const [comment, setComment] = useState("");
   const [lastSubmittedContent, setLastSubmittedContent] = useState<string>("");
@@ -70,7 +71,7 @@ export function Feedback({ user }: { user: User }) {
       if (!response.ok) throw new ApiError("http", response.status);
 
       setLastSubmittedContent(currentContent);
-      setSuccess("Дякуємо! Ваш відгук успішно збережено.");
+      setSuccess("Дякуємо. Ваш відгук успішно збережено.");
       setComment("");
       setFeedbackId(crypto.randomUUID());
       setLastSubmittedContent("");
@@ -82,74 +83,124 @@ export function Feedback({ user }: { user: User }) {
     }
   }
 
+  const activeRating = hoveredRating || rating;
+  const activeRatingInfo = RATINGS.find((r) => r.value === activeRating);
+
   return (
-    <div className="card" style={{ marginTop: "1.5rem" }}>
-      <details>
-        <summary style={{ cursor: "pointer", fontWeight: 600 }}>Залишити відгук</summary>
-        <div style={{ marginTop: "1rem" }}>
-          <p style={{ fontSize: "0.9rem", color: "var(--muted, #666)" }}>
-            Відгук добровільний. Він допоможе покращити прототип; узагальнені результати можуть увійти до навчального звіту.
+    <section className="card feedback-card" aria-labelledby="feedback-heading">
+      <div className="card-top">
+        <span>ЗВОРОТНИЙ ЗВ’ЯЗОК</span>
+      </div>
+      <h2 id="feedback-heading">Залишити відгук</h2>
+      <p className="feedback-lead">
+        Відгук добровільний. Він допоможе покращити прототип; узагальнені результати можуть увійти до навчального звіту.
+      </p>
+
+      <form onSubmit={submitFeedback} noValidate>
+        <fieldset
+          className="feedback-rating-fieldset"
+          aria-describedby={error && rating < 1 ? "feedback-error" : undefined}
+        >
+          <legend className="feedback-rating-legend">Оцінка прототипу</legend>
+          <div className="feedback-rating-row">
+            <div
+              className="rating-stars"
+              role="group"
+              aria-label="Оцінка від 1 до 5"
+              onMouseLeave={() => setHoveredRating(0)}
+            >
+              {RATINGS.map((r) => {
+                const isFilled = r.value <= activeRating;
+                const isSelected = r.value === rating;
+                return (
+                  <button
+                    key={r.value}
+                    type="button"
+                    className={`star-btn${isFilled ? " active" : ""}${isSelected ? " is-selected" : ""}`}
+                    aria-label={r.label}
+                    aria-pressed={isSelected}
+                    title={r.label}
+                    disabled={busy}
+                    onMouseEnter={() => setHoveredRating(r.value)}
+                    onFocus={() => setHoveredRating(r.value)}
+                    onBlur={() => setHoveredRating(0)}
+                    onClick={() => handleContentChange(r.value, task, comment)}
+                  >
+                    <svg
+                      viewBox="0 0 24 24"
+                      width="22"
+                      height="22"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="1.75"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      aria-hidden="true"
+                    >
+                      <polygon points="12 2.5 15.09 8.76 22 9.77 17 14.64 18.18 21.52 12 18.27 5.82 21.52 7 14.64 2 9.77 8.91 8.76 12 2.5" />
+                    </svg>
+                  </button>
+                );
+              })}
+            </div>
+            <span className={`feedback-rating-caption${activeRating > 0 ? " is-selected" : ""}`} aria-live="polite">
+              {activeRatingInfo ? activeRatingInfo.label : "Оберіть оцінку"}
+            </span>
+          </div>
+        </fieldset>
+
+        <label htmlFor="feedback-task">
+          Розділ або тема
+          <select
+            id="feedback-task"
+            value={task}
+            onChange={(e) => handleContentChange(rating, e.target.value, comment)}
+            disabled={busy}
+          >
+            {TASKS.map((t) => (
+              <option key={t.value} value={t.value}>
+                {t.label}
+              </option>
+            ))}
+          </select>
+        </label>
+
+        <label htmlFor="feedback-comment">
+          <span className="feedback-field-meta">
+            <span>Коментар</span>
+            <span className="feedback-char-count">{comment.length} / 3000</span>
+          </span>
+          <textarea
+            id="feedback-comment"
+            maxLength={3000}
+            rows={4}
+            value={comment}
+            onChange={(e) => handleContentChange(rating, task, e.target.value)}
+            placeholder="Поділіться враженнями, складнощами або пропозиціями…"
+            disabled={busy}
+            aria-invalid={!!error}
+            aria-describedby={error ? "feedback-error" : undefined}
+          />
+        </label>
+
+        {error && (
+          <p id="feedback-error" className="error" role="alert">
+            {error}
           </p>
-          <form onSubmit={submitFeedback}>
-            <label>
-              Оцінка
-              <select
-                aria-label="Оцінка прототипу"
-                value={rating}
-                onChange={(e) => handleContentChange(Number(e.target.value), task, comment)}
-                disabled={busy}
-              >
-                <option value={0} disabled>Оберіть оцінку</option>
-                {RATINGS.map((r) => (
-                  <option key={r.value} value={r.value}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Розділ або тема
-              <select
-                aria-label="Розділ для відгуку"
-                value={task}
-                onChange={(e) => handleContentChange(rating, e.target.value, comment)}
-                disabled={busy}
-              >
-                {TASKS.map((t) => (
-                  <option key={t.value} value={t.value}>
-                    {t.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label>
-              Коментар (до 3000 символів)
-              <textarea
-                aria-label="Текст відгуку"
-                maxLength={3000}
-                rows={3}
-                value={comment}
-                onChange={(e) => handleContentChange(rating, task, e.target.value)}
-                placeholder="Поділіться враженнями або пропозиціями..."
-                disabled={busy}
-              />
-            </label>
-            {error && (
-              <p className="error" role="alert">
-                {error}
-              </p>
-            )}
-            {success && (
-              <p className="success" role="status">
-                {success}
-              </p>
-            )}
-            <button className="primary" disabled={busy || rating < 1 || !comment.trim()}>
-              {busy ? "Надсилаємо..." : "Надіслати відгук"} <span>↗</span>
-            </button>
-          </form>
+        )}
+        {success && (
+          <p id="feedback-success" className="success" role="status">
+            {success}
+          </p>
+        )}
+
+        <div className="feedback-actions">
+          <button type="submit" className="primary" disabled={busy || rating < 1 || !comment.trim()}>
+            <span>{busy ? "Надсилаємо…" : "Надіслати відгук"}</span>
+            <span className="primary-cta-arrow" aria-hidden="true">→</span>
+          </button>
         </div>
-      </details>
-    </div>
+      </form>
+    </section>
   );
 }

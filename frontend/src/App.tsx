@@ -160,6 +160,17 @@ export function App() {
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [hasUnsavedChanges]);
+  useEffect(() => {
+    if (!mobileMenuOpen) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        setMobileMenuOpen(false);
+        document.querySelector<HTMLButtonElement>(".mobile-nav-toggle")?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [mobileMenuOpen]);
   async function logout() {
     if (hasUnsavedChanges && !window.confirm("Є незбережені зміни або ненадіслане запитання. Вийти без збереження?")) return;
     if (user) await authenticatedRequest(user, "/api/auth/email-code/clear", { method: "POST" }, 1500).catch(() => {});
@@ -281,7 +292,7 @@ export function App() {
   return (
     <>
       <a className="skip-link" href="#main-content" onClick={(event) => { event.preventDefault(); document.getElementById("main-content")?.focus(); }}>Перейти до вмісту</a>
-      <header className={user ? "app-sidebar" : undefined} data-mobile-open={mobileMenuOpen} onKeyDown={(event) => { if (event.key === "Escape" && mobileMenuOpen) { setMobileMenuOpen(false); document.querySelector<HTMLButtonElement>(".mobile-nav-toggle")?.focus(); } }}>
+      <header className={user ? "app-sidebar" : undefined} data-mobile-open={mobileMenuOpen}>
         <a className="brand" href="/" aria-label="GrantFolio, головна">
           <span className="brand-symbol" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M5 19V5h14v5h-9v9H5Z" fill="currentColor"/><path d="M14 14h5v5h-5z" fill="currentColor" opacity=".5"/></svg></span>GrantFolio
         </a>
@@ -292,6 +303,7 @@ export function App() {
           <nav id="app-navigation" aria-label="Розділи">
             <button type="button" className="link nav-tab" aria-current={tab === "advisor" ? "page" : undefined} onClick={() => openTab("advisor")}><NavIcon kind="advisor" />Асистент</button>
             <button
+              type="button"
               className="link nav-tab"
               aria-current={tab === "cases" ? "page" : undefined}
               onClick={() => openTab("cases")}
@@ -299,6 +311,7 @@ export function App() {
               <NavIcon kind="cases" />Мої проєкти
             </button>
             <button
+              type="button"
               className="link nav-tab"
               aria-current={tab === "catalog" ? "page" : undefined}
               onClick={() => openTab("catalog")}
@@ -306,6 +319,7 @@ export function App() {
               <NavIcon kind="catalog" />Каталог грантів
             </button>
             <button
+              type="button"
               className="link nav-tab"
               aria-current={tab === "feedback" ? "page" : undefined}
               onClick={() => openTab("feedback")}
@@ -313,6 +327,7 @@ export function App() {
               <NavIcon kind="feedback" />Відгуки
             </button>
             <button
+              type="button"
               className="link nav-tab"
               aria-current={tab === "profile" ? "page" : undefined}
               onClick={() => openTab("profile")}
@@ -324,14 +339,24 @@ export function App() {
         {user && <div id="advisor-history-slot" hidden={tab !== "advisor"} />}
         {user && (
           <button
+            type="button"
             className="link account-logout"
+            aria-label="Вийти з акаунта"
             disabled={busy}
             onClick={() => void logout()}
           >
-            <NavIcon kind="logout" />Вийти з акаунта
+            <NavIcon kind="logout" />
+            <span className="account-logout-label">Вийти з акаунта</span>
           </button>
         )}
       </header>
+      {user && mobileMenuOpen && (
+        <div
+          className="mobile-nav-scrim"
+          aria-hidden="true"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
       <main id="main-content" tabIndex={-1} className={user ? "workspace" : undefined}>
         {user && <div className="workspace-topbar"><div><span>Робочий простір</span><span aria-hidden="true">/</span><strong>{({advisor:"Асистент",catalog:"Каталог грантів",cases:"Мої проєкти",profile:"Профіль бізнесу",feedback:"Відгуки"})[tab]}</strong></div><span className="workspace-mode">Прототип</span></div>}
         {!user && <section className="intro">
@@ -358,7 +383,6 @@ export function App() {
             <div className="card auth-card">
               <div className="card-top">
                 <span>ВАШ ОСОБИСТИЙ ПРОСТІР</span>
-                <span aria-hidden="true">↗</span>
               </div>
               <h2>{register ? "Створіть акаунт" : "Вхід до кабінету"}</h2>
               <p>
@@ -367,9 +391,10 @@ export function App() {
                   : "Увійдіть, щоб працювати з профілем бізнесу та планами."}
               </p>
               <form onSubmit={login}>
-                <label>
+                <label htmlFor="auth-email">
                   Електронна пошта
                   <input
+                    id="auth-email"
                     ref={emailInput}
                     type="email"
                     autoComplete="email"
@@ -377,11 +402,14 @@ export function App() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
+                    aria-invalid={!!error}
+                    aria-describedby={error ? "auth-error" : undefined}
                   />
                 </label>
-                <label>
+                <label htmlFor="auth-password">
                   Пароль
                   <input
+                    id="auth-password"
                     type="password"
                     autoComplete={
                       register ? "new-password" : "current-password"
@@ -391,21 +419,25 @@ export function App() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="Не менше 6 символів"
+                    aria-invalid={!!error}
+                    aria-describedby={error ? "auth-error" : undefined}
                   />
                 </label>
                 {error && (
-                  <p className="error" role="alert">
+                  <p id="auth-error" className="error" role="alert">
                     {error}
                   </p>
                 )}
                 {message && <p className="success" role="status">{message}</p>}
-                <button className="primary" disabled={busy}>
-                  {busy
-                    ? "Зачекайте…"
-                    : register
-                      ? "Створити акаунт"
-                      : "Увійти"}{" "}
-                  <span>↗</span>
+                <button type="submit" className="primary" disabled={busy}>
+                  <span>
+                    {busy
+                      ? "Зачекайте…"
+                      : register
+                        ? "Створити акаунт"
+                        : "Увійти"}
+                  </span>
+                  <span className="primary-cta-arrow" aria-hidden="true">→</span>
                 </button>
                 <button type="button" className="google-auth-button" disabled={busy} onClick={() => void loginWithGoogle()}>
                   <svg className="google-auth-button__icon" viewBox="0 0 48 48" aria-hidden="true">
@@ -415,13 +447,13 @@ export function App() {
                     <path fill="#EA4335" d="M24 12.1c3 0 5.7 1 7.8 3.1l5.9-5.9A19.7 19.7 0 0 0 24 4 20 20 0 0 0 5.9 15l6.9 5.3c1.6-4.7 6-8.2 11.2-8.2Z" />
                   </svg>
                   <span>Продовжити через Google</span>
-                  <span className="google-auth-button__arrow" aria-hidden="true">↗</span>
                 </button>
                 {!register && <button type="button" className="link" disabled={busy} onClick={() => void resetPassword()}>Забули пароль?</button>}
               </form>
               <div className="switch">
                 {register ? "Вже маєте акаунт?" : "Немає акаунта?"}{" "}
                 <button
+                  type="button"
                   className="link"
                   onClick={() => {
                     setRegister(!register);

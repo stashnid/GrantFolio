@@ -1,5 +1,5 @@
 import type { Item } from "./budget.js";
-import { detailsSchema } from "./project-details.js";
+import { assessBudget, detailsSchema, readiness } from "./project-details.js";
 import { getProgramDetails } from "./grant-sources.js";
 import { GRANT_CATALOG } from "./grant-catalog-data.js";
 import type { z } from "zod";
@@ -27,28 +27,34 @@ export function draftExport(row: Draft): string {
     ["План реалізації", row.details.implementationPlan],
     ["Очікувані результати", row.details.expectedResults],
   ];
-  const budget = row.items.length
+  const checks = readiness(row);
+  const missing = checks.checks.filter((check) => check.status === "missing");
+  const { validItems, totalMatches } = assessBudget(row.items, row.total_kopecks);
+  const budget = validItems && row.items.length
     ? row.items
         .map(
           (item, i) =>
             `${i + 1}. ${item.name}: ${item.quantity} × ${money(item.unitPriceKopecks)} = ${money(item.quantity * item.unitPriceKopecks)}`,
         )
         .join("\n")
-    : "Не вказано";
+    : validItems ? "Не вказано" : "Позиції бюджету пошкоджені; перевірте та збережіть кошторис повторно.";
   return [
     "Робоча чернетка. Не офіційна заявка.",
     `Назва проєкту: ${row.title}`,
     program ? `Цільова програма: ${program.title} (${program.provider})` : "Фінансування: підберемо далі",
     `Версія: ${row.revision}`,
+    "Джерело відомостей про проєкт і бюджет: збережені дані заявника. Перевірте їх точність і узгодженість перед використанням.",
+    missing.length ? `Потребує доопрацювання: ${missing.map((check) => check.label).join(", ")}.` : "Базову перевірку заповнення пройдено. Зміст, факти та узгодженість ще потрібно перевірити.",
     ...fields.map(
-      ([label, value]) => `${label}:\n${value.trim() || "Не вказано"}`,
+      ([label, value]) => `${label}:\n${typeof value === "string" && value.trim() || "Не вказано"}`,
     ),
-    `Бюджет:\n${budget}\nЗагалом: ${money(row.total_kopecks)}`,
+    `Бюджет:\n${budget}\n${totalMatches ? `Загалом: ${money(row.total_kopecks)}` : "Підсумок потребує перевірки: збережена сума не збігається з позиціями або бюджет пошкоджений."}`,
     ...(program ? [
       "Документи та наступні кроки:\n" + [...program.documents, ...program.steps].map((item) => `- ${item}`).join("\n"),
-      `Офіційні джерела програми:\n${(GRANT_CATALOG.find((p) => p.id === program.id)?.details.sources ?? []).map((source) => `- ${source.title}: ${source.url}`).join("\n") || program.officialUrl}`,
+      `Офіційні джерела програми:\n${(GRANT_CATALOG.find((p) => p.id === program.id)?.details.sources ?? []).map((source) => `- ${source.title}: ${source.url} (перевірено ${source.checkedAt})`).join("\n") || program.officialUrl}`,
       "Звірте матеріали з актуальною офіційною формою; підпис і подання виконує заявник.",
     ] : ["Фінансування підберемо далі; вимоги визначатимуться обраною програмою."]),
+    checks.disclaimer,
     "",
   ].join("\n\n");
 }

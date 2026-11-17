@@ -1,0 +1,15 @@
+# Advice quality audit — 17 November 2026
+
+Branch: `feat/assistant-document-quality`; base: `fe378fe92b9caeedbe9fbedb5aa8726e9b310b8f`. Owned paths: `backend/src/gemini.ts`, `backend/src/advisor.ts`, `backend/src/draft-suggestions.ts`, `backend/test/advice-quality.test.ts`, this report. Coordinated integration and publishing belong to the lead agent.
+
+The existing draft parser enforces a single whitelist JSON block and proposals require separate user confirmation. Its schema cannot establish whether free text is factually grounded. The prompt previously requested budget prices even where no price was supplied; it now requests unpriced items and asks for missing prices. The discovery prompt explicitly treats an unverified user-named program as unconfirmed, and asks for clarification of contradictions. The guided fallback no longer assumes a program exists when the search is empty.
+
+Local regression fixtures cover coffee, commercial transport, student entrepreneur, veteran, unknown program, contradictory facts, and prompt injection/invented revenue. These examine provider request context and instructions, not live response behavior. Actual model compliance, Ukrainian prose and factual grounding still require live evaluation; prompts are not deterministic validation. No live model or paid service called by this agent.
+
+Checks: `npm run typecheck` passed. Targeted advice, assistant, Gemini and draft tests: 13 passed; one existing draft HTTP test could not bind `127.0.0.1` (`EPERM`) in the restricted environment. The new two checks passed.
+
+Self-evaluation (1–5): accuracy 4 (request and fallback checks pass; live model output untested); completeness 4 (all requested adversarial scenarios represented as input fixtures; semantic response evaluation remains outstanding); clarity 4 (limitations stated explicitly); actionability 4 (lead can run live evaluation and integration suite); conciseness 4 (changes limited to two code paths). Overall 4.0. Highest priority improvement: evaluate actual responses against the fixtures, including unsupported numbers and Ukrainian grammar. Would the user agree? Only if the distinction between prompt checks and real model quality is maintained.
+
+Live baseline editorial refinement: the captured bakery draft overstated readiness for any program, described a user-supplied total as an estimate and implied individual prices, and added unprovided stage/unknown details. The case prompt now preserves provenance and aggregate amounts, avoids universal readiness and invented stage or unknowns, and asks for plain professional Ukrainian. Request-level regression checks assert these instructions; a new live run is needed to establish actual behavior. No live calls by this agent.
+
+Final regression: empty catalog search retains available Women TechEU; exact catalog ID, title and provider remain searchable. A clearly negated past purchase no longer produces a reimbursement result unless another past purchase is stated. Mixed requests retain the existing past-only explanation. Timing and purpose recognition are text heuristics, not eligibility decisions.
