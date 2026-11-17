@@ -6,7 +6,7 @@
 - Ownership: Terra visual_language — CSS/frontend/index.html/favicon; Terra chat_behavior — Advisor.tsx/Assistant.tsx, новий shared reply reveal hook/component і цільові тести; Sol qa — read-only браузер і review; координатор — інтеграція/docs.
 - Збереження: чинні auth/OTP, history/drafts/retry/idempotency, джерела, budget/text-confirmation guards.
 - Progressive reveal є локальною анімацією отриманої відповіді; не видавати за streaming backend. Історія не анімується повторно, reduced-motion показує повний текст, анімацію можна завершити одразу.
-- Статус: in_progress.
+- Статус: done.
 
 
 ## Реалізація
@@ -35,3 +35,12 @@ Typecheck/build/diff-check PASS; npm test90/90 PASS. Новий unit suite, що
 Перед публікацією fresh fetch виявив main d5b102d (PR11, Vertex AI). Frontend checkpoint dab7217 збережено й відправлено. origin/main безпечно злитий у task branch; конфлікт лише в STATUS розв'язано зі збереженням обох записів, WORKLOG поєднано автоматично. Серверний адаптер/його тести/infra runbook з main збережено без переписування. Перевірки повторюються на інтегрованому коді; local QA продовжує без live/paid model calls.
 
 На інтегрованій основі d5b102d повторно typecheck/build/diff-check PASS,91/91tests PASS.
+
+
+## Фінальна незалежна browser QA і публікація
+
+Sol перевірив реальну локальну guided розмову, skip (часткові3символи→повна відповідь/3actions), reduced-motion (повна відповідь безskip), зміну розмови посеред reveal (анімація прибрана) й історію (не анімується). Синтетичний локальний503 зберігає точний draft, прибирає pending й не додає turns. Часткова розмітка inert/aria-hidden, після завершення звичайна розмітка/посилання відновлені. Для project Assistant додатково збережено окремий синтетичний локальний replay у project-chat-checks.json; це не доказ живої моделі.
+
+Після уточнення navy-primary відновлено й переглянуто координатором фінальні screenshots desktop1440/mobile390; tablet768 та navigation перевірені в тій же верстці. Фінальний вибірковий contrast sweep: мінімум5.01:1 для muted metadata, user label5.25, caution5.53. Primary фокус сильного синього кольору, білий чат без bubble background у assistant; user має одну підкладку без glow. Це не повний WCAG аудит.
+
+GitHub прийняв інтегрований6d15993; відкрито [PR №12](https://github.com/stashnid/GrantFolio/pull/12) до main. Код чинного Vertex AI з main збережений. Новий deployment/merge не виконано. Фінальні preview скопійовано в локальну папку Codex visualizations; у Git — лише код і звіт, без сесій/приватних QA-даних.
