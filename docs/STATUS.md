@@ -2,7 +2,7 @@
 
 ## Автоматичне розгортання з GitHub
 
-Підготовлено [PR №13](https://github.com/stashnid/GrantFolio/pull/13) з GitHub Actions для релізів із `main` після проходження тестів. Для активації потрібні зв’язок Google Cloud із GitHub через Workload Identity Federation і перший успішний запуск. [Передача](agents/2026-11-17-automatic-deploy.md).
+Автодеплой із `main` активний. Перший запуск успішно розгорнув `4fea299` на `grantfolio-web-gh-44138269816-1`. Ревізія приймає 100% трафіку, публічний `/api/health` повертає `ok`. [Звіт про активацію](agents/2026-11-17-automatic-deploy-activation.md).
 
 ## Сучасний світлий чат із темно-синьою основою — 17.11.2026
 
@@ -10,9 +10,9 @@
 
 ## Gemini через Vertex AI — 17.11.2026
 
-Сайт оновлено зі свіжого `main` (`197b46f`) з темно-синьою темою. Cloud Run `grantfolio-web-00007-slx` отримує 100% трафіку, публічні health і CSS перевірено.
+Темно-синю тему було розгорнуто з `197b46f` на `grantfolio-web-00007-slx`. Публічні health і CSS перевірено під час того релізу.
 
-Gemini 3.5 Flash-Lite через Vertex AI EU активний у production на ревізії `grantfolio-web-00008-xkt` зі 100% трафіку. Підтверджено генерацію з production образу під службовим акаунтом Cloud Run і публічний HTTPS health. Застосування Welcome credit ще не підтверджено у звіті витрат. [Звіт](agents/2026-11-17-live-gemini.md) · [PR №11](https://github.com/stashnid/GrantFolio/pull/11).
+На ревізії `grantfolio-web-00008-xkt` підтверджено генерацію Gemini 3.5 Flash-Lite через Vertex AI EU під службовим акаунтом Cloud Run. Застосування Welcome credit ще не підтверджено у звіті витрат. [Звіт](agents/2026-11-17-live-gemini.md) · [PR №11](https://github.com/stashnid/GrantFolio/pull/11).
 
 ## Темно-синя тема — 17.11.2026
 
