@@ -15,12 +15,19 @@
   font-weight: 650;
   text-decoration: none;
   transform: translateY(-180%);
-  transition-property: transform;
+  opacity: 0;
+  pointer-events: none;
+  clip-path: inset(50%);
+  transition-property: transform, opacity;
   transition-duration: 0.18s;
   transition-timing-function: var(--ease-spring, cubic-bezier(0.16, 1, 0.3, 1));
 }
-.skip-link:focus {
+.skip-link:focus,
+.skip-link:focus-visible {
   transform: translateY(0);
+  opacity: 1;
+  pointer-events: auto;
+  clip-path: none;
 }
 
 .workspace,
@@ -1069,6 +1076,7 @@ main.workspace {
 
   main.workspace {
     margin-left: 0;
+    scroll-margin-top: 60px;
   }
 
   .workspace-topbar {

@@ -4,6 +4,12 @@
 
 Виправлено втрату контексту після підбору грантів. Додано регресію діалогу про ферму та перевірені відомості про теплиці. [Звіт](agents/2026-11-18-advisor-consultation.md)
 
+## 18.11.2026 — Стабільність прокручування у Safari/WebKit, skip-link та мобільна верстка «Розсилки грантів»
+
+- Відтворено проблему на актуальному `main` у macOS WebKit (Safari 18.5 `WebKit.framework`) з трекпадним прокручуванням у розділі «Профіль бізнесу» → «Розсилка грантів»: встановлено, що вертикальні стрибки з темно-синьою смугою `#122441` (`theme-color`) спричинені root rubber-band overscroll (`scrollY` до `-76px`) без `overscroll-behavior-y: none`, а поява «Перейти до вмісту» на цій смузі — тим, що неактивний `.skip-link` залишався намальованим на `y = -72.8..-26.8px` з `opacity: 1` і без `clip-path`.
+- Виконано мінімальні CSS-зміни у гілці `fix/safari-scroll-stability` (перебазовано на актуальний `origin/main` `892ab23`): `overscroll-behavior-y: none` на `html`/`body` (`frontend/src/style.css`), `opacity: 0; pointer-events: none; clip-path: inset(50%)` для неактивного `.skip-link` з відновленням на `:focus, :focus-visible` та `scroll-margin-top: 60px` для мобільного `main.workspace` (`frontend/src/workspace.css`), а також `min-width: 0` для `.bp-section` і `.bp-preview-subject` (`frontend/src/BusinessProfile.css`) для усунення мобільного горизонтального переповнення `429px > 390px`.
+- Перевірки: macOS WebKit desktop (`1440×900`) і mobile (`390×844`), Chromium desktop/mobile (Tab/Enter skip-link, перемикання вкладок, збереження та reload), незалежний `code-reviewer` (**APPROVE**), `npm run typecheck`, `npm run build`, `npm test`, `git diff --check` PASS. Звіт: `docs/agents/2026-11-18-safari-scroll-stability.md`.
+
 ## Разова оплата через monobank · 18.11.2026
 
 Додано пілот разової підготовки «Власної справи» з довільною сумою та ручним підтвердженням поповнення банки. Підтвердження відкриває підготовку конкретної заявки. [План і передача](agents/2026-11-18-monobank-pay-per-application.md)
