@@ -324,18 +324,20 @@ export function createApp(
         saved = await db.query(
           `UPDATE profiles SET business_name=$2, description=$3, region=$4,
             details=$5::jsonb, updated_at=now(), revision=revision+1
-           WHERE owner_id=$1
+           WHERE owner_id=$1 AND revision=$6
            RETURNING business_name AS "businessName", description, region, details, revision`,
-          [uid, newBusinessName, newDescription, newRegion, JSON.stringify(details)]
+          [uid, newBusinessName, newDescription, newRegion, JSON.stringify(details), currentRevision]
         );
       } else {
         saved = await db.query(
           `INSERT INTO profiles(owner_id, business_name, description, region, details, revision)
            VALUES ($1,$2,$3,$4,$5::jsonb,1)
+           ON CONFLICT (owner_id) DO NOTHING
            RETURNING business_name AS "businessName", description, region, details, revision`,
           [uid, newBusinessName, newDescription, newRegion, JSON.stringify(details)]
         );
       }
+      if (!saved.rowCount) { res.status(409).json({ error: "profile_conflict" }); return; }
       const row = saved.rows[0];
       res.json({
         ok: true,

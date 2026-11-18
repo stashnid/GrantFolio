@@ -1,3 +1,4 @@
+import { hasGuidedApplication } from "./grants";
 import { assessBudget, readiness as snapshotReadiness } from "../../backend/src/project-details";
 import {isGrantAvailable} from "../../backend/src/grant-availability";
 import {useGrantPrograms} from "./GrantPrograms";
@@ -331,7 +332,7 @@ export function Cases({
     if (programTarget || busy || !ready || (!preparation && !mayLeaveDraft())) return;
     const targetId = preparation?.programId ?? selectedProgram?.id ?? null;
     const target = targetId ? GRANT_PROGRAMS.find(p => p.id === targetId) : null;
-    if (targetId && (!target || !isGrantAvailable(target))) { setError("Прийом за цією програмою зараз не підтверджено. Виберіть актуальну програму в каталозі."); return; }
+    if (targetId && (!target || !hasGuidedApplication(target.id))) { setError("Для цієї програми доступний пошук і перегляд умов. Виберіть програму з анкетою або створіть загальну чернетку."); return; }
     const values = preparation ?? { title, programId: target?.id ?? null, initialDescription: initialNeed };
     const body = JSON.stringify(values);
     if (!createAttempt.current || createAttempt.current.body !== body) createAttempt.current = { body, id: crypto.randomUUID() };
@@ -383,7 +384,7 @@ export function Cases({
   async function attachProgram() {
     if (!programTarget || !selectedProgram || !selected || selected.id !== programTarget.id || selected.revision !== programTarget.revision || busy || dirty || pending || conflict || sessionDraft.recovery) return;
     const currentProgram = GRANT_PROGRAMS.find(p => p.id === selectedProgram.id);
-    if (!currentProgram || !isGrantAvailable(currentProgram)) { setError("Прийом за цією програмою зараз не підтверджено. Перевірте актуальні умови."); return; }
+    if (!currentProgram || !hasGuidedApplication(currentProgram.id)) { setError("Для цієї програми доступний пошук і перегляд умов."); return; }
     setBusy(true);
     setError("");
     try {
@@ -1051,7 +1052,7 @@ export function Cases({
                 <button
                   type="button"
                   className="link ai-call-btn"
-                  onClick={() => askAssistant("Допоможи скласти план підготовки та очікувані результати за обраною програмою. Робочі місця враховуй лише якщо їх вимагає конкретний напрям; для навчання зосередься на навчальному плані.")}
+                  onClick={() => askAssistant("Допоможи скласти план підготовки та очікувані результати за обраною програмою. Робочі місця враховуй лише якщо їх вимагає конкретний напрям.")}
                 >
                   Запитати ШІ-асистента ↗
                 </button>
@@ -1318,7 +1319,7 @@ export function Cases({
                 <h4 id="preparation-documents-title">Документи та офіційне подання</h4>
                 <p>{"Підготовлені тут текст і кошторис допоможуть оформити заявку. Остаточний перелік і формат документів визначає обраний конкурс."}</p>
                 {activeProgram ? <ol className="preparation-route">
-                  <li><strong>Звірте конкурс та вимоги</strong><p>{activeProgram.keyCondition}</p><button type="button" className="link" onClick={() => { window.location.hash = `grants/${activeProgram.id}`; }}>Відкрити умови в GrantFolio</button></li>
+                  <li><strong>Звірте конкурс та вимоги</strong><p>{isGrantAvailable(activeProgram) ? activeProgram.keyCondition : "Поточний прийом не підтверджено. Перевірте статус у надавача перед поданням."}</p><button type="button" className="link" onClick={() => { window.location.hash = `grants/${activeProgram.id}`; }}>Відкрити умови в GrantFolio</button></li>
                   <li><strong>Зберіть потрібні матеріали</strong><ul>{activeProgram.details.documents.map(document => <li key={document}>{document}</li>)}</ul><button type="button" className="link" onClick={() => askAssistant("Допоможи перевірити, які матеріали ще потрібні до офіційної форми. Не оголошуй їх готовими без перевірки й допоможи підготувати наступний розділ.")}>Допоможи підготувати документи</button></li>
                   <li><strong>Зіставте чернетку з офіційною формою</strong><p>Завантажте збережені матеріали нижче та перенесіть їх у форму організатора. Перевірте зміст, мову, формат файлів і потрібний підпис.</p></li>
                   <li><strong>Подайте за правилами організатора</strong><ol>{activeProgram.details.steps.map(step => <li key={step}>{step}</li>)}</ol><a href={activeProgram.officialUrl} target="_blank" rel="noopener noreferrer">{"Відкрити офіційне подання ↗"}</a><p>Статус «подано» підтверджує організатор; GrantFolio не надсилає заявку від вашого імені.</p></li>

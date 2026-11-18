@@ -682,6 +682,12 @@ test("grant applications isolate owners, reject concurrent writes and invalidate
   const confirmed = await call(owner, path, "PUT", { ...command, expectedRevision: 1, answers: { ...command.answers, confirmAccuracy: true } });
   assert.equal(confirmed.status, 200);
   assert.equal((await confirmed.json()).answers.confirmAccuracy, true);
+  const exportPath = `/api/cases/${id}/draft-export`;
+  assert.equal((await call(stranger, exportPath)).status, 404);
+  const exported = await (await call(owner, exportPath)).text();
+  assert.match(exported, /Анкета програми · версія 2/);
+  assert.match(exported, /Напрям гранту:\nЗапочаткування/);
+  assert.match(exported, /Тип заявника:\nНе вказано/);
   assert.equal((await call(owner, `/api/cases/${id}/program`, "PUT", { programId: null, expectedRevision: 0 })).status, 200);
   assert.equal((await call(owner, path, "PUT", { ...command, expectedRevision: 2 })).status, 409);
   assert.equal((await (await call(owner, path)).json()).application, null);

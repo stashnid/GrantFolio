@@ -68,7 +68,6 @@ export function BusinessProfile({
   loading = false,
   conflict = false,
   onChange,
-  onSynced,
   onSubmit,
   onRetry,
 }: {
@@ -84,7 +83,6 @@ export function BusinessProfile({
   error: string;
   message: string;
   onChange: (profile: Profile) => void;
-  onSynced?: (profile: Profile, revision: number) => void;
   onSubmit: (e: React.FormEvent) => void;
   onRetry: () => void;
 }) {
@@ -95,7 +93,6 @@ export function BusinessProfile({
   const [emailCopied, setEmailCopied] = useState(false);
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [aiSyncing, setAiSyncing] = useState(false);
   const [aiSuggestions, setAiSuggestions] = useState<{
     suggestions: Partial<Record<FieldKey, string>>;
     facts: Array<{ field: string; label: string; value: string; source: string }>;
@@ -123,44 +120,20 @@ export function BusinessProfile({
     return () => { active = false; };
   }, [ready, profile]);
 
-  async function handleAiSync() {
-    if (!auth.currentUser || aiSyncing) return;
-    setAiSyncing(true);
-    setAiFeedback(null);
-    try {
-      const res = await authenticatedRequest(auth.currentUser, "/api/me/sync-from-conversations", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      if (!res.ok) throw new Error("HTTP error " + res.status);
-      const data = await res.json();
-      if (data?.profile) {
-        if (onSynced && typeof data.revision === "number") {
-          onSynced(data.profile, data.revision);
-        } else {
-          onChange(normalizeProfile(data.profile));
-        }
-        if (data.mergedCount > 0) {
-          setAiFeedback({
-            type: "success",
-            message: `✓ Оновлено ${data.mergedCount} полів з ваших розмов із ШІ!`,
-          });
-        } else {
-          setAiFeedback({
-            type: "info",
-            message: "Дані з розмов з асистентом вже синхронізовано з профілем.",
-          });
-        }
-        setAiSuggestions(null);
-      }
-    } catch {
-      setAiFeedback({
-        type: "error",
-        message: "Не вдалося синхронізувати дані з розмов. Спробуйте пізніше.",
-      });
-    } finally {
-      setAiSyncing(false);
+  function handleAiSync() {
+    if (!aiSuggestions?.facts.length || !ready || busy || conflict) return;
+    const next = { ...profile, details: { ...profile.details } };
+    for (const key of ["businessName", "region", "description"] as const) {
+      const value = aiSuggestions.suggestions[key];
+      if (!next[key] && value) next[key] = value;
     }
+    for (const key of ["city", "legalForm", "industry", "requestedAmount", "fundingPurpose", "teamSize", "grantExperience"] as const) {
+      const value = aiSuggestions.suggestions[key];
+      if (!next.details[key] && value) next.details[key] = value;
+    }
+    onChange(next);
+    setAiFeedback({ type: "info", message: "Пропозиції перенесено у форму. Перевірте їх і збережіть профіль." });
+    setAiSuggestions(null);
   }
   async function handleSendTestEmail() {
     if (!auth.currentUser) return;
@@ -246,12 +219,12 @@ export function BusinessProfile({
         <button
           type="button"
           className="bp-ai-sync-btn"
-          disabled={aiSyncing || !ready}
+          disabled={!aiSuggestions?.facts.length || !ready || busy || conflict}
           onClick={handleAiSync}
           title="Оновити профіль на основі фактів, озвучених у розмовах із ШІ-асистентом"
         >
           <span className="bp-ai-icon" aria-hidden="true">✨</span>
-          <span>{aiSyncing ? "Синхронізація…" : "Заповнити з діалогу ШІ"}</span>
+          <span>{"Заповнити з діалогу ШІ"}</span>
         </button>
         <span className={dirty ? "bp-status changed" : "bp-status"}>
           {!ready ? (error ? "Не завантажено" : "Завантаження…") : dirty ? "Є незбережені зміни" : "Збережено"}
@@ -273,8 +246,8 @@ export function BusinessProfile({
           <div className="bp-ai-banner-content">
             <span className="bp-ai-banner-icon" aria-hidden="true">✨</span>
             <div>
-              <h4>Знайдено {aiSuggestions.unappliedCount} нових фактів у ваших діалогах з асистентом</h4>
-              <p>Асистент запам’ятав деталі вашої справи під час спілкування. Можете додати їх до кабінету в один клік.</p>
+              <h4>Знайдено {aiSuggestions.unappliedCount} пропозицій із розмов з асистентом</h4>
+              <p>Перенесіть пропозиції в порожні поля, перевірте значення й збережіть профіль.</p>
               <div className="bp-ai-banner-chips">
                 {aiSuggestions.facts.slice(0, 5).map((f) => (
                   <span key={f.field} className="bp-ai-chip">
@@ -288,10 +261,10 @@ export function BusinessProfile({
             <button
               type="button"
               className="bp-ai-apply-btn"
-              disabled={aiSyncing}
+              disabled={busy || conflict}
               onClick={handleAiSync}
             >
-              {aiSyncing ? "Застосовуємо…" : "Застосувати все"}
+              Перенести у форму
             </button>
           </div>
         </div>

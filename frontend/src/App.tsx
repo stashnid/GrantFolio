@@ -540,14 +540,6 @@ export function App() {
                 error={error}
                 message={message}
                 onChange={(next) => { setProfile(next); setMessage(""); }}
-                onSynced={(updatedProfile, updatedRevision) => {
-                  const norm = normalizeProfile(updatedProfile);
-                  setProfile(norm);
-                  setSavedProfile(norm);
-                  setProfileRevision(updatedRevision);
-                  setProfileConflict(false);
-                  setMessage("");
-                }}
                 onSubmit={save}
                 onRetry={() => { if (profileDirty && !window.confirm("Завантажити збережений профіль? Незбережені зміни у формі буде втрачено.")) return; setError(""); setRetry(retry + 1); }}
               />

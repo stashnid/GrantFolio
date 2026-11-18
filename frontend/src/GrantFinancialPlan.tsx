@@ -28,11 +28,25 @@ const fields = [
 
 type DraftMonth = Record<keyof FinancialMonth, string>;
 type Draft = { opening: string; months: DraftMonth[] };
+type LocalDraft = { caseRevision: number; applicationRevision: number; planRevision: number; draft: Draft };
+const validInput = (value: unknown) => typeof value === "string" && value.length <= 14;
+
+function readLocalDraft(key: string): LocalDraft | null {
+  try {
+    const raw = sessionStorage.getItem(key);
+    if (!raw || raw.length > 40_000) return null;
+    const local = JSON.parse(raw) as LocalDraft;
+    if (!local.draft || !validInput(local.draft.opening) ||
+        !Array.isArray(local.draft.months) || ![24, 36, 60].includes(local.draft.months.length) ||
+        !local.draft.months.every(month => month && fields.every(([field]) => validInput(month[field])))) return null;
+    return local;
+  } catch { return null; }
+}
 
 function emptyMonth(): DraftMonth {
   return {
-    salesKopecks: "0", grantKopecks: "0", ownKopecks: "0", operatingCostsKopecks: "0",
-    payrollKopecks: "0", taxesKopecks: "0", capitalCostsKopecks: "0",
+    salesKopecks: "", grantKopecks: "", ownKopecks: "", operatingCostsKopecks: "",
+    payrollKopecks: "", taxesKopecks: "", capitalCostsKopecks: "",
   };
 }
 
@@ -48,7 +62,7 @@ function readDraft(plan: FinancialPlan | null): Draft {
       for (const [field] of fields) result[field] = inputMoney(month[field]);
       return result;
     }),
-  } : { opening: "0", months: Array.from({ length: 24 }, emptyMonth) };
+  } : { opening: "", months: Array.from({ length: 24 }, emptyMonth) };
 }
 
 function kopecks(text: string) {
@@ -96,8 +110,16 @@ export function GrantFinancialPlan({ user, caseId, caseRevision, applicationRevi
   const [reload, setReload] = useState(0);
   const hasDraftChanges = useRef(false);
   const discardChanges = useRef(false);
-  const lastPlanRevision = useRef(0);
+  const baseVersion = useRef<Pick<View, "caseRevision" | "applicationRevision" | "planRevision"> | null>(null);
   const path = `/api/cases/${caseId}/grant-financial-plan`;
+  const storageKey = `grantfolio:finance:v1:${encodeURIComponent(user.uid)}:${caseId}`;
+  const [recovery, setRecovery] = useState<LocalDraft | null>(null);
+  const [storageFailed, setStorageFailed] = useState(false);
+
+  function forgetLocalDraft() {
+    try { sessionStorage.removeItem(storageKey); } catch { /* Storage unavailable. */ }
+    setRecovery(null);
+  }
 
   useEffect(() => {
     const controller = new AbortController();
@@ -107,18 +129,25 @@ export function GrantFinancialPlan({ user, caseId, caseRevision, applicationRevi
         if (!response.ok) throw new Error("financial_plan_read_failed");
         const next = await response.json() as View;
         if (controller.signal.aborted) return;
-        if (hasDraftChanges.current && !discardChanges.current && next.planRevision !== lastPlanRevision.current) {
+        const base = baseVersion.current;
+        if (hasDraftChanges.current && !discardChanges.current && base &&
+            (next.planRevision !== base.planRevision || next.caseRevision !== base.caseRevision ||
+             next.applicationRevision !== base.applicationRevision)) {
           setStale(true);
           setError("Збережені дані змінилися в іншій вкладці. Скопіюйте незбережені суми перед завантаженням актуального плану.");
           return;
         }
-        lastPlanRevision.current = next.planRevision;
+        baseVersion.current = next;
         setView(next);
         if (!hasDraftChanges.current || discardChanges.current) {
-          setDraft(readDraft(next.plan));
+          const local = discardChanges.current ? null : readLocalDraft(storageKey);
+          const sameVersion = local && local.caseRevision === next.caseRevision &&
+            local.applicationRevision === next.applicationRevision && local.planRevision === next.planRevision;
+          setDraft(sameVersion ? local.draft : readDraft(next.plan));
+          setRecovery(local && !sameVersion ? local : null);
           setMonth(0);
-          setDirty(false);
-          hasDraftChanges.current = false;
+          setDirty(Boolean(sameVersion));
+          hasDraftChanges.current = Boolean(sameVersion);
           discardChanges.current = false;
         }
         setStale(next.caseRevision !== caseRevision || next.applicationRevision !== applicationRevision);
@@ -127,11 +156,18 @@ export function GrantFinancialPlan({ user, caseId, caseRevision, applicationRevi
         if (!controller.signal.aborted) setError(readableApiError(error, "Не вдалося завантажити фінансовий план."));
       });
     return () => controller.abort();
-  }, [user, path, caseRevision, applicationRevision, reload]);
+  }, [user, path, storageKey, caseRevision, applicationRevision, reload]);
 
-  const blocked = !view || busy || stale || disabled || view.caseRevision !== caseRevision || view.applicationRevision !== applicationRevision;
+  const blocked = !view || !!recovery || busy || stale || disabled || view.caseRevision !== caseRevision || view.applicationRevision !== applicationRevision;
 
   function updateDraft(next: Draft) {
+    if (view) {
+      try {
+        const { caseRevision, applicationRevision, planRevision } = view;
+        sessionStorage.setItem(storageKey, JSON.stringify({ caseRevision, applicationRevision, planRevision, draft: next }));
+        setStorageFailed(false);
+      } catch { setStorageFailed(true); }
+    }
     setDraft(next);
     setDirty(true);
     hasDraftChanges.current = true;
@@ -175,8 +211,9 @@ export function GrantFinancialPlan({ user, caseId, caseRevision, applicationRevi
       if (!response.ok) throw new Error("financial_plan_request_failed");
       if (plan) {
         const next = await response.json() as View;
+        forgetLocalDraft();
         setView(next);
-        lastPlanRevision.current = next.planRevision;
+        baseVersion.current = next;
         setDirty(false);
         hasDraftChanges.current = false;
         setNotice("Фінансовий план збережено.");
@@ -197,17 +234,28 @@ export function GrantFinancialPlan({ user, caseId, caseRevision, applicationRevi
 
   return <section className="readiness" aria-labelledby="grant-financial-title">
     <h4 id="grant-financial-title">Помісячний фінансовий план</h4>
-    <p>Вкажіть надходження й витрати за місяцями в гривнях. Нуль означає відсутність відповідної операції. Внесіть податки за власними перевіреними розрахунками.</p>
+    <p>Вкажіть надходження й витрати за місяцями в гривнях. Порожнє поле означає невідому суму. Вкажіть нуль тільки для операцій, яких не передбачено. Внесіть податки за власними перевіреними розрахунками.</p>
     {error && <p role="alert" className="error">{error}</p>}
     {notice && <p role="status">{notice}</p>}
     {stale && <button type="button" className="link" onClick={() => {
       if (!dirty || window.confirm("Завантажити збережений план і відкинути незбережені зміни?")) {
+        forgetLocalDraft();
         discardChanges.current = true;
         setReload(value => value + 1);
       }
     }}>Завантажити збережений план</button>}
     {!view && !error && <p role="status">Завантажуємо план…</p>}
     {!view && error && <button type="button" className="link" onClick={() => setReload(value => value + 1)}>Повторити</button>}
+    {storageFailed && <p role="alert">Локальну копію створити не вдалося. Збережіть план до переходу на інший екран.</p>}
+    {recovery && <details>
+      <summary>Переглянути незбережені суми попередньої версії</summary>
+      <p>Звірте суми з поточною версією перед повторним введенням.</p>
+      <textarea readOnly aria-label="Незбережені суми попередньої версії" value={[
+        `Початковий залишок: ${recovery.draft.opening}`,
+        ...recovery.draft.months.map((item, i) => `Місяць ${i + 1}: ${fields.map(([key, label]) => `${label}: ${item[key] || "не вказано"}`).join(", ")}`),
+      ].join("\n")} />
+      <button type="button" className="link" onClick={forgetLocalDraft}>Закрити локальну копію і редагувати поточну версію</button>
+    </details>}
     {view && <>
       {view.stale && <p>Анкета або проєкт змінилися. Звірте суми й повторно збережіть план для нової версії.</p>}
       <form onSubmit={submit}>
@@ -215,7 +263,7 @@ export function GrantFinancialPlan({ user, caseId, caseRevision, applicationRevi
           <label>Період
             <select value={draft.months.length} onChange={event => {
               const count = Number(event.target.value);
-              if (draft.months.slice(count).some(item => Object.values(item).some(amount => !/^0(?:[.,]00)?$/.test(amount))) &&
+              if (draft.months.slice(count).some(item => Object.values(item).some(amount => amount !== "" && !/^0(?:[.,]00)?$/.test(amount))) &&
                 !window.confirm("Скорочення періоду видалить введені дані останніх місяців. Продовжити?")) return;
               updateDraft({ ...draft, months: Array.from({ length: count }, (_, i) => draft.months[i] ?? emptyMonth()) });
               setMonth(Math.min(month, count - 1));
@@ -240,6 +288,13 @@ export function GrantFinancialPlan({ user, caseId, caseRevision, applicationRevi
                 updateDraft({ ...draft, months });
               }} />
           </label>)}
+          <button type="button" className="link" onClick={() => {
+            if (!window.confirm("Записати 0 у всі порожні поля? Підтвердіть, лише якщо в них справді немає запланованих операцій.")) return;
+            updateDraft({
+              opening: draft.opening || "0",
+              months: draft.months.map(item => Object.fromEntries(fields.map(([key]) => [key, item[key] || "0"])) as DraftMonth),
+            });
+          }}>Заповнити решту нулями</button>
           <button type="submit" className="secondary-btn">{busy ? "Зачекайте…" : "Зберегти фінансовий план"}</button>
         </fieldset>
       </form>
