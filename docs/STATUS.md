@@ -1,5 +1,15 @@
 # Поточний стан GrantFolio
 
+## Стабільність прокручування у Safari/WebKit, skip-link та мобільна ширина «Розсилки грантів» — 18.11.2026
+
+1. **Усунення вертикальних стрибків і смуги overscroll у Safari/WebKit (`frontend/src/style.css`, `frontend/src/workspace.css`)**:
+   - Відтворено у macOS WebKit (Safari 18.5 `WebKit.framework`) із трекпадним прокручуванням: без `overscroll-behavior-y` кореневий viewport провалювався у від’ємний `scrollY` (до `-76px`), відкриваючи темно-синю смугу `#122441` (`theme-color`) над каркасом, а `.skip-link` (намальований на `top: -72.8px .. -26.8px` з `opacity: 1` і без `clip-path`) ставав видимим на цій смузі без фокуса.
+   - Додано `overscroll-behavior-y: none` на `html` та `body`, візуальне приховування неактивного `.skip-link` (`opacity: 0; pointer-events: none; clip-path: inset(50%)`) із повним показом на `:focus, :focus-visible`, а також `scroll-margin-top: 60px` на мобільному `main.workspace` для коректної активації skip-link під sticky-хедером.
+2. **Усунення горизонтального переповнення на мобільній ширині (`frontend/src/BusinessProfile.css`)**:
+   - Додано `min-width: 0` для `.bp-section` та `.bp-preview-subject` (`flex: 1`) і `flex: none` для `.bp-preview-dot`, що усунуло переповнення `+39px` (`429px > 390px`) у вкладці «Розсилка грантів».
+3. **Верифікація**:
+   - macOS WebKit (Safari 18.5 `WebKit.framework`) desktop (`1440×900`) і mobile (`390×844`), Chromium desktop/mobile (включно з `Tab`/`Enter` на skip-link, перемиканням вкладок і збереженням після reload), незалежний `code-reviewer` (**APPROVE**), `npm run typecheck`, `npm run build`, повний `npm test` і `git diff --check` — **PASS**. [Детальний звіт](agents/2026-11-18-safari-scroll-stability.md).
+
 ## Разова оплата через monobank · 18.11.2026
 
 Додано пілот разової підготовки «Власної справи» з довільною сумою та ручним підтвердженням поповнення банки. Підтвердження відкриває підготовку конкретної заявки. [План і передача](agents/2026-11-18-monobank-pay-per-application.md)
