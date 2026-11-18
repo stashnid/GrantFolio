@@ -1,5 +1,11 @@
 # Журнал роботи
 
+## 18.11.2026 — Стилізований діалог підтвердження GrantFolio (заміна системних `window.confirm`)
+
+- Створено `frontend/src/ConfirmDialog.tsx` та `frontend/src/ConfirmDialog.css` (`ConfirmProvider` + `useConfirm`) і підключено у `frontend/src/main.tsx`.
+- Замінено всі 13 викликів `window.confirm(...)` у `Advisor.tsx`, `App.tsx`, `Assistant.tsx`, `Cases.tsx` та `GrantFinancialPlan.tsx` на фірмове модальне вікно у стилі GrantFolio (тони `danger`/`warning`/`default`, портал `z-index: 1200`, WCAG 2.2 AA `alertdialog`, фокус-пастка, перехоплення `Escape`, захист від подвійних кліків і stale-мутацій).
+- Пройдено незалежний аудит `react-reviewer` (усунуто всі 6 зауважень, фінальний вердикт **APPROVE**); інтегровано на актуальний `main` (`bfb37df`), `npm run typecheck`, `npm run build`, `git diff --check -- frontend docs` PASS. Звіт: `docs/agents/2026-11-18-styled-confirm-dialog.md`.
+
 ## 18.11.2026 — Стабільність прокручування у Safari/WebKit, skip-link та мобільна верстка «Розсилки грантів»
 
 - Відтворено проблему на актуальному `main` у macOS WebKit (Safari 18.5 `WebKit.framework`) з трекпадним прокручуванням у розділі «Профіль бізнесу» → «Розсилка грантів»: встановлено, що вертикальні стрибки з темно-синьою смугою `#122441` (`theme-color`) спричинені root rubber-band overscroll (`scrollY` до `-76px`) без `overscroll-behavior-y: none`, а поява «Перейти до вмісту» на цій смузі — тим, що неактивний `.skip-link` залишався намальованим на `y = -72.8..-26.8px` з `opacity: 1` і без `clip-path`.

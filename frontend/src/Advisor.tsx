@@ -10,6 +10,7 @@ import type { GrantProgram } from "./grants";
 import type { SearchResult } from "../../backend/src/grant-discovery";
 import { AiEmblem, CopyActionIcon, FormattedReply, ScrollDownIcon, SendArrowIcon } from "./Assistant";
 import { ReplyReveal } from "./ReplyReveal";
+import { useConfirm } from "./ConfirmDialog";
 import "./Advisor.css";
 import { advisorSessionKey, createAdvisorSession, parseAdvisorSession } from "./advisor-session";
 
@@ -120,7 +121,7 @@ export function Advisor({
   const preparablePilot = GRANT_PROGRAMS.find(program =>
     program.id === "vlasna-sprava" && !isGrantAvailable(program),
   );
-
+  const confirm = useConfirm();
   const [conversations, setConversations] = useState<Conversation[]>([]),
     [conversation, setConversation] = useState(""),
     [messages, setMessages] = useState<Message[]>([]),
@@ -163,6 +164,13 @@ export function Advisor({
   mutatingChatIdRef.current = mutatingChatId;
   const activeUidRef = useRef(user.uid);
   activeUidRef.current = user.uid;
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   const desktopRenameInputRef = useRef<HTMLInputElement>(null);
   const mobileRenameInputRef = useRef<HTMLInputElement>(null);
   const historyControllerRef = useRef<AbortController | null>(null);
@@ -656,8 +664,16 @@ export function Advisor({
     if (busy || mutatingChatId !== null) return;
     setHistoryError("");
     const id = entry.id;
+    const uid = user.uid;
     if (!isSaved) {
-      if (!window.confirm("Видалити чернетку розмови?")) return;
+      const confirmed = await confirm({
+        title: "Видалити чернетку розмови?",
+        message: "Ненадісланий текст цієї розмови буде видалено.",
+        confirmLabel: "Видалити",
+        cancelLabel: "Скасувати",
+        tone: "danger",
+      });
+      if (!confirmed || !mountedRef.current || activeUidRef.current !== uid || mutatingChatIdRef.current !== null) return;
       if (editingId === id) {
         setEditingId(null);
         setEditingTitle("");
@@ -673,15 +689,15 @@ export function Advisor({
       return;
     }
 
-    if (
-      !window.confirm(
-        `Видалити розмову «${entry.title}»? Усі повідомлення в цьому чаті буде видалено.`
-      )
-    ) {
-      return;
-    }
+    const confirmed = await confirm({
+      title: "Видалити розмову?",
+      message: `Розмову «${entry.title}» та всі повідомлення в цьому чаті буде видалено.`,
+      confirmLabel: "Видалити",
+      cancelLabel: "Скасувати",
+      tone: "danger",
+    });
+    if (!confirmed || !mountedRef.current || activeUidRef.current !== uid || mutatingChatIdRef.current !== null) return;
 
-    const uid = user.uid;
     setMutatingChatId(id);
     setHistoryError("");
     try {
