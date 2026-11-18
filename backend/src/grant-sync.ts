@@ -4,6 +4,7 @@ import {
   GRANT_SOURCE_RULES,
   type GrantSourceRule,
 } from "./grant-source-rules.js";
+import { getMonitorProfile } from "./program-monitor-profiles.js";
 
 type Availability = NonNullable<GrantCatalogEntry["availability"]>;
 type CheckStatus = {
@@ -323,7 +324,15 @@ export function createGrantSync(
     statuses = [];
     for (const row of result.rows) {
       const rule = byId.get(row.program_id);
-      if (!rule || rule.url !== row.source_url) continue;
+      const monitorProfile =
+        rules === GRANT_SOURCE_RULES
+          ? getMonitorProfile(row.program_id)
+          : undefined;
+      const matchesRule = Boolean(rule && rule.url === row.source_url);
+      const matchesProfile = Boolean(
+        monitorProfile && monitorProfile.sourceUrl === row.source_url,
+      );
+      if (!matchesRule && !matchesProfile) continue;
       const availability = row.availability as Availability | null;
       apply(row.program_id, availability);
       statuses.push({
