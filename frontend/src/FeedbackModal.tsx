@@ -732,7 +732,7 @@ export function FeedbackModal({
         </div>
 
         {step === 1 ? (
-          <form className="fb-modal-form" onSubmit={handleStep1Submit} noValidate>
+          <form className="fb-modal-form-root" onSubmit={handleStep1Submit} noValidate>
             <div className="fb-modal-body">
               <div className="fb-modal-form">
                 <fieldset className="fb-modal-fieldset">
@@ -918,7 +918,7 @@ export function FeedbackModal({
             </div>
           </form>
         ) : (
-          <form className="fb-modal-form" onSubmit={handleStep2Submit} noValidate>
+          <form className="fb-modal-form-root" onSubmit={handleStep2Submit} noValidate>
             <div className="fb-modal-body">
               <div className="fb-modal-form">
                 <div className="fb-modal-success-banner" role="status">

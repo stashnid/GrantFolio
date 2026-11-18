@@ -1,5 +1,24 @@
 # Журнал роботи
 
+## 18.11.2026 — Адаптивний вхід через Google на мобільних телефонах (Redirect Flow)
+
+- Виправлено збій авторизації через Google на смартфонах (`frontend/src/App.tsx`, `frontend/src/workspace.css`):
+  - Замінено ненадійний на мобільних пристроях `signInWithPopup` (який блокується Safari/Chrome popup-blocker або розриває зв'язок між вкладками) на нативний `signInWithRedirect` для мобільних пристроїв.
+  - Додано `getRedirectResult(auth)` для коректного отримання сесії та користувача після повернення з Google.
+  - Додано fallback на redirect при блокуванні спливних вікон на десктопі.
+  - Додано детектор WebView (`detectInAppBrowser()`) та підказку `.auth-inapp-notice` для користувачів, які переходять за посиланнями всередині Telegram або Instagram.
+- Перевірено локально (`npm run typecheck`, `npm run build`), закомічено та запушено в `main`.
+
+## 18.11.2026 — Мобільна прокрутка форми відгуків та адмін-доступ для grantfoliomanager@gmail.com
+
+- За зверненням користувача виправлено баг гортання форми відгуків на мобільних телефонах:
+  - Через flexbox `min-height: auto` вкладена форма блокувала скрол усередині 90dvh вікна.
+  - Додано семантичний контейнер `.fb-modal-form-root` з обмеженням `flex: 1 1 0%; min-height: 0;`, ввімкнено нативний тач-скрол `-webkit-overflow-scrolling: touch; touch-action: pan-y;` для `.fb-modal-body`.
+  - Зафіксовано футер з кнопками дій над мобільною безпечною зоною (`safe-area-inset-bottom`) та встановлено розмір шрифту `16px` для полів вводу (запобігає автоматичному збільшенню масштабу сторінки в iOS Safari).
+- Додано пошту `grantfoliomanager@gmail.com` до постійного списку адміністраторів (`backend/src/monitor-admin.ts`, `backend/test/monitor-admin.test.ts`), що відкриває доступ до внутрішньої панелі «Відгуки» (`FeedbackAdminDrawer`).
+- Перевірено локально (`npm run typecheck`, `npm run build`, тести `monitor-admin.test.ts`), закомічено та запушено в `main` (коміт `9d17998`).
+- CI/CD пайплайн GitHub Actions (`verify` з 206 тестами та `Deploy to Cloud Run`) успішно виконано. Оновлення працює на продакшні `https://grantfolio.pp.ua`.
+
 ## 18.11.2026 — Помітний платіжний крок у «Готовність та експорт»
 
 - За скриншотом користувача підтверджено, що в довгій вкладці анкети не видно оплати PDF/XLSX.
