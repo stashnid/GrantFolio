@@ -97,8 +97,8 @@ function validatedDraft(draft: Draft): FinancialPlan {
 
 const displayMoney = new Intl.NumberFormat("uk-UA", { style: "currency", currency: "UAH" });
 
-export function GrantFinancialPlan({ user, caseId, caseRevision, applicationRevision, disabled }: {
-  user: User; caseId: string; caseRevision: number; applicationRevision: number; disabled: boolean;
+export function GrantFinancialPlan({ user, caseId, caseRevision, applicationRevision, disabled, exportUnlocked }: {
+  user: User; caseId: string; caseRevision: number; applicationRevision: number; disabled: boolean; exportUnlocked: boolean;
 }) {
   const confirm = useConfirm();
   const [view, setView] = useState<View | null>(null);
@@ -332,7 +332,7 @@ export function GrantFinancialPlan({ user, caseId, caseRevision, applicationRevi
         <p>Збережена версія {view.planRevision}. Надходження {displayMoney.format(view.forecast.totals.incomeKopecks / 100)}, витрати {displayMoney.format(view.forecast.totals.expensesKopecks / 100)}, кінцевий залишок {displayMoney.format(view.forecast.totals.closingBalanceKopecks / 100)}.</p>
         {view.forecast.deficitMonths.length > 0 && <p>Дефіцит коштів у місяцях {view.forecast.deficitMonths.join(", ")}.</p>}
         {!view.reconciled && <p>Для експорту суми гранту й власного внеску у плані мають збігатися з анкетою.</p>}
-        <button type="button" className="secondary-btn" disabled={blocked || dirty || view.stale || !view.reconciled}
+        <button type="button" className="secondary-btn" disabled={blocked || dirty || view.stale || !view.reconciled || !exportUnlocked}
           onClick={() => void execute(view)}>Завантажити робочі XLSX і PDF</button>
       </>}
     </>}

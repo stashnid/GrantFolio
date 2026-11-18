@@ -1,5 +1,9 @@
 # Журнал роботи
 
+## Оплата за експорт PDF і XLSX · 18.11.2026
+
+Перенесено перевірку оплати з редагування до серверних маршрутів PDF/XLSX. Додано кнопку оплати, посилання на банку та шлях до звірки через підтримку. [Звіт](agents/2026-11-18-export-payment.md)
+
 ## 18.11.2026 — Стилізований діалог підтвердження GrantFolio (заміна системних `window.confirm`)
 
 - Створено `frontend/src/ConfirmDialog.tsx` та `frontend/src/ConfirmDialog.css` (`ConfirmProvider` + `useConfirm`) і підключено у `frontend/src/main.tsx`.

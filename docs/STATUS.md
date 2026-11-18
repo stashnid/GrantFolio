@@ -1,5 +1,9 @@
 # Поточний стан GrantFolio
 
+## Оплата за експорт PDF і XLSX · 18.11.2026
+
+Заявник може сам відкрити оплату через банку. Один підтверджений переказ відкриває готові PDF і XLSX «Власної справи». [Звіт](agents/2026-11-18-export-payment.md)
+
 ## Стилізований діалог підтвердження GrantFolio (заміна системних `window.confirm`) — 18.11.2026
 
 1. **Фірмове модальне вікно підтвердження (`frontend/src/ConfirmDialog.tsx`, `frontend/src/ConfirmDialog.css`, `frontend/src/main.tsx`)**:

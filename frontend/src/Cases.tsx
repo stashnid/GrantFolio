@@ -776,7 +776,7 @@ export function Cases({
 
   return (
     <div className="card cases-card">
-      {selected && !printBlocked && createPortal(
+      {selected && selected.programId !== "vlasna-sprava" && !printBlocked && createPortal(
         <article className="print-document" lang="uk" aria-label="Робоча чернетка проєкту">
           <header className="print-document-header">
             <div className="print-brand">GrantFolio</div>
@@ -1404,7 +1404,9 @@ export function Cases({
                 <p>
                   Сформований файл містить структуровані відповіді та бюджет. Перенесіть перевірений текст у форму обраного організатора.
                 </p>
-                <p>Для PDF зі збереженим описом і кошторисом виберіть «Зберегти як PDF» у вікні друку.</p>
+                {selected.programId === "vlasna-sprava"
+                  ? <p><a href="#export-payment" onClick={event => { event.preventDefault(); document.getElementById("export-payment")?.scrollIntoView({ behavior: "smooth" }); }}>Перейти до оплати й завантаження PDF та XLSX</a></p>
+                  : <p>Для PDF зі збереженим описом і кошторисом виберіть «Зберегти як PDF» у вікні друку.</p>}
                 <div className="export-buttons-group">
                   <button
                     type="button"
@@ -1421,14 +1423,14 @@ export function Cases({
                   >
                     Завантажити чернетку (.txt) <span>↗</span>
                   </button>
-                  <button
+                  {selected.programId !== "vlasna-sprava" && <button
                     type="button"
                     className="secondary-btn print-pdf-btn"
                     disabled={printBlocked}
                     onClick={() => window.print()}
                   >
                     Відкрити друк / PDF
-                  </button>
+                  </button>}
                 </div>
                 {(dirty || pending) && (
                   <p className="error">Перед завантаженням збережіть зміни в описі та бюджеті.</p>

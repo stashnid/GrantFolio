@@ -61,6 +61,7 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
   const [stale, setStale] = useState(false);
   const [error, setError] = useState("");
   const [access, setAccess] = useState<{ state: "standard" | "pending" | "active"; reference: string | null } | null>(null);
+  const [startingPayment, setStartingPayment] = useState(false);
   const [reload, setReload] = useState(0);
   const path = `/api/cases/${caseId}/grant-application`;
 
@@ -99,7 +100,21 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
   const question = application?.questions.find(item => item.id === editing) ?? application?.nextQuestion;
   const explanation = question && questionExplanations[question.id];
   const answerDescription = explanation ? "grant-application-answer-note" : undefined;
-  const blocked = access === null || access.state === "pending" || disabled || stale || loading || saving || response?.caseRevision !== caseRevision;
+  const blocked = disabled || stale || loading || saving || response?.caseRevision !== caseRevision;
+
+  async function startPayment() {
+    setStartingPayment(true);
+    setError("");
+    try {
+      const result = await authenticatedRequest(user, `/api/cases/${caseId}/preparation-access`, { method: "POST" });
+      if (!result.ok) throw new Error("export_payment_start_failed");
+      setAccess(await result.json() as NonNullable<typeof access>);
+    } catch {
+      setError("Не вдалося відкрити оплату. Спробуйте ще раз.");
+    } finally {
+      setStartingPayment(false);
+    }
+  }
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -189,13 +204,24 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
     {error && <p role="alert" className="error">{error}</p>}
     {stale && <p>За потреби повторно відкрийте проєкт, щоб завантажити його актуальну версію.</p>}
     {(stale || (access === null && !!error)) && <button type="button" className="link" onClick={() => setReload(value => value + 1)}>Оновити анкету</button>}
-    {access?.state === "pending" && <div role="status">
-      <p><strong>Очікуємо підтвердження оплати за цю заявку</strong></p>
-      <p>Поповніть тестову банку monobank на довільну суму за реквізитами від організатора. Приватно передайте йому код заявки та інформацію про переказ.</p>
-      <p>Код заявки <code>{access.reference}</code></p>
-      <button type="button" className="secondary-btn" onClick={() => setReload(value => value + 1)}>Перевірити підтвердження</button>
-    </div>}
-    {access?.state === "active" && <p role="status">Оплату підтверджено. Можете продовжити підготовку цієї заявки.</p>}
+    {application?.programId === "vlasna-sprava" && access && <section id="export-payment" className="export-section" aria-labelledby="export-payment-title">
+      <h5 id="export-payment-title">Завантаження PDF і таблиці Excel</h5>
+      {access.state === "standard" && <>
+        <p>Один підтверджений переказ відкриває PDF і XLSX для цієї заявки. Для тесту виберіть суму самостійно.</p>
+        <button type="button" className="primary" disabled={loading || startingPayment} onClick={() => void startPayment()}>
+          {startingPayment ? "Готуємо оплату…" : "Оплатити PDF і XLSX"}
+        </button>
+      </>}
+      {access.state === "pending" && <>
+        <p role="status">Очікуємо підтвердження оплати.</p>
+        <p>Поповніть банку на обрану суму через monobank або Apple Pay, якщо він доступний на вашому пристрої. Надішліть <a href="mailto:grantfoliomanager@gmail.com?subject=GrantFolio%20PDF%20XLSX">підтримці GrantFolio</a> код заявки, суму й час переказу, щоб оператор міг знайти його у виписці.</p>
+        <p>Код заявки <code>{access.reference}</code></p>
+        <a className="primary" href="https://send.monobank.ua/jar/9GcNmEBdxD" target="_blank" rel="noopener noreferrer">Відкрити банку monobank ↗</a>
+        {" "}
+        <button type="button" className="secondary-btn" disabled={loading} onClick={() => setReload(value => value + 1)}>Перевірити підтвердження</button>
+      </>}
+      {access.state === "active" && <p role="status">Оплату підтверджено. Готові PDF і XLSX можна завантажити нижче.</p>}
+    </section>}
     {application && !loading && <>
       <p>{application.readyForReview ? "Відповіді зібрано для предметної перевірки." : "Заповніть робочу анкету. Вона допоможе зібрати факти й пройти базові перевірки за умовами програми."}</p>
       {disabled && <p>Спочатку збережіть або відновіть правки проєкту.</p>}
@@ -236,14 +262,14 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
       </p>}
       {application.programId === "vlasna-sprava" && response && response.revision > 0 &&
         <GrantFinancialPlan key={`${user.uid}:${caseId}`} user={user} caseId={caseId} caseRevision={caseRevision}
-          applicationRevision={response.revision} disabled={blocked} />}
+          applicationRevision={response.revision} disabled={blocked} exportUnlocked={access?.state === "active"} />}
       {application.programId === "vlasna-sprava" && <button type="button" className="secondary-btn"
         disabled={blocked || downloadingTemplate} onClick={() => void downloadOfficialTemplate()}>
         {downloadingTemplate ? "Завантажуємо зразок…" : "Завантажити очищений зразок XLSX 2026"}
       </button>}
       {application.programId === "vlasna-sprava" && application.readyForReview && <>
         <p>Чернетка заповнює лише поля з підтвердженими відповідями. Решту полів форми потрібно перевірити й доповнити.</p>
-        <button type="button" className="secondary-btn" disabled={blocked || exportingDiiaDraft}
+        <button type="button" className="secondary-btn" disabled={blocked || exportingDiiaDraft || access?.state !== "active"}
           onClick={() => void exportDiiaDraft()}>
           {exportingDiiaDraft ? "Формуємо XLSX і PDF…" : "Завантажити чернетку бізнес-плану XLSX і PDF"}
         </button>
