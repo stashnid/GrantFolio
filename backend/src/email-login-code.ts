@@ -1,4 +1,4 @@
-import { createHmac, randomInt, timingSafeEqual } from "node:crypto";
+import { createHmac, randomInt, randomUUID, timingSafeEqual } from "node:crypto";
 import { Router, type Request } from "express";
 import type { DecodedIdToken } from "firebase-admin/auth";
 import type { Pool } from "pg";
@@ -16,6 +16,33 @@ const mailSettings = z.object({
   clientSecret: z.string().min(1),
   refreshToken: z.string().min(1),
 });
+
+function encodeBody(body: string): string {
+  return Buffer.from(body).toString("base64").match(/.{1,76}/g)?.join("\r\n") ?? "";
+}
+
+export function gmailMessage(recipient: string, subjectText: string, bodyText: string, htmlText?: string): string {
+  const address = email.parse(recipient);
+  const subject = Buffer.from(subjectText).toString("base64");
+  const headers = [
+    `From: GrantFolio <${sender}>`,
+    `To: ${address}`,
+    `Date: ${new Date().toUTCString().replace(/GMT$/, "+0000")}`,
+    `Message-ID: <${randomUUID()}@gmail.com>`,
+    `Subject: =?UTF-8?B?${subject}?=`,
+    "Auto-Submitted: auto-generated",
+    "MIME-Version: 1.0",
+  ];
+  const text = ["Content-Type: text/plain; charset=UTF-8", "Content-Transfer-Encoding: base64", "", encodeBody(bodyText)];
+  if (!htmlText) return Buffer.from([...headers, ...text, ""].join("\r\n")).toString("base64url");
+  const boundary = `grantfolio-${randomUUID()}`;
+  return Buffer.from([
+    ...headers, `Content-Type: multipart/alternative; boundary="${boundary}"`, "",
+    `--${boundary}`, ...text,
+    `--${boundary}`, "Content-Type: text/html; charset=UTF-8", "Content-Transfer-Encoding: base64", "", encodeBody(htmlText),
+    `--${boundary}--`, "",
+  ].join("\r\n")).toString("base64url");
+}
 
 export function configuredEmailLoginCode(db: Pool) {
   const value = process.env.EMAIL_LOGIN_CODE_CONFIG;
@@ -44,18 +71,7 @@ export function configuredEmailLoginCode(db: Pool) {
     });
     if (!token.ok) throw new Error("Email authorization unavailable");
     const credentials = z.object({ access_token: z.string().min(1) }).parse(await token.json());
-    const subject = Buffer.from("Код входу GrantFolio").toString("base64");
-    const body = Buffer.from(`Ваш код підтвердження GrantFolio: ${code}\n\nКод дійсний 10 хвилин.`).toString("base64");
-    const raw = Buffer.from([
-      `From: GrantFolio <${sender}>`,
-      `To: ${recipient}`,
-      `Subject: =?UTF-8?B?${subject}?=`,
-      "MIME-Version: 1.0",
-      "Content-Type: text/plain; charset=UTF-8",
-      "Content-Transfer-Encoding: base64",
-      "",
-      ...(body.match(/.{1,76}/g) ?? []),
-    ].join("\r\n")).toString("base64url");
+    const raw = gmailMessage(recipient, "Код входу GrantFolio", `Ваш код підтвердження GrantFolio: ${code}\n\nКод дійсний 10 хвилин. Якщо ви не запитували код, проігноруйте цей лист.`);
     const delivery = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
       method: "POST",
       headers: { Authorization: `Bearer ${credentials.access_token}`, "Content-Type": "application/json" },
@@ -93,18 +109,7 @@ export async function sendGmailMessage(
     });
     if (!token.ok) return false;
     const credentials = z.object({ access_token: z.string().min(1) }).parse(await token.json());
-    const subject = Buffer.from(subjectText).toString("base64");
-    const body = Buffer.from(htmlText || bodyText).toString("base64");
-    const raw = Buffer.from([
-      `From: GrantFolio <${sender}>`,
-      `To: ${recipient}`,
-      `Subject: =?UTF-8?B?${subject}?=`,
-      "MIME-Version: 1.0",
-      htmlText ? "Content-Type: text/html; charset=UTF-8" : "Content-Type: text/plain; charset=UTF-8",
-      "Content-Transfer-Encoding: base64",
-      "",
-      ...(body.match(/.{1,76}/g) ?? []),
-    ].join("\r\n")).toString("base64url");
+    const raw = gmailMessage(recipient, subjectText, bodyText, htmlText);
     const delivery = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
       method: "POST",
       headers: { Authorization: `Bearer ${credentials.access_token}`, "Content-Type": "application/json" },

@@ -6,7 +6,7 @@ import { initializeApp } from "firebase-admin/app";
 import pg from "pg";
 import { createApp } from "../src/app.js";
 import { configuration } from "../src/config.js";
-import { createEmailLoginCode } from "../src/email-login-code.js";
+import { createEmailLoginCode, gmailMessage } from "../src/email-login-code.js";
 
 const config = configuration();
 const emulator = process.env.FIREBASE_AUTH_EMULATOR_HOST;
@@ -33,6 +33,7 @@ after(async () => {
 });
 await once(server, "listening");
 await db.query(await readFile("backend/migrations/016_email_login_codes.sql", "utf8"));
+await db.query(await readFile("backend/migrations/018_newsletter_preview_cooldown.sql", "utf8"));
 await db.query("CREATE TABLE profiles (owner_id TEXT PRIMARY KEY, business_name TEXT, description TEXT, region TEXT, details JSONB, revision INTEGER)");
 const address = server.address();
 assert.ok(address && typeof address !== "string");
@@ -81,4 +82,36 @@ test("password accounts need a single-use email code and the resulting grant sta
   assert.equal((await request("me", first.token, { cookie })).status, 200);
   assert.equal((await request("me", second.token, { cookie })).status, 403);
   assert.equal((await request("auth/email-code/verify", first.token, { method: "POST", code })).status, 400);
+});
+
+test("Gmail message has a unique ID and includes the plain-text alternative", () => {
+  const args = ["mail@example.test", "Код входу GrantFolio", "Ваш код 123456"] as const;
+  const plain = Buffer.from(gmailMessage(...args), "base64url").toString();
+  const multipart = Buffer.from(gmailMessage(...args, "<p>Ваш код 123456</p>"), "base64url").toString();
+  assert.match(plain, /^Date: .+ \+0000$/m);
+  assert.match(plain, /^Message-ID: <[\da-f-]+@gmail\.com>$/m);
+  assert.notEqual(plain.match(/^Message-ID:.+$/m)?.[0], multipart.match(/^Message-ID:.+$/m)?.[0]);
+  assert.match(plain, /Content-Type: text\/plain; charset=UTF-8/);
+  assert.match(multipart, /Content-Type: multipart\/alternative/);
+  assert(multipart.indexOf("Content-Type: text/plain") < multipart.indexOf("Content-Type: text/html"));
+  assert.throws(() => gmailMessage("mail@example.test\r\nCc: other@example.test", "Subject", "Body"));
+});
+
+test("preview requires email confirmation, forbids other recipients and limits requests across instances", async () => {
+  assert(!process.env.EMAIL_LOGIN_CODE_CONFIG, "Preview test requires Gmail disabled");
+  const account = await signup();
+  const path = "me/newsletter/preview";
+  assert.equal((await request(path, account.token, { method: "POST" })).status, 403);
+  assert.equal((await request("auth/email-code/send", account.token, { method: "POST" })).status, 204);
+  const verified = await request("auth/email-code/verify", account.token, { method: "POST", code: delivered.get(account.email) });
+  assert.equal(verified.status, 204);
+  const cookie = verified.headers.get("set-cookie")!.split(";")[0];
+  const send = (recipient?: string) => fetch(`${base}/api/${path}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${account.token}`, Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify(recipient ? { email: recipient } : {}),
+  });
+  assert.equal((await send("other@example.test")).status, 400);
+  const results = await Promise.all([send(), send()]);
+  assert.deepEqual(results.map(response => response.status).sort(), [429, 503]);
 });
