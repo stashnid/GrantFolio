@@ -8,8 +8,23 @@ import { casesRouter } from "./cases.js";
 import { feedbackRouter } from "./feedback.js";
 import { donationsRouter } from "./donations.js";
 import { configuredEmailLoginCode, sendGmailMessage } from "./email-login-code.js";
+import { renderGrantDigestEmail, selectDigestPrograms } from "./email-templates.js";
 import { profileDetails } from "./profile-details.js";
 import { extractProfileFromHistory } from "./profile-extractor.js";
+
+const newsletterPreviewBody = z
+  .object({
+    email: z.email().max(254).optional(),
+    recipientName: z.string().trim().max(160).optional(),
+    businessName: z.string().trim().max(160).optional(),
+    industry: z.string().trim().max(160).optional(),
+    region: z.string().trim().max(120).optional(),
+    city: z.string().trim().max(120).optional(),
+    legalForm: z.enum(["", "idea", "fop", "company", "ngo"]).optional(),
+    requestedAmount: z.string().trim().max(30).optional(),
+    fundingPurpose: z.string().trim().max(500).optional(),
+  })
+  .strict();
 
 const profile = z
   .object({
@@ -124,24 +139,52 @@ export function createApp(
       next(error);
     }
   });
-  app.post("/api/me/newsletter/preview", async (req, res) => {
-    const token = res.locals.firebaseToken;
-    const targetEmail = (typeof req.body?.email === "string" && req.body.email.trim()) || token?.email;
-    if (!targetEmail || typeof targetEmail !== "string") {
-      res.status(400).json({ error: "missing_recipient" });
-      return;
-    }
-    const businessName = typeof req.body?.businessName === "string" ? req.body.businessName.trim() : "";
-    const industry = typeof req.body?.industry === "string" ? req.body.industry.trim() : "";
-    const subject = `[GrantFolio] Персональний дайджест грантів для «${businessName || "Вашого бізнесу"}»`;
-    const textContent = `Вітаємо!\n\nПідібрано актуальні грантові програми для вашого бізнесу (${industry || "загальний профіль"}):\n1. Власна справа (єРобота) — до 500 000 грн (дедлайн 27 листопада)\n2. BLOOM: Підтримка малого бізнесу — до 40 000 EUR\n\nДеталі та підготовка заявки: https://grantfolio.pp.ua/\n\nВи отримали це повідомлення згідно з вашою згодою у профілі бізнесу GrantFolio.`;
-    let delivered = false;
+  app.post("/api/me/newsletter/preview", async (req, res, next) => {
     try {
-      delivered = await sendGmailMessage(targetEmail, subject, textContent);
-    } catch {
-      delivered = false;
+      const parsed = newsletterPreviewBody.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        res.status(400).json({ error: "invalid_newsletter_preview" });
+        return;
+      }
+      const token = res.locals.firebaseToken;
+      const fallbackEmail = z.email().max(254).safeParse(token?.email);
+      const targetEmail = parsed.data.email || (fallbackEmail.success ? fallbackEmail.data : "");
+      if (!targetEmail) {
+        res.status(400).json({ error: "missing_recipient" });
+        return;
+      }
+      const saved = await db.query(
+        'SELECT business_name AS "businessName", region, details FROM profiles WHERE owner_id = $1',
+        [res.locals.uid],
+      );
+      const savedRow = saved.rows[0];
+      const savedDetails = (savedRow?.details && typeof savedRow.details === "object"
+        ? savedRow.details
+        : {}) as Record<string, string>;
+
+      const digestInput = {
+        recipientName: parsed.data.recipientName || savedDetails.contactName || (typeof token?.name === "string" ? token.name : ""),
+        businessName: parsed.data.businessName || savedRow?.businessName || "",
+        industry: parsed.data.industry || savedDetails.industry || "",
+        region: parsed.data.region || savedRow?.region || "",
+        city: parsed.data.city || savedDetails.city || "",
+        legalForm: parsed.data.legalForm || savedDetails.legalForm || "",
+        requestedAmount: parsed.data.requestedAmount || savedDetails.requestedAmount || "",
+        fundingPurpose: parsed.data.fundingPurpose || savedDetails.fundingPurpose || "",
+      };
+      const programs = selectDigestPrograms(digestInput);
+      const digest = renderGrantDigestEmail(digestInput, programs);
+
+      let delivered = false;
+      try {
+        delivered = await sendGmailMessage(targetEmail, digest.subject, digest.text, digest.html);
+      } catch {
+        delivered = false;
+      }
+      res.json({ ok: true, delivered, recipient: targetEmail });
+    } catch (error) {
+      next(error);
     }
-    res.json({ ok: true, delivered, recipient: targetEmail });
   });
   app.get("/api/me/profile-suggestions", async (_req, res, next) => {
     try {

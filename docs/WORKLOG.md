@@ -1,5 +1,13 @@
 # Журнал роботи
 
+## 18.11.2026 — Преміальні HTML-листи (дайджест грантів і коди входу) та чисті статуси відправки
+
+- Видалено зайві технічні згадки «через Google Cloud Mail» / «(Google Cloud connected)» зі статусу відправки тестового листа в `BusinessProfile.tsx`.
+- Створено `backend/src/email-templates.ts`: `multipart/alternative` MIME-конструктор із захистом від CRLF-ін’єкцій, HTML-екрануванням, динамічним підбором реальних активних програм із `GRANT_CATALOG` (`selectDigestPrograms`), преміальним HTML-шаблоном дайджесту грантів (`renderGrantDigestEmail`) та фірмовим шаблоном коду підтвердження входу (`renderLoginCodeEmail`).
+- Оновлено `backend/src/email-login-code.ts` і `POST /api/me/newsletter/preview` у `backend/src/app.ts` для відправки реальних оформлених HTML-листів із `text/plain` резервом і суворою валідацією полів.
+- Оновлено прев’ю листа в `BusinessProfile.tsx` і `BusinessProfile.css` (фірмова акцентна смуга, темно-синя шапка, структуровані картки без емодзі, вирівняна кнопка відправки).
+- Додано тести `backend/test/email-templates.test.ts` (4/4 PASS); `npm run typecheck`, `npm run build`, `git diff --check` PASS.
+
 ## 18.11.2026 — Автоматичне заповнення кабінету з діалогів ШІ та персоналізація відповідей асистента
 
 - Створено модуль `backend/src/profile-extractor.ts` з підтримкою екстракції бізнес-параметрів (назва, форма власності, місто/область, сфера діяльності, бюджет, мета, команда, досвід) з повідомлень користувача.

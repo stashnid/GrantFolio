@@ -169,6 +169,10 @@ export function BusinessProfile({
       setTestResult({ success: false, message: "Вкажіть адресу електронної пошти." });
       return;
     }
+    if (fieldError("newsletterEmail", targetEmail)) {
+      setTestResult({ success: false, message: "Вкажіть дійсну адресу електронної пошти." });
+      return;
+    }
     setTestSending(true);
     setTestResult(null);
     try {
@@ -177,18 +181,23 @@ export function BusinessProfile({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: targetEmail,
-          businessName: profile.businessName,
-          industry: profile.details.industry,
+          recipientName: resolvedName || undefined,
+          businessName: profile.businessName.trim() || undefined,
+          industry: profile.details.industry.trim() || undefined,
+          region: profile.region.trim() || undefined,
+          city: profile.details.city.trim() || undefined,
+          legalForm: profile.details.legalForm || undefined,
+          requestedAmount: profile.details.requestedAmount.trim() || undefined,
+          fundingPurpose: profile.details.fundingPurpose.trim().slice(0, 500) || undefined,
         }),
       });
       if (!res.ok) throw new Error("HTTP error " + res.status);
       const data = await res.json();
-      setTestResult({
-        success: true,
-        message: data.delivered
-          ? `✓ Зразок листа успішно надіслано на ${targetEmail} через Google Cloud Mail!`
-          : `✓ Зразок листа згенеровано для ${targetEmail} (Google Cloud connected).`,
-      });
+      setTestResult(
+        data.delivered
+          ? { success: true, message: `Тестовий лист надіслано на ${targetEmail}` }
+          : { success: false, message: "Не вдалося надіслати лист. Спробуйте пізніше." },
+      );
     } catch {
       setTestResult({
         success: false,
@@ -379,7 +388,7 @@ export function BusinessProfile({
                     </div>
                   </div>
                   <small className="bp-criteria-note">
-                    💡 Щоб зробити підбір точнішим, перевірте заповненість розділів «Бізнес» та «Фінансування».
+                    Щоб зробити підбір точнішим, перевірте заповненість розділів «Бізнес» та «Фінансування».
                   </small>
                 </div>
 
@@ -389,11 +398,12 @@ export function BusinessProfile({
                     <span className="bp-preview-dot bp-dot-yellow" />
                     <span className="bp-preview-dot bp-dot-green" />
                     <span className="bp-preview-subject">
-                      Зразок смарт-повідомлення: [GrantFolio] Дайджест грантів для «{profile.businessName.trim() || resolvedName || "Вашого бізнесу"}»
+                      [GrantFolio] Персональний дайджест грантів для «{profile.businessName.trim() || resolvedName || "Вашого бізнесу"}»
                     </span>
                   </div>
 
                   <div className="bp-mock-email">
+                    <div className="bp-mock-accent-bar" aria-hidden="true" />
                     <div className="bp-mock-header">
                       <div className="bp-mock-brand">GrantFolio</div>
                       <span className="bp-mock-tag">Персональний дайджест</span>
@@ -404,21 +414,38 @@ export function BusinessProfile({
                         Вітаємо, <strong>{resolvedName || "підприємцю"}</strong>!
                       </p>
                       <p className="bp-mock-lead">
-                        Знайдено <strong>2 актуальні програми</strong>, які мають високий рівень сумісності з вашим бізнес-профілем:
+                        Ми підібрали <strong>2 актуальні програми</strong> фінансування з відкритим прийомом, які відповідають параметрам вашого бізнес-профілю.
                       </p>
+
+                      {(profile.details.industry || profile.region || profile.details.city || profile.details.legalForm) && (
+                        <div className="bp-mock-criteria-strip">
+                          <strong>Критерії профілю:</strong>{" "}
+                          {[
+                            profile.details.industry && `Сфера: ${profile.details.industry}`,
+                            (profile.details.city || profile.region) && `Локація: ${profile.details.city || profile.region}`,
+                            profile.details.legalForm && legalFormLabels[profile.details.legalForm] && `Форма: ${legalFormLabels[profile.details.legalForm]}`,
+                          ].filter(Boolean).join(" · ")}
+                        </div>
+                      )}
 
                       <div className="bp-mock-grant">
                         <div className="bp-mock-grant-head">
-                          <span className="bp-match-badge">⚡ 96% сумісність</span>
+                          <span className="bp-match-badge">
+                            <span className="bp-match-dot" aria-hidden="true" />
+                            Рекомендовано за профілем
+                          </span>
                           <span className="bp-mock-deadline">До 27 листопада 2026</span>
                         </div>
-                        <h5 className="bp-mock-grant-title">Грант на створення або розвиток бізнесу (Власна справа)</h5>
+                        <p className="bp-mock-provider">ДІЯ / ДЕРЖАВНИЙ ЦЕНТР ЗАЙНЯТОСТІ</p>
+                        <h5 className="bp-mock-grant-title">Власна справа: започаткування та масштабування</h5>
                         <p className="bp-mock-grant-meta">
-                          💰 До <strong>500 000 грн</strong> · Безповоротне державне фінансування
+                          <strong>Старт — до 500 тис. грн; масштабування — до 2,5 млн грн</strong>
+                          <span className="bp-mock-sep"> · </span>
+                          <span>Безповоротний грант</span>
                         </p>
-                        <p className="bp-mock-grant-reason">
-                          🎯 <strong>Чому підходить:</strong> Програма активна у вашому регіоні ({profile.region || "Україна"}), покриває обладнання, оренду та маркетинг.
-                        </p>
+                        <div className="bp-mock-grant-reason">
+                          <strong>Чому підходить:</strong> Фінансування запуску та розвитку справи у вашому регіоні ({profile.region || "Україна"}), покриває обладнання, оренду та маркетинг.
+                        </div>
                         <div className="bp-mock-cta">
                           <span className="bp-mock-btn">Підготувати заявку в GrantFolio →</span>
                         </div>
@@ -426,23 +453,30 @@ export function BusinessProfile({
 
                       <div className="bp-mock-grant">
                         <div className="bp-mock-grant-head">
-                          <span className="bp-match-badge is-secondary">⚡ 88% сумісність</span>
-                          <span className="bp-mock-deadline">До 15 грудня 2026</span>
+                          <span className="bp-match-badge is-secondary">
+                            <span className="bp-match-dot is-secondary" aria-hidden="true" />
+                            Відкритий прийом
+                          </span>
+                          <span className="bp-mock-deadline">До 30 листопада 2026</span>
                         </div>
-                        <h5 className="bp-mock-grant-title">BLOOM: Підтримка підприємств з соціальним впливом</h5>
+                        <p className="bp-mock-provider">PROSPER GLOBAL — BLOOM</p>
+                        <h5 className="bp-mock-grant-title">Обладнання для соціально відповідального малого бізнесу</h5>
                         <p className="bp-mock-grant-meta">
-                          💰 До <strong>40 000 EUR</strong> · Міжнародна донорська підтримка
+                          <strong>17 000–30 000 USD у гривневому еквіваленті</strong>
+                          <span className="bp-mock-sep"> · </span>
+                          <span>Безповоротний грант</span>
                         </p>
-                        <p className="bp-mock-grant-reason">
-                          🎯 <strong>Чому підходить:</strong> Спрямовано на підтримку діючих підприємств та створення нових робочих місць.
-                        </p>
-                      </div>
-
-                      <div className="bp-mock-footer">
-                        <p>Ви отримали це повідомлення, тому що надали згоду на розсилку у профілі бізнесу на grantfolio.pp.ua.</p>
-                        <div className="bp-mock-footer-links">
-                          <span>Налаштувати підбір</span> · <span>Керувати підпискою</span> · <span>Відписатися в 1 клік</span>
+                        <div className="bp-mock-grant-reason">
+                          <strong>Чому підходить:</strong> Підтримка зареєстрованих МСП із соціальним або екологічним впливом та створенням нових робочих місць.
                         </div>
+                        <p className="bp-mock-secondary-link">Переглянути умови програми →</p>
+                      </div>
+                    </div>
+
+                    <div className="bp-mock-footer">
+                      <p>Ви отримали цей лист, тому що увімкнули персональну розсилку актуальних грантів у профілі бізнесу на grantfolio.pp.ua.</p>
+                      <div className="bp-mock-footer-links">
+                        <span>Налаштувати профіль</span> · <span>Каталог грантів</span> · <span>Керувати підпискою</span>
                       </div>
                     </div>
                   </div>

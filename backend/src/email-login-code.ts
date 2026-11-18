@@ -3,6 +3,7 @@ import { Router, type Request } from "express";
 import type { DecodedIdToken } from "firebase-admin/auth";
 import type { Pool } from "pg";
 import { z } from "zod";
+import { buildMimeMessage, renderLoginCodeEmail } from "./email-templates.js";
 
 const cookieName = "__Host-grantfolio-email";
 const sessionSeconds = 12 * 60 * 60;
@@ -44,18 +45,14 @@ export function configuredEmailLoginCode(db: Pool) {
     });
     if (!token.ok) throw new Error("Email authorization unavailable");
     const credentials = z.object({ access_token: z.string().min(1) }).parse(await token.json());
-    const subject = Buffer.from("Код входу GrantFolio").toString("base64");
-    const body = Buffer.from(`Ваш код підтвердження GrantFolio: ${code}\n\nКод дійсний 10 хвилин.`).toString("base64");
-    const raw = Buffer.from([
-      `From: GrantFolio <${sender}>`,
-      `To: ${recipient}`,
-      `Subject: =?UTF-8?B?${subject}?=`,
-      "MIME-Version: 1.0",
-      "Content-Type: text/plain; charset=UTF-8",
-      "Content-Transfer-Encoding: base64",
-      "",
-      ...(body.match(/.{1,76}/g) ?? []),
-    ].join("\r\n")).toString("base64url");
+    const rendered = renderLoginCodeEmail(code);
+    const raw = buildMimeMessage({
+      from: `GrantFolio <${sender}>`,
+      to: recipient,
+      subject: rendered.subject,
+      text: rendered.text,
+      html: rendered.html,
+    });
     const delivery = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
       method: "POST",
       headers: { Authorization: `Bearer ${credentials.access_token}`, "Content-Type": "application/json" },
@@ -72,6 +69,8 @@ export async function sendGmailMessage(
   bodyText: string,
   htmlText?: string,
 ): Promise<boolean> {
+  const parsedRecipient = email.safeParse(recipient.trim());
+  if (!parsedRecipient.success) return false;
   const value = process.env.EMAIL_LOGIN_CODE_CONFIG;
   if (!value) return false;
   let settings: z.infer<typeof mailSettings>;
@@ -93,18 +92,13 @@ export async function sendGmailMessage(
     });
     if (!token.ok) return false;
     const credentials = z.object({ access_token: z.string().min(1) }).parse(await token.json());
-    const subject = Buffer.from(subjectText).toString("base64");
-    const body = Buffer.from(htmlText || bodyText).toString("base64");
-    const raw = Buffer.from([
-      `From: GrantFolio <${sender}>`,
-      `To: ${recipient}`,
-      `Subject: =?UTF-8?B?${subject}?=`,
-      "MIME-Version: 1.0",
-      htmlText ? "Content-Type: text/html; charset=UTF-8" : "Content-Type: text/plain; charset=UTF-8",
-      "Content-Transfer-Encoding: base64",
-      "",
-      ...(body.match(/.{1,76}/g) ?? []),
-    ].join("\r\n")).toString("base64url");
+    const raw = buildMimeMessage({
+      from: `GrantFolio <${sender}>`,
+      to: parsedRecipient.data,
+      subject: subjectText,
+      text: bodyText,
+      html: htmlText,
+    });
     const delivery = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
       method: "POST",
       headers: { Authorization: `Bearer ${credentials.access_token}`, "Content-Type": "application/json" },
