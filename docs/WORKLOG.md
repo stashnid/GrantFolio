@@ -1,5 +1,11 @@
 # Журнал роботи
 
+## 18.11.2026 — Стилізований діалог підтвердження GrantFolio (заміна системних `window.confirm`)
+
+- Створено `frontend/src/ConfirmDialog.tsx` та `frontend/src/ConfirmDialog.css` (`ConfirmProvider` + `useConfirm`) і підключено у `frontend/src/main.tsx`.
+- Замінено всі 13 викликів `window.confirm(...)` у `Advisor.tsx`, `App.tsx`, `Assistant.tsx`, `Cases.tsx` та `GrantFinancialPlan.tsx` на фірмове модальне вікно у стилі GrantFolio (тони `danger`/`warning`/`default`, портал `z-index: 1200`, WCAG 2.2 AA `alertdialog`, фокус-пастка, перехоплення `Escape`, захист від подвійних кліків і stale-мутацій).
+- Пройдено незалежний аудит `react-reviewer` (усунуто всі 6 зауважень, фінальний вердикт **APPROVE**); інтегровано на актуальний `main` (`4ea4150`), `npm run typecheck`, `npm run build`, `git diff --check -- frontend docs` PASS. Звіт: `docs/agents/2026-11-18-styled-confirm-dialog.md`.
+
 ## Консультація щодо грантової заявки · 18.11.2026
 
 Виправлено втрату контексту після підбору грантів. Додано регресію діалогу про ферму та перевірені відомості про теплиці. Додано ініціативні пропозиції для чернетки через Gemini та перевірено відповіді при збої. [Звіт](agents/2026-11-18-advisor-consultation.md)

@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import type { User } from "firebase/auth";
 import type { FinancialMonth, FinancialPlan, calculateFinancialPlan } from "../../backend/src/grant-financial-plan";
 import { authenticatedRequest, readableApiError } from "./api";
+import { useConfirm } from "./ConfirmDialog";
 
 type View = {
   plan: FinancialPlan | null;
@@ -99,6 +100,7 @@ const displayMoney = new Intl.NumberFormat("uk-UA", { style: "currency", currenc
 export function GrantFinancialPlan({ user, caseId, caseRevision, applicationRevision, disabled }: {
   user: User; caseId: string; caseRevision: number; applicationRevision: number; disabled: boolean;
 }) {
+  const confirm = useConfirm();
   const [view, setView] = useState<View | null>(null);
   const [draft, setDraft] = useState(() => readDraft(null));
   const [month, setMonth] = useState(0);
@@ -110,6 +112,8 @@ export function GrantFinancialPlan({ user, caseId, caseRevision, applicationRevi
   const [reload, setReload] = useState(0);
   const hasDraftChanges = useRef(false);
   const discardChanges = useRef(false);
+  const activeCaseIdRef = useRef(caseId);
+  activeCaseIdRef.current = caseId;
   const baseVersion = useRef<Pick<View, "caseRevision" | "applicationRevision" | "planRevision"> | null>(null);
   const path = `/api/cases/${caseId}/grant-financial-plan`;
   const storageKey = `grantfolio:finance:v1:${encodeURIComponent(user.uid)}:${caseId}`;
@@ -237,12 +241,21 @@ export function GrantFinancialPlan({ user, caseId, caseRevision, applicationRevi
     <p>Вкажіть надходження й витрати за місяцями в гривнях. Порожнє поле означає невідому суму. Вкажіть нуль тільки для операцій, яких не передбачено. Внесіть податки за власними перевіреними розрахунками.</p>
     {error && <p role="alert" className="error">{error}</p>}
     {notice && <p role="status">{notice}</p>}
-    {stale && <button type="button" className="link" onClick={() => {
-      if (!dirty || window.confirm("Завантажити збережений план і відкинути незбережені зміни?")) {
-        forgetLocalDraft();
-        discardChanges.current = true;
-        setReload(value => value + 1);
+    {stale && <button type="button" className="link" onClick={async () => {
+      const currentCaseId = caseId;
+      if (dirty) {
+        const confirmed = await confirm({
+          title: "Завантажити збережений план?",
+          message: "Незбережені зміни у фінансовому плані буде відкинуто.",
+          confirmLabel: "Завантажити",
+          cancelLabel: "Скасувати",
+          tone: "warning",
+        });
+        if (!confirmed || activeCaseIdRef.current !== currentCaseId) return;
       }
+      forgetLocalDraft();
+      discardChanges.current = true;
+      setReload(value => value + 1);
     }}>Завантажити збережений план</button>}
     {!view && !error && <p role="status">Завантажуємо план…</p>}
     {!view && error && <button type="button" className="link" onClick={() => setReload(value => value + 1)}>Повторити</button>}
@@ -261,10 +274,19 @@ export function GrantFinancialPlan({ user, caseId, caseRevision, applicationRevi
       <form onSubmit={submit}>
         <fieldset disabled={blocked}>
           <label>Період
-            <select value={draft.months.length} onChange={event => {
+            <select value={draft.months.length} onChange={async event => {
               const count = Number(event.target.value);
-              if (draft.months.slice(count).some(item => Object.values(item).some(amount => amount !== "" && !/^0(?:[.,]00)?$/.test(amount))) &&
-                !window.confirm("Скорочення періоду видалить введені дані останніх місяців. Продовжити?")) return;
+              const currentCaseId = caseId;
+              if (draft.months.slice(count).some(item => Object.values(item).some(amount => amount !== "" && !/^0(?:[.,]00)?$/.test(amount)))) {
+                const confirmed = await confirm({
+                  title: "Скоротити період плану?",
+                  message: "Скорочення періоду видалить введені дані останніх місяців.",
+                  confirmLabel: "Скоротити",
+                  cancelLabel: "Скасувати",
+                  tone: "danger",
+                });
+                if (!confirmed || activeCaseIdRef.current !== currentCaseId) return;
+              }
               updateDraft({ ...draft, months: Array.from({ length: count }, (_, i) => draft.months[i] ?? emptyMonth()) });
               setMonth(Math.min(month, count - 1));
             }}>
@@ -288,8 +310,16 @@ export function GrantFinancialPlan({ user, caseId, caseRevision, applicationRevi
                 updateDraft({ ...draft, months });
               }} />
           </label>)}
-          <button type="button" className="link" onClick={() => {
-            if (!window.confirm("Записати 0 у всі порожні поля? Підтвердіть, лише якщо в них справді немає запланованих операцій.")) return;
+          <button type="button" className="link" onClick={async () => {
+            const currentCaseId = caseId;
+            const confirmed = await confirm({
+              title: "Заповнити порожні поля нулями?",
+              message: "У всі порожні поля буде записано 0. Підтвердіть, лише якщо в них справді немає запланованих операцій.",
+              confirmLabel: "Заповнити нулями",
+              cancelLabel: "Скасувати",
+              tone: "default",
+            });
+            if (!confirmed || activeCaseIdRef.current !== currentCaseId) return;
             updateDraft({
               opening: draft.opening || "0",
               months: draft.months.map(item => Object.fromEntries(fields.map(([key]) => [key, item[key] || "0"])) as DraftMonth),

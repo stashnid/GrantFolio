@@ -1,5 +1,14 @@
 # Поточний стан GrantFolio
 
+## Стилізований діалог підтвердження GrantFolio (заміна системних `window.confirm`) — 18.11.2026
+
+1. **Фірмове модальне вікно підтвердження (`frontend/src/ConfirmDialog.tsx`, `frontend/src/ConfirmDialog.css`, `frontend/src/main.tsx`)**:
+   - Замінено всі 13 системних браузерних викликів `window.confirm(...)` (`Advisor.tsx`, `App.tsx`, `Assistant.tsx`, `Cases.tsx`, `GrantFinancialPlan.tsx`) на єдиний стилізований компонент `ConfirmProvider` / `useConfirm` у темно-синьо-білій стилістиці GrantFolio (портал у `document.body`, `z-index: 1200`, фірмова верхня акцентна лінія, тони `danger` / `warning` / `default`, адаптивна панель дій та `prefers-reduced-motion`).
+   - Реалізовано повну доступність WCAG 2.2 AA (`role="alertdialog"`, `aria-modal="true"`, фокус-пастка `Tab`/`Shift+Tab`, перехоплення `Escape` без закриття фонового drawer, безпечний фокус на «Скасувати» для деструктивних дій, синхронне відновлення фокуса, 44×44px hit area) і захист від подвійних кліків та гонок стану після `await confirm(...)`.
+2. **Незалежне рев’ю й верифікація**:
+   - `react-reviewer`: після усунення всіх 6 зауважень фінальний вердикт **APPROVE**.
+   - `npm run typecheck`, `npm run build`, `git diff --check -- frontend docs`, перевірка на 0 залишкових `window.confirm/alert/prompt` — **PASS**. [Детальний звіт](agents/2026-11-18-styled-confirm-dialog.md).
+
 ## Консультація щодо грантової заявки · 18.11.2026
 
 Чат продовжує консультацію щодо обраної програми, пояснює витрати, вимоги й підготовку заявки та дає перейти до чернетки. За наявної конфігурації Gemini додає коротку ідею для чернетки на основі розмови. [Звіт](agents/2026-11-18-advisor-consultation.md)
