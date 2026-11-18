@@ -153,7 +153,7 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
     availability: {
       state: "open",
       checkedAt: "2026-11-16T14:13:24.000Z",
-      validUntil: "2026-11-18T02:13:24.000Z",
+      validUntil: "2026-11-19T16:45:34.770Z",
       sourceUrl: "https://zakon.rada.gov.ua/laws/show/z1185-26",
       evidence: "Календар подання: Листопад 16–27.",
       deadlineAt: "2026-11-27T23:59:59+02:00",
@@ -383,7 +383,7 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
     availability: {
       state: "open",
       checkedAt: "2026-11-16T14:13:24.000Z",
-      validUntil: "2026-11-18T02:13:24.000Z",
+      validUntil: "2026-11-19T16:45:38.085Z",
       sourceUrl: "https://veteranfund.com.ua/projects/20000-2/",
       evidence: "Проєкт діятиме до завершення воєнного стану.",
       deadlineAt: null,
@@ -467,7 +467,7 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
     availability: {
       state: "open",
       checkedAt: "2026-11-16T14:13:24.000Z",
-      validUntil: "2026-11-18T02:13:24.000Z",
+      validUntil: "2026-11-19T16:45:42.799Z",
       sourceUrl: "https://poda.gov.ua/news/283514",
       evidence: "Дедлайн подання заявок продовжено до 30 листопада 2026 року.",
       deadlineAt: "2026-11-30T23:59:59+02:00",
@@ -557,7 +557,7 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
     availability: {
       state: "open",
       checkedAt: "2026-11-16T14:13:24.000Z",
-      validUntil: "2026-11-18T02:13:24.000Z",
+      validUntil: "2026-11-19T16:45:44.124Z",
       sourceUrl:
         "https://www.eiturbanmobility.eu/call-for-proposals/sme-market-expansion-open-call-2027/",
       evidence: "Call closing: 1 December 2026 at 17.00 CET",

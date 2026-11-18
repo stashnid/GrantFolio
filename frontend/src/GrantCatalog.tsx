@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { GRANT_PROGRAMS, type GrantProgram } from "./grants";
 import "./GrantCatalog.css";
+import { CustomSelect, type SelectOption } from "./CustomSelect";
 import { useGrantPrograms } from "./GrantPrograms";
 import { isGrantAvailable } from "../../backend/src/grant-availability";
 import {
@@ -63,6 +64,170 @@ const categoryLabels: Record<GrantProgram["category"], string> = {
   regional: "Регіональна підтримка",
   displaced: "ВПО та релокація",
 };
+const categoryOrder = Object.keys(
+  categoryLabels,
+) as GrantProgram["category"][];
+
+type CategoryIconKey = "all" | GrantProgram["category"];
+
+function CategoryIcon({ category }: { category: CategoryIconKey }) {
+  const svgProps = {
+    width: 15,
+    height: 15,
+    viewBox: "0 0 24 24",
+    fill: "none",
+    stroke: "currentColor",
+    strokeWidth: 1.75,
+    strokeLinecap: "round" as const,
+    strokeLinejoin: "round" as const,
+    "aria-hidden": true as const,
+  };
+
+  switch (category) {
+    case "all":
+      return (
+        <svg {...svgProps}>
+          <rect x="3" y="3" width="7" height="7" rx="1.5" />
+          <rect x="14" y="3" width="7" height="7" rx="1.5" />
+          <rect x="14" y="14" width="7" height="7" rx="1.5" />
+          <rect x="3" y="14" width="7" height="7" rx="1.5" />
+        </svg>
+      );
+    case "erobota":
+      return (
+        <svg {...svgProps}>
+          <path d="M3 10h18" />
+          <path d="M5 10v8" />
+          <path d="M10 10v8" />
+          <path d="M14 10v8" />
+          <path d="M19 10v8" />
+          <path d="M3 20h18" />
+          <path d="M4 10 12 4l8 6" />
+        </svg>
+      );
+    case "veteran":
+      return (
+        <svg {...svgProps}>
+          <path d="M12 3 5 6v5c0 4.6 3 8.3 7 10 4-1.7 7-5.4 7-10V6l-7-3Z" />
+          <path d="m9.2 12 2 2 3.8-4" />
+        </svg>
+      );
+    case "production":
+      return (
+        <svg {...svgProps}>
+          <path d="M3 20h18" />
+          <path d="M4 20V10l5 3v-3l5 3V7h6v13" />
+          <path d="M17 11h.01" />
+          <path d="M17 15h.01" />
+        </svg>
+      );
+    case "agro":
+      return (
+        <svg {...svgProps}>
+          <path d="M12 21v-9" />
+          <path d="M12 12C12 8.2 9.4 5.5 5 5.5c0 4.2 2.6 6.5 7 6.5Z" />
+          <path d="M12 14c0-3.5 2.4-6 7-6 0 4-2.4 6-7 6Z" />
+        </svg>
+      );
+    case "international":
+      return (
+        <svg {...svgProps}>
+          <circle cx="12" cy="12" r="9" />
+          <path d="M3.6 9h16.8" />
+          <path d="M3.6 15h16.8" />
+          <path d="M12 3a13.5 13.5 0 0 1 0 18" />
+          <path d="M12 3a13.5 13.5 0 0 0 0 18" />
+        </svg>
+      );
+    case "startup":
+      return (
+        <svg {...svgProps}>
+          <path d="M4.5 16.5c-1.5 1.3-2 4.5-2 4.5s3.2-.5 4.5-2a2.5 2.5 0 0 0-2.5-2.5Z" />
+          <path d="M12 15 9 12a21 21 0 0 1 2-3.8A13 13 0 0 1 21 3a13 13 0 0 1-5.2 10 21 21 0 0 1-3.8 2Z" />
+          <path d="M9 12H4.5L7 9.5" />
+          <path d="M12 15v4.5L14.5 17" />
+        </svg>
+      );
+    case "women":
+      return (
+        <svg {...svgProps}>
+          <circle cx="12" cy="8.5" r="4.5" />
+          <path d="M12 13v8" />
+          <path d="M9 17.5h6" />
+        </svg>
+      );
+    case "social":
+      return (
+        <svg {...svgProps}>
+          <circle cx="9" cy="8" r="3" />
+          <path d="M3.5 19c0-2.8 2.5-4.8 5.5-4.8s5.5 2 5.5 4.8" />
+          <circle cx="16.5" cy="9.5" r="2.3" />
+          <path d="M16.5 14.5c2.2 0 4 1.6 4 4" />
+        </svg>
+      );
+    case "green":
+      return (
+        <svg {...svgProps}>
+          <path d="M19.5 4.5C12 4.5 6.5 9.5 6.5 17c0 .8.2 1.6.5 2.2.6.3 1.4.5 2.2.5 7.5 0 11.3-5.2 11.3-13.2 0-.8-.3-2-1-2Z" />
+          <path d="M5 19.5 13.5 11" />
+        </svg>
+      );
+    case "export":
+      return (
+        <svg {...svgProps}>
+          <path d="M21 3 10 14" />
+          <path d="m21 3-6.5 18-3.8-7.7L3 9.5 21 3Z" />
+        </svg>
+      );
+    case "finance":
+      return (
+        <svg {...svgProps}>
+          <rect x="3" y="5.5" width="18" height="13" rx="2.5" />
+          <path d="M3 10h18" />
+          <path d="M7 14.5h3.5" />
+        </svg>
+      );
+    case "creative":
+      return (
+        <svg {...svgProps}>
+          <path d="m12 19 7-7 2.5 2.5-7 7L12 19Z" />
+          <path d="m18 13-1.5-7.5L3 3l2.5 13.5L13 18l5-5Z" />
+          <path d="m3 3 7 7" />
+          <circle cx="11" cy="11" r="1.5" />
+        </svg>
+      );
+    case "digital":
+      return (
+        <svg {...svgProps}>
+          <rect x="6" y="6" width="12" height="12" rx="2" />
+          <rect x="9.5" y="9.5" width="5" height="5" rx="0.8" />
+          <path d="M9 3v3" />
+          <path d="M15 3v3" />
+          <path d="M9 18v3" />
+          <path d="M15 18v3" />
+          <path d="M3 9h3" />
+          <path d="M3 15h3" />
+          <path d="M18 9h3" />
+          <path d="M18 15h3" />
+        </svg>
+      );
+    case "regional":
+      return (
+        <svg {...svgProps}>
+          <path d="M12 21s-6-5.2-6-10a6 6 0 1 1 12 0c0 4.8-6 10-6 10Z" />
+          <circle cx="12" cy="11" r="2.2" />
+        </svg>
+      );
+    case "displaced":
+      return (
+        <svg {...svgProps}>
+          <path d="m3 11 9-7 9 7" />
+          <path d="M5.5 9.5V19a1 1 0 0 0 1 1h11a1 1 0 0 0 1-1V9.5" />
+          <path d="M9.5 20v-5.5h5V20" />
+        </svg>
+      );
+  }
+}
 const fundingLabel = (p: GrantProgram) =>
   fundingLabels[p.fundingType ?? "unknown"] ?? "Тип уточнюється";
 const canPrepare = (p: GrantProgram) =>
@@ -169,6 +334,7 @@ export function GrantCatalog({
   const [category, setCategory] = useState("all");
   const [funding, setFunding] = useState("all");
   const [onlyOpen, setOnlyOpen] = useState(false);
+  const [showAllCategories, setShowAllCategories] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(catalogId);
   const lastCard = useRef<string | null>(null);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -222,14 +388,79 @@ export function GrantCatalog({
     () => new Set(confirmedPrograms.map((p) => p.id)),
     [confirmedPrograms],
   );
-  const categories = useMemo(
-    () => [...new Set(programs.map((p) => p.category))],
-    [programs],
-  );
+  const categories = useMemo(() => {
+    const present = new Set(programs.map((p) => p.category));
+    return categoryOrder.filter((cat) => present.has(cat));
+  }, [programs]);
   const fundingTypes = useMemo(
     () => [...new Set(programs.map((p) => p.fundingType ?? "unknown"))],
     [programs],
   );
+  const categoryCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: 0 };
+    for (const p of programs) {
+      if (onlyOpen && !confirmedIds.has(p.id)) continue;
+      if (funding !== "all" && (p.fundingType ?? "unknown") !== funding)
+        continue;
+      counts.all += 1;
+      counts[p.category] = (counts[p.category] ?? 0) + 1;
+    }
+    return counts;
+  }, [programs, onlyOpen, confirmedIds, funding]);
+  const fundingCounts = useMemo(() => {
+    const counts: Record<string, number> = { all: 0 };
+    for (const p of programs) {
+      if (onlyOpen && !confirmedIds.has(p.id)) continue;
+      if (category !== "all" && p.category !== category) continue;
+      const key = p.fundingType ?? "unknown";
+      counts.all += 1;
+      counts[key] = (counts[key] ?? 0) + 1;
+    }
+    return counts;
+  }, [programs, onlyOpen, confirmedIds, category]);
+  const openAvailableCount = useMemo(() => {
+    let count = 0;
+    for (const p of programs) {
+      if (!confirmedIds.has(p.id)) continue;
+      if (category !== "all" && p.category !== category) continue;
+      if (funding !== "all" && (p.fundingType ?? "unknown") !== funding)
+        continue;
+      count += 1;
+    }
+    return count;
+  }, [programs, confirmedIds, category, funding]);
+  const fundingOptions = useMemo<SelectOption[]>(
+    () => [
+      { value: "all", label: "Усі типи", count: fundingCounts.all ?? 0 },
+      ...fundingTypes.map((value) => ({
+        value,
+        label: fundingLabels[value] ?? value,
+        count: fundingCounts[value] ?? 0,
+      })),
+    ],
+    [fundingTypes, fundingCounts],
+  );
+  const visibleCategories = useMemo(() => {
+    if (showAllCategories || categories.length <= 6) return categories;
+    const base = categories.slice(0, 6);
+    if (
+      category !== "all" &&
+      !base.includes(category as GrantProgram["category"]) &&
+      categories.includes(category as GrantProgram["category"])
+    ) {
+      return [...base, category as GrantProgram["category"]];
+    }
+    return base;
+  }, [categories, showAllCategories, category]);
+  const hiddenCategoryCount = Math.max(
+    0,
+    categories.length - visibleCategories.length,
+  );
+  const hasActiveFilters =
+    category !== "all" ||
+    funding !== "all" ||
+    onlyOpen ||
+    search.trim().length > 0;
   const searchIndex = useMemo(
     () =>
       new Map(
@@ -577,50 +808,110 @@ export function GrantCatalog({
               Результати оновлюються під час введення.
             </p>
           </form>
+          <div className="catalog-category-bar">
+            <div className="catalog-category-header">
+              <span className="catalog-category-label">Напрям</span>
+              {hasActiveFilters && (
+                <button
+                  type="button"
+                  className="catalog-reset-btn"
+                  onClick={resetFilters}
+                >
+                  Скинути фільтри <span aria-hidden="true">×</span>
+                </button>
+              )}
+            </div>
+            <div
+              className="catalog-category-pills"
+              role="group"
+              aria-label="Фільтр за напрямом"
+            >
+              <button
+                type="button"
+                className="catalog-category-pill"
+                aria-pressed={category === "all"}
+                onClick={() => setCategory("all")}
+              >
+                <span className="catalog-pill-icon">
+                  <CategoryIcon category="all" />
+                </span>
+                <span className="catalog-pill-label">Усі напрями</span>
+                <span className="catalog-pill-count">
+                  {categoryCounts.all ?? 0}
+                </span>
+              </button>
+              {visibleCategories.map((value) => {
+                const count = categoryCounts[value] ?? 0;
+                const isSelected = category === value;
+                return (
+                  <button
+                    key={value}
+                    type="button"
+                    className="catalog-category-pill"
+                    aria-pressed={isSelected}
+                    data-empty={count === 0 && !isSelected ? "true" : undefined}
+                    onClick={() => setCategory(value)}
+                  >
+                    <span className="catalog-pill-icon">
+                      <CategoryIcon category={value} />
+                    </span>
+                    <span className="catalog-pill-label">
+                      {categoryLabels[value] ?? value}
+                    </span>
+                    <span className="catalog-pill-count">{count}</span>
+                  </button>
+                );
+              })}
+              {categories.length > 6 && (
+                <button
+                  type="button"
+                  className="catalog-category-toggle"
+                  aria-expanded={showAllCategories}
+                  onClick={() => setShowAllCategories((prev) => !prev)}
+                >
+                  {showAllCategories
+                    ? "Згорнути"
+                    : `+ Ще ${hiddenCategoryCount}`}
+                </button>
+              )}
+            </div>
+          </div>
           <div
             className="catalog-filters"
             role="group"
             aria-label="Фільтри фінансування"
           >
-            <label htmlFor="grant-category-filter">
-              Напрям
-              <select
-                id="grant-category-filter"
-                value={category}
-                onChange={(event) => setCategory(event.target.value)}
+            <div className="catalog-filter-field">
+              <label
+                className="catalog-filter-label"
+                htmlFor="grant-funding-filter"
               >
-                <option value="all">Усі напрями</option>
-                {categories.map((value) => (
-                  <option key={value} value={value}>
-                    {categoryLabels[value] ?? value}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label htmlFor="grant-funding-filter">
-              Тип фінансування
-              <select
+                Тип фінансування
+              </label>
+              <CustomSelect
                 id="grant-funding-filter"
                 value={funding}
-                onChange={(event) => setFunding(event.target.value)}
-              >
-                <option value="all">Усі типи</option>
-                {fundingTypes.map((value) => (
-                  <option key={value} value={value}>
-                    {fundingLabels[value] ?? value}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="catalog-open-filter" htmlFor="grant-open-filter">
-              <input
-                id="grant-open-filter"
-                type="checkbox"
-                checked={onlyOpen}
-                onChange={(event) => setOnlyOpen(event.target.checked)}
+                options={fundingOptions}
+                onChange={setFunding}
+                placeholder="Усі типи"
               />
-              <span>Лише підтверджений відкритий прийом</span>
-            </label>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              id="grant-open-filter"
+              aria-checked={onlyOpen}
+              className="catalog-switch-btn"
+              onClick={() => setOnlyOpen((v) => !v)}
+            >
+              <span className="catalog-switch-track" aria-hidden="true">
+                <span className="catalog-switch-thumb" />
+              </span>
+              <span className="catalog-switch-label">
+                Лише підтверджений відкритий прийом
+              </span>
+              <span className="catalog-switch-count">{openAvailableCount}</span>
+            </button>
           </div>
           <p className="catalog-scope-note">
             {onlyOpen

@@ -8,6 +8,7 @@ import { Assistant } from "./Assistant";
 import { useSessionDraft } from "./useSessionDraft";
 import "./SessionRecovery.css";
 import { authenticatedRequest, readableApiError } from "./api";
+import { CustomSelect } from "./CustomSelect";
 import type { GrantProgram } from "./grants";
 import { friendlyTitle } from "../../backend/src/grant-discovery";
 
@@ -831,12 +832,23 @@ export function Cases({
       </form>
       </div>
       {cases.length > 0 && (
-        <label className="case-switcher" hidden={showCreate}>Проєкт
-          <select value={selected?.id ?? ""} disabled={busy} onChange={(event) => void select(event.target.value)}>
-            {!selected && <option value="">Оберіть проєкт</option>}
-            {cases.map((c) => <option key={c.id} value={c.id}>{c.title}</option>)}
-          </select>
-        </label>
+        <div className="case-switcher" hidden={showCreate}>
+          <label htmlFor="case-switcher-select" style={{ display: "inline", font: "inherit", color: "inherit" }}>
+            Проєкт
+          </label>
+          <div style={{ flex: "1 1 220px", maxWidth: "340px", minWidth: 0 }}>
+            <CustomSelect
+              id="case-switcher-select"
+              className="case-switcher-select"
+              ariaLabel="Обраний проєкт"
+              placeholder="Оберіть проєкт"
+              value={selected?.id ?? ""}
+              disabled={busy}
+              options={cases.map((item) => ({ value: item.id, label: item.title }))}
+              onChange={(val) => void select(val)}
+            />
+          </div>
+        </div>
       )}
       {selected && (
         <div className="case-workspace" hidden={showCreate}>
@@ -879,11 +891,24 @@ export function Cases({
             </section>
           )}
           {sessionDraft.storageFailed && <p className="session-recovery-warning" role="status">Не вдалося зберегти резервну копію в цій вкладці. Щоб не втратити зміни, збережіть проєкт або скопіюйте текст.</p>}
-          <label className="mobile-case-step">Розділ проєкту
-            <select aria-label="Розділ проєкту" value={activeStep} onChange={event => setActiveStep(event.target.value as typeof activeStep)}>
-              <option value="assistant">Асистент</option><option value="basics">{"Ідея та клієнти"}</option><option value="plan">{"План запуску"}</option><option value="budget">{"Бюджет проєкту"}</option><option value="review">Готовність та експорт</option>
-            </select>
-          </label>
+          <div className="mobile-case-step">
+            <label htmlFor="mobile-case-step-select" style={{ font: "inherit", color: "inherit" }}>
+              Розділ проєкту
+            </label>
+            <CustomSelect
+              id="mobile-case-step-select"
+              ariaLabel="Розділ проєкту"
+              value={activeStep}
+              options={[
+                { value: "assistant", label: "Асистент" },
+                { value: "basics", label: "Ідея та клієнти" },
+                { value: "plan", label: "План запуску" },
+                { value: "budget", label: "Бюджет проєкту" },
+                { value: "review", label: "Готовність та експорт" },
+              ]}
+              onChange={(val) => setActiveStep(val as typeof activeStep)}
+            />
+          </div>
           {activeProgram?.currency && activeProgram.currency!=="UAH" && <p className="currency-note" role="note">Фінансування програми зазначене в {activeProgram.currency}. Робочий кошторис нижче ведеться у гривнях; автоматичної конвертації немає. Узгодьте валюту та формат офіційної заявки з організатором.</p>}
           {activeProgram?.fundingType==="reimbursement" && <p className="currency-note" role="note">Ця програма відшкодовує вже понесені витрати. Підготуйте документи про фактичні покупки; план майбутніх витрат не є заявою на компенсацію.</p>}
           <div className="case-steps-nav" role="group" aria-label="Розділи проєкту">

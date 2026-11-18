@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import type { User } from "firebase/auth";
 import { ApiError, authenticatedRequest, readableApiError } from "./api";
+import { CustomSelect } from "./CustomSelect";
 
 const TASKS = [
   { value: "profile", label: "Профіль бізнесу" },
@@ -149,21 +150,16 @@ export function Feedback({ user }: { user: User }) {
           </div>
         </fieldset>
 
-        <label htmlFor="feedback-task">
-          Розділ або тема
-          <select
+        <div style={{ display: "grid", gap: "7px" }}>
+          <label htmlFor="feedback-task">Розділ або тема</label>
+          <CustomSelect
             id="feedback-task"
             value={task}
-            onChange={(e) => handleContentChange(rating, e.target.value, comment)}
+            options={[...TASKS]}
+            onChange={(nextTask) => handleContentChange(rating, nextTask, comment)}
             disabled={busy}
-          >
-            {TASKS.map((t) => (
-              <option key={t.value} value={t.value}>
-                {t.label}
-              </option>
-            ))}
-          </select>
-        </label>
+          />
+        </div>
 
         <label htmlFor="feedback-comment">
           <span className="feedback-field-meta">
