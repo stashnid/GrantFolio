@@ -7,6 +7,7 @@ import { z } from "zod";
 import { advisorRouter } from "./advisor.js";
 import { casesRouter } from "./cases.js";
 import { feedbackRouter } from "./feedback.js";
+import { feedbackAdminRouter } from "./feedback-admin.js";
 import { donationsRouter } from "./donations.js";
 import { monitorAdminRouter } from "./monitor-admin.js";
 import { configuredEmailLoginCode, sendGmailMessage } from "./email-login-code.js";
@@ -53,7 +54,7 @@ export function createApp(
   onCatalogMutated?: () => Promise<void>,
 ) {
   const app = express();
-  const privateRoutes = ["/api/advisor", "/api/me", "/api/cases", "/api/feedback", "/api/donations", "/api/admin/monitor"];
+  const privateRoutes = ["/api/advisor", "/api/me", "/api/cases", "/api/feedback", "/api/donations", "/api/admin/monitor", "/api/admin/feedback"];
   app.disable("x-powered-by");
   app.use(express.json({ limit: "128kb" }));
   app.get("/api/grants", async (_req,res,next) => {try { const sources=await catalogStatus();res.set("Cache-Control","no-store").json({programs:GRANT_CATALOG,sources}); }catch(e){next(e);} });
@@ -378,6 +379,7 @@ export function createApp(
   app.use("/api/feedback", feedbackRouter(db));
   app.use("/api/donations", donationsRouter(db));
   app.use("/api/admin/monitor", monitorAdminRouter(db, { onAvailabilityApproved: onCatalogMutated }));
+  app.use("/api/admin/feedback", feedbackAdminRouter(db));
   app.use("/api", (_req, res) => res.status(404).json({ error: "not_found" }));
   const errors: ErrorRequestHandler = (error, _req, res, _next) => {
     const status =

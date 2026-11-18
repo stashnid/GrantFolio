@@ -222,6 +222,30 @@
   align-items: stretch;
 }
 
+.app-sidebar .sidebar-feedback-admin-btn {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 4px;
+  padding: 10px 13px;
+  border-radius: 10px;
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  background: rgba(255, 255, 255, 0.08);
+  color: #e2ecf9;
+  font-size: 13px;
+  font-weight: 650;
+  box-shadow: none;
+}
+
+.app-sidebar .sidebar-feedback-admin-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(148, 163, 184, 0.4);
+  color: #ffffff;
+  box-shadow: none;
+}
+
 .app-sidebar .account-logout {
   display: flex;
   align-items: center;
@@ -284,6 +308,47 @@ main.workspace {
 .workspace-topbar strong {
   font-weight: 700;
   color: #0f1d32;
+}
+
+.workspace-topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.workspace-feedback-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 4px 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 9999px;
+  background: #ffffff;
+  color: #172d50;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 650;
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+}
+
+.workspace-feedback-btn:hover {
+  background: #eef3f8;
+  border-color: #94a3b8;
+  color: #0f1d32;
+}
+
+.workspace-feedback-btn:focus-visible {
+  outline: 2px solid #426bb1;
+  outline-offset: 2px;
+}
+
+.auth-support-note {
+  margin: 12px 0 0;
+  font-size: 12.5px;
+  color: #595e73;
+  text-align: center;
 }
 
 .workspace-mode {
@@ -1243,6 +1308,12 @@ main.workspace {
     padding: 10px 12px;
     font-size: 13px;
     white-space: normal;
+  }
+
+  .app-sidebar #app-navigation .nav-tab--feedback,
+  .app-sidebar #app-navigation .sidebar-feedback-admin-btn {
+    grid-column: 1 / -1;
+    margin-top: 0;
   }
 
   .mobile-nav-scrim {

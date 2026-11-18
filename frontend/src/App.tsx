@@ -17,6 +17,9 @@ import "./style.css";
 import "./workspace.css";
 import type { GrantProgram } from "./grants";
 import { emptyProfile as empty, normalizeProfile, type Profile } from "./profile";
+import type { FeedbackTask } from "./FeedbackModal";
+const FeedbackModal = lazy(() => import("./FeedbackModal").then(module => ({ default: module.FeedbackModal })));
+const FeedbackAdminDrawer = lazy(() => import("./FeedbackAdminDrawer").then(module => ({ default: module.FeedbackAdminDrawer })));
 const Advisor = lazy(() => import("./Advisor").then(module => ({ default: module.Advisor })));
 const Cases = lazy(() => import("./Cases").then(module => ({ default: module.Cases })));
 const GrantCatalog = lazy(() => import("./GrantCatalog").then(module => ({ default: module.GrantCatalog })));
@@ -26,13 +29,14 @@ function rememberedTab(uid: string | undefined): WorkspaceTab {
   if (!uid) return "advisor";
   try { const value=sessionStorage.getItem(`grantfolio:last-tab:${uid}`); return ["advisor","catalog","cases","profile"].includes(value??"") ? value as WorkspaceTab : "advisor"; } catch { return "advisor"; }
 }
-function NavIcon({kind}: {kind: WorkspaceTab | "logout"}) {
+function NavIcon({kind}: {kind: WorkspaceTab | "logout" | "feedback"}) {
   const paths = {
     advisor: "M4 5h16v11H8l-4 4V5ZM8 9h8M8 12h5",
     catalog: "M21 21l-4.5-4.5M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z",
     cases: "M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10H3V7Z",
     profile: "M20 21v-2a6 6 0 0 0-6-6h-4a6 6 0 0 0-6 6v2M16 6a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z",
     logout: "M9 4H4v16h5M14 8l4 4-4 4M8 12h10",
+    feedback: "M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z",
   };
   return <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[kind]} /></svg>;
 }
@@ -67,7 +71,25 @@ export function App() {
     [retry, setRetry] = useState(0),
     [tab, setTab] = useState<"advisor" | "catalog" | "cases" | "profile">("advisor"),
     [selectedProgram, setSelectedProgram] = useState<GrantProgram | null>(null),
-    [fundingTarget, setFundingTarget] = useState<{id:string;title:string;revision:number}|null>(null);
+    [fundingTarget, setFundingTarget] = useState<{id:string;title:string;revision:number}|null>(null),
+    [feedbackOpen, setFeedbackOpen] = useState(false),
+    [feedbackTask, setFeedbackTask] = useState<FeedbackTask>("assistant"),
+    [feedbackContext, setFeedbackContext] = useState<{
+      screen?: "advisor" | "cases" | "catalog" | "budget" | "profile" | "export";
+      programId?: string | null;
+    }>({});
+
+  function openFeedback(
+    task?: FeedbackTask,
+    context?: { screen?: "advisor" | "cases" | "catalog" | "budget" | "profile" | "export"; programId?: string | null },
+  ) {
+    const resolvedTask: FeedbackTask =
+      task ?? (tab === "advisor" ? "assistant" : tab === "cases" ? "project" : tab === "catalog" ? "catalog" : "profile");
+    setFeedbackTask(resolvedTask);
+    setFeedbackContext(context ?? { screen: tab });
+    setFeedbackOpen(true);
+    setMobileMenuOpen(false);
+  }
   useEffect(
     () =>
       onAuthStateChanged(auth, (u) => {
@@ -96,6 +118,7 @@ export function App() {
         setPreparationSeed("");
         setSelectedProgram(null);
         setFundingTarget(null);
+        setFeedbackOpen(false);
         setMessage("");
         setError("");
       }),
@@ -370,6 +393,16 @@ export function App() {
             >
               <NavIcon kind="profile" />Профіль бізнесу
             </button>
+            <button
+              type="button"
+              className="link nav-tab nav-tab--feedback"
+              onClick={() => openFeedback()}
+            >
+              <NavIcon kind="feedback" />Залишити відгук
+            </button>
+            <Suspense fallback={null}>
+              <FeedbackAdminDrawer user={user} triggerClassName="sidebar-feedback-admin-btn" />
+            </Suspense>
           </nav>
         )}
         {user && <div id="advisor-history-slot" hidden={tab !== "advisor"} />}
@@ -394,7 +427,28 @@ export function App() {
         />
       )}
       <main id="main-content" tabIndex={-1} className={user ? "workspace" : undefined}>
-        {user && <div className="workspace-topbar"><div><span>Робочий простір</span><span aria-hidden="true">/</span><strong>{({advisor:"Асистент",catalog:"Каталог грантів",cases:"Мої проєкти",profile:"Профіль бізнесу"})[tab]}</strong></div><span className="workspace-mode">Прототип</span></div>}
+        {user && (
+          <div className="workspace-topbar">
+            <div>
+              <span>Робочий простір</span>
+              <span aria-hidden="true">/</span>
+              <strong>{({advisor:"Асистент",catalog:"Каталог грантів",cases:"Мої проєкти",profile:"Профіль бізнесу"})[tab]}</strong>
+            </div>
+            <div className="workspace-topbar-actions">
+              <button
+                type="button"
+                className="workspace-feedback-btn"
+                onClick={() => openFeedback()}
+              >
+                <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z" />
+                </svg>
+                <span>Оцінити сервіс</span>
+              </button>
+              <span className="workspace-mode">Прототип</span>
+            </div>
+          </div>
+        )}
         {!user && <section className="intro">
           <div className="eyebrow">
             <span className="small-dot" /> GrantFolio для бізнесу
@@ -500,11 +554,20 @@ export function App() {
                   {register ? "Увійти" : "Зареєструватися"}
                 </button>
               </div>
+              <p className="auth-support-note">
+                Виникли складнощі зі входом?{" "}
+                <a
+                  href="mailto:grantfoliomanager@gmail.com?subject=GrantFolio%20%D0%9F%D0%BE%D0%BC%D0%B8%D0%BB%D0%BA%D0%B0%20%D0%B2%D1%85%D0%BE%D0%B4%D1%83"
+                  className="link"
+                >
+                  Повідомити команду ↗
+                </a>
+              </p>
             </div>
           ) : (
             <>
             <div hidden={tab !== "advisor"}>
-              <Advisor key={user.uid} user={user} onDirty={setAdvisorDirty} prefilledMessage={advisorPrompt} prefillConversationId={advisorPromptId} onClearPrefilled={() => {setAdvisorPrompt("");setAdvisorPromptId("");}} onView={p => { openTab("catalog"); window.location.hash=`grants/${p.id}`; }} onPrepare={(p,seed) => {setSelectedProgram(p);setPreparationSeed(seed);setPreparationId(crypto.randomUUID());openTab("cases");}} onOpenProfile={() => openTab("profile")} />
+              <Advisor key={user.uid} user={user} onDirty={setAdvisorDirty} prefilledMessage={advisorPrompt} prefillConversationId={advisorPromptId} onClearPrefilled={() => {setAdvisorPrompt("");setAdvisorPromptId("");}} onView={p => { openTab("catalog"); window.location.hash=`grants/${p.id}`; }} onPrepare={(p,seed) => {setSelectedProgram(p);setPreparationSeed(seed);setPreparationId(crypto.randomUUID());openTab("cases");}} onOpenProfile={() => openTab("profile")} onOpenFeedback={(ctx) => openFeedback("assistant", { screen: "advisor", programId: ctx?.programId ?? null })} />
             </div>
             <div hidden={tab !== "catalog"} className="catalog-tab-content">
               <GrantCatalog
@@ -534,6 +597,7 @@ export function App() {
                 selectedProgram={selectedProgram}
                 programTarget={selectedProgram ? fundingTarget : null}
                 onClearProgram={() => {setSelectedProgram(null);setFundingTarget(null);setPreparationSeed("");setPreparationId("");}}
+                onOpenFeedback={(ctx) => openFeedback(ctx?.screen === "export" ? "export" : "project", { screen: ctx?.screen ?? "cases", programId: ctx?.programId ?? null })}
               />
             </div>
             <div hidden={tab !== "profile"}>
@@ -579,6 +643,17 @@ export function App() {
         <a href="/privacy.html">Конфіденційність</a>
         <a href="/terms.html">Умови використання</a>
       </footer>
+      {user && feedbackOpen && (
+        <Suspense fallback={null}>
+          <FeedbackModal
+            open={feedbackOpen}
+            user={user}
+            defaultTask={feedbackTask}
+            context={feedbackContext}
+            onClose={() => setFeedbackOpen(false)}
+          />
+        </Suspense>
+      )}
     </>
   );
 }

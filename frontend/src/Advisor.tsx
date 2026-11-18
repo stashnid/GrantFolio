@@ -11,6 +11,7 @@ import type { SearchResult } from "../../backend/src/grant-discovery";
 import { AiEmblem, CopyActionIcon, FormattedReply, ScrollDownIcon, SendArrowIcon } from "./Assistant";
 import { ReplyReveal } from "./ReplyReveal";
 import { useConfirm } from "./ConfirmDialog";
+import { FeedbackPromptBanner } from "./FeedbackPromptBanner";
 import "./Advisor.css";
 import { advisorSessionKey, createAdvisorSession, parseAdvisorSession } from "./advisor-session";
 
@@ -108,6 +109,7 @@ export function Advisor({
   prefillConversationId,
   onClearPrefilled,
   onOpenProfile,
+  onOpenFeedback,
 }: {
   user: User;
   onPrepare: (p: GrantProgram, seed: string) => void;
@@ -117,6 +119,7 @@ export function Advisor({
   prefillConversationId?: string;
   onClearPrefilled: () => void;
   onOpenProfile?: () => void;
+  onOpenFeedback?: (context?: { programId?: string | null }) => void;
 }) {
   const { programs: GRANT_PROGRAMS } = useGrantPrograms();
   const preparablePilot = GRANT_PROGRAMS.find(program =>
@@ -1045,7 +1048,7 @@ export function Advisor({
                 Попередні повідомлення
               </button>
             )}
-            {messages.map((m) => {
+            {messages.map((m, index) => {
               const isCopied = copiedId === m.id;
               const selectedProgram = GRANT_PROGRAMS.find(program => program.id === m.selectedProgramId);
               return (
@@ -1147,6 +1150,15 @@ export function Advisor({
                           );
                         })}
                       </div>
+                    )}
+                    {revealingId !== m.id && !selectedProgram && m.search.matches.length > 0 && index === messages.length - 1 && onOpenFeedback && (
+                      <FeedbackPromptBanner
+                        milestoneKey="advisor-matches"
+                        title="Чи підійшли вам запропоновані програми?"
+                        description="Оцініть якість підбору й дайте пораду щодо покращення функціоналу асистента."
+                        actionLabel="Оцінити за 10 с"
+                        onOpenFeedback={() => onOpenFeedback({ programId: m.search.matches[0]?.programId ?? null })}
+                      />
                     )}
                     {revealingId !== m.id && selectedProgram && hasGuidedApplication(selectedProgram.id) &&
                       <div className="advisor-grant-actions">
