@@ -114,18 +114,31 @@
   outline-offset: 2px;
 }
 
+.fb-modal-form-root {
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 0%;
+  min-height: 0;
+  max-height: 100%;
+  overflow: hidden;
+}
+
 .fb-modal-body {
-  flex: 1;
+  flex: 1 1 0%;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+  overscroll-behavior-y: contain;
   padding: 18px 22px 20px;
-  overscroll-behavior: contain;
 }
 
 .fb-modal-form {
   display: flex;
   flex-direction: column;
   gap: 18px;
+  min-height: min-content;
 }
 
 .fb-modal-field {
@@ -643,11 +656,13 @@
   .fb-modal-backdrop {
     align-items: flex-end;
     padding: 0;
+    overflow-y: hidden;
   }
 
   .fb-modal-dialog {
     width: 100%;
     max-width: 100%;
+    height: 90dvh;
     max-height: 90dvh;
     border-radius: 20px 20px 0 0;
     border-bottom: 0;
@@ -655,21 +670,49 @@
   }
 
   .fb-modal-header {
-    padding: 18px 16px 12px;
+    padding: 16px 16px 12px;
+    flex: none;
+  }
+
+  .fb-modal-form-root {
+    flex: 1 1 0%;
+    min-height: 0;
+    height: 100%;
+    overflow: hidden;
   }
 
   .fb-modal-body {
-    padding: 16px;
+    flex: 1 1 0%;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    padding: 16px 16px 20px;
+  }
+
+  .fb-modal-textarea,
+  .fb-modal-input {
+    font-size: 16px; /* Prevents iOS auto-zoom on focus which breaks viewport scroll */
+  }
+
+  .fb-modal-textarea {
+    min-height: 96px;
   }
 
   .fb-modal-footer {
+    flex: none;
     flex-direction: column-reverse;
     align-items: stretch;
-    padding: 12px 16px calc(16px + env(safe-area-inset-bottom));
+    gap: 8px;
+    padding: 12px 16px calc(14px + env(safe-area-inset-bottom, 0px));
+    background: #ffffff;
+    border-top: 1px solid #e7edf4;
+    box-shadow: 0 -4px 12px rgba(15, 29, 50, 0.05);
   }
 
   .fb-modal-btn {
     width: 100%;
+    min-height: 46px;
   }
 
   .fb-modal-criterion {
