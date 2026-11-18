@@ -32,7 +32,7 @@ const queryProject = `SELECT c.title, c.program_id, c.revision AS case_revision,
     a.revision AS application_revision, a.answers, f.revision AS plan_revision,
     f.case_revision AS saved_case_revision, f.application_revision AS saved_application_revision, f.plan,
     EXISTS (SELECT 1 FROM grant_preparation_pilot gp WHERE gp.case_id=c.id
-      AND gp.program_id=c.program_id AND gp.confirmed_at IS NOT NULL) AS payment_confirmed
+      AND gp.confirmed_at IS NOT NULL) OR EXISTS (SELECT 1 FROM jar_orders jo WHERE jo.case_id=c.id AND (jo.confirmed_at IS NOT NULL OR jo.manual_unlocked_at IS NOT NULL)) AS payment_confirmed
   FROM cases c
   LEFT JOIN grant_applications a ON a.case_id=c.id AND a.program_id=c.program_id AND a.rules_version=$3
   LEFT JOIN grant_financial_plans f ON f.case_id=a.case_id AND f.program_id=a.program_id AND f.rules_version=a.rules_version

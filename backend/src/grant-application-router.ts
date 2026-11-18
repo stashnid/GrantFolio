@@ -88,7 +88,7 @@ export function grantApplicationRouter(db: Pool) {
            p.details->>'city' AS city, p.details->>'legalForm' AS legal_form, p.details->>'kved' AS kved,
            a.answers, a.revision AS application_revision, a.case_revision, f.plan AS financial_plan,
            EXISTS (SELECT 1 FROM grant_preparation_pilot gp WHERE gp.case_id=c.id
-             AND gp.program_id=c.program_id AND gp.confirmed_at IS NOT NULL) AS payment_confirmed
+             AND gp.confirmed_at IS NOT NULL) OR EXISTS (SELECT 1 FROM jar_orders jo WHERE jo.case_id=c.id AND (jo.confirmed_at IS NOT NULL OR jo.manual_unlocked_at IS NOT NULL)) AS payment_confirmed
          FROM cases c LEFT JOIN profiles p ON p.owner_id=c.owner_id
          LEFT JOIN grant_applications a ON a.case_id=c.id AND a.program_id=c.program_id
            AND a.rules_version=($3::jsonb->>c.program_id)

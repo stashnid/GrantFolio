@@ -375,3 +375,7 @@ GrantFolio відкрито на [grantfolio.pp.ua](https://grantfolio.pp.ua/) �
 ## Автоматичне підтвердження оплати експорту — 18.11.2026
 
 У task branch реалізований одноразовий Monobank Acquiring invoice на **5 грн** за комплект PDF+XLSX. Браузер відкриває hosted checkout; сервер перевіряє підпис webhook, звіряє invoice/reference/amount/currency і лише після підтвердження дає доступ до обох export endpoints. Статус можна звірити через merchant API; оплата не вважається підтвердженою лише через redirect/повернення на сайт. Export-перевірка виконується в owner-scoped snapshot. Migration 024 блокує видалення справи за наявності потенційно платного checkout; ручне CLI-confirm теж відхиляється під час такої операції. Typecheck/build/diff-check пройшли; тестів не запускали. **Не deployed і не live:** production merchant token/callback відсутні, а acquiring destination — бізнес-рахунок, не раніше зазначена банка; власник має підтвердити одержувача. Повторний invoice після `expired`, ambiguous create recovery та wallet availability ще потребують завершення/перевірки. [Звіт](agents/2026-11-18-automatic-monobank-payment.md).
+
+## Оплата окремого проєкту на банку — 18.11.2026
+
+Реалізовано особистий webhook, короткі коди, PostgreSQL ledger та серверний гейт роботи в проєкті. «Новий проєкт» резервує справу і веде до її оплати. Каталог і загальний чат безкоштовні. Автоматичне підтвердження на production ще не підтверджене: потрібні секрет, внутрішній ID банки та реєстрація webhook власником. [Передача](agents/2026-11-18-jar-project-payment.md).

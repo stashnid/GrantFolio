@@ -2,7 +2,8 @@ import { hasGuidedApplication } from "./grants";
 import { assessBudget, readiness as snapshotReadiness } from "../../backend/src/project-details";
 import {isGrantAvailable} from "../../backend/src/grant-availability";
 import {useGrantPrograms} from "./GrantPrograms";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ProjectPayment } from "./ProjectPayment";
 import { createPortal } from "react-dom";
 import type { User } from "firebase/auth";
 import { Assistant } from "./Assistant";
@@ -214,6 +215,9 @@ export function Cases({
     [showCreate, setShowCreate] = useState(false),
     [contextDrawerOpen, setContextDrawerOpen] = useState(false),
     [showExportFeedback, setShowExportFeedback] = useState(false);
+  const [paidCaseId, setPaidCaseId] = useState<string | null>(null);
+  const unlockCase = useCallback(() => { if (selected) setPaidCaseId(selected.id); }, [selected?.id]);
+  const isPaid = selected !== null && paidCaseId === selected.id;
   const contextToggleRef = useRef<HTMLButtonElement>(null);
   const contextDrawerRef = useRef<HTMLElement>(null);
   const isAssistantStep = activeStep === "assistant";
@@ -318,6 +322,9 @@ export function Cases({
     }
   }
   useEffect(() => {
+    if (isPaid && selected) void loadReadiness(selected.id);
+  }, [isPaid, selected?.id]);
+  useEffect(() => {
     if (!dirty && !pending && !chatDraft) return;
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
@@ -345,6 +352,7 @@ export function Cases({
     if (!discard && selected?.id === id) return;
     if (!discard && !(await mayLeaveDraft())) return;
     setBusy(true);
+    setPaidCaseId(null);
     setError("");
     try {
       const r = await request(`/api/cases/${id}`);
@@ -398,6 +406,7 @@ export function Cases({
       createAttempt.current = null;
       rememberCase(c.id);
       setCases([c, ...cases.filter(existing => existing.id !== c.id)]);
+      setPaidCaseId(null);
       setSelected(c);
       setDraft([]);
       setDetails(c.details || emptyDetails);
@@ -811,7 +820,7 @@ export function Cases({
 
   return (
     <div className={`card cases-card${selected && !showCreate && isAssistantStep ? " cases-card--assistant" : ""}`}>
-      {selected && selected.programId !== "vlasna-sprava" && !printBlocked && createPortal(
+      {isPaid && selected && selected.programId !== "vlasna-sprava" && !printBlocked && createPortal(
         <article className="print-document" lang="uk" aria-label="Робоча чернетка проєкту">
           <header className="print-document-header">
             <div className="print-brand">GrantFolio</div>
@@ -884,7 +893,8 @@ export function Cases({
           </div>
         )}
         <div className="cases-unified-actions">
-          {selected && !showCreate && isAssistantStep && (
+          {selected && !showCreate && <button type="button" className="secondary-btn" onClick={() => setPaidCaseId(null)}>Оплата</button>}
+          {isPaid && selected && !showCreate && isAssistantStep && (
             <button
               ref={contextToggleRef}
               type="button"
@@ -932,7 +942,7 @@ export function Cases({
           </button>
         </div>
       </div>
-      {selectedProgram && programTarget && <section className="create-case-disclosure" aria-label="Вибір програми для проєкту">
+      {isPaid && selectedProgram && programTarget && <section className="create-case-disclosure" aria-label="Вибір програми для проєкту">
         <h3>Обрати «{friendlyTitle(selectedProgram)}» для «{programTarget.title}»</h3>
         <p>Програма буде додана до цього проєкту, а його матеріали залишаться на місці.</p>
         {selected?.id !== programTarget.id && <p>Спочатку відкрийте потрібний проєкт. <button type="button" disabled={busy} onClick={() => void select(programTarget.id)}>Відкрити проєкт</button></p>}
@@ -983,6 +993,7 @@ export function Cases({
       <div id="create-case-panel" hidden={!showCreate} className="create-case-disclosure">
         <h3>Новий проєкт</h3>
         <p>{selectedProgram ? `Готуємо новий проєкт для програми «${selectedProgram.title}». Перевірте назву й почніть роботу з асистентом.` : "Назвіть проєкт і, за бажанням, опишіть потребу. Фінансування можна підібрати пізніше."}</p>
+      <p>Доступ до роботи над проєктом коштує 5 грн одноразово. Після створення ви перейдете до оплати.</p>
       <form onSubmit={create} className="create-case-form">
         <label>
           Назва чернетки
@@ -1000,11 +1011,12 @@ export function Cases({
         </label>
         {selectedProgram && <p>Обрана програма: {friendlyTitle(selectedProgram)}</p>}
         <button type="submit" className="primary" disabled={busy || !ready}>
-          Створити чернетку <span>↗</span>
+          Створити та перейти до оплати <span>↗</span>
         </button>
       </form>
       </div>
-      {selected && (
+      {selected && !showCreate && !isPaid && <ProjectPayment key={selected.id} user={user} caseId={selected.id} onActive={unlockCase} />}
+      {selected && isPaid && (
         <div className={`case-workspace${isAssistantStep ? " case-workspace--assistant" : ""}`} hidden={showCreate}>
           {isAssistantStep && contextDrawerOpen && (
             <button
@@ -1449,17 +1461,6 @@ export function Cases({
                 </p>
               </div>
 
-              {selected.programId === "vlasna-sprava" && <section className="payment-entry" aria-labelledby="payment-entry-title">
-                <div>
-                  <h5 id="payment-entry-title">Оплата за готові PDF і таблицю Excel</h5>
-                  <p>Комплект заповнених файлів коштує 5 грн. Після підтвердження переказу відкриється завантаження.</p>
-                </div>
-                <a className="primary payment-entry-link" href="#export-payment" onClick={event => {
-                  event.preventDefault();
-                  document.getElementById("export-payment")?.scrollIntoView({ behavior: "smooth", block: "center" });
-                }}>Перейти до оплати</a>
-              </section>}
-
               {selected.programId && <GrantApplication key={selected.id} user={user} caseId={selected.id}
                 caseRevision={selected.revision} programId={selected.programId}
                 disabled={dirty || !!pending || conflict || !!sessionDraft.recovery} />}
@@ -1517,7 +1518,7 @@ export function Cases({
                   Сформований файл містить структуровані відповіді та бюджет. Перенесіть перевірений текст у форму обраного організатора.
                 </p>
                 {selected.programId === "vlasna-sprava"
-                  ? <p><a href="#export-payment" onClick={event => { event.preventDefault(); document.getElementById("export-payment")?.scrollIntoView({ behavior: "smooth" }); }}>Перейти до оплати й завантаження PDF та XLSX</a></p>
+                  ? <p><a href="#export-payment" onClick={event => { event.preventDefault(); document.getElementById("export-payment")?.scrollIntoView({ behavior: "smooth" }); }}>Завантажити PDF та XLSX</a></p>
                   : <p>Для PDF зі збереженим описом і кошторисом виберіть «Зберегти як PDF» у вікні друку.</p>}
                 <div className="export-buttons-group">
                   <button
