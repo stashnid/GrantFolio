@@ -61,12 +61,52 @@ test("scaling checks tenure, job count and published amount limits", () => {
   assert(view.questions.some(q => q.id === "existingJobs"));
 });
 
+const completeAnswers: GrantApplicationAnswers = {
+  ...answers,
+  applicantName: "ТОВ Тест",
+  applicantTaxId: "12345678",
+  legalForm: "ТОВ",
+  businessAddress: "м. Львів",
+  applicantBusinessHistory: "Новий бізнес",
+  taxSystem: "simplified",
+  taxProfile: "company_simplified",
+  vatStatus: "nonpayer",
+  vatBonusBasis: "no",
+  youngApplicant: "no",
+  veteranBusiness: "no",
+  patentBasis: "no",
+  displacedApplicant: "no",
+  priorityTerritory: "no",
+  damagedAssets: "no",
+  prioritySector: "no",
+  projectConcept: "Пекарня",
+  projectDurationMonths: 24,
+  productDescription: "Хліб та випічка",
+  targetCustomers: "Мешканці району",
+  grantUsePlan: "Обладнання",
+  grantExpenseLines: "Піч | 170000 | Обладнання",
+  ownExpenseLines: "Ремонт | 60000 | Власні",
+  breakEvenMonths: 6,
+  environmentalImpact: "Безпечне виробництво",
+  otherResults: "Створення бренду",
+  taxEstimate: "Єдиний податок",
+  regionalImpact: "Місцевий розвиток",
+  salesForecast: "10000 буханців",
+  profitabilityForecast: "20%",
+  financialResultForecast: "Позитивний",
+  cashFlowForecast: "Без касових розривів",
+  roiForecast: "25%",
+  irrForecast: "18%",
+  projectRiskMitigation: "Страхування",
+  confirmAccuracy: true,
+};
+
 test("full-form completion requires the added official fields before review", () => {
   const view = getGrantApplication("vlasna-sprava", answers, context)!;
   assert.equal(view.nextQuestion?.id, "applicantName");
   assert.equal(view.financials.uncoveredKopecks, 0);
   assert.equal(view.readyForReview, false);
-  assert.equal(getGrantApplication("vlasna-sprava", { ...answers, confirmAccuracy: false }, context)?.nextQuestion?.id, "confirmAccuracy");
+  assert.equal(getGrantApplication("vlasna-sprava", { ...completeAnswers, confirmAccuracy: false }, context)?.nextQuestion?.id, "confirmAccuracy");
   assert.equal(getGrantApplication("vlasna-sprava", answers, { ...context, budgetTotalKopecks: "23000051" })?.financials.uncoveredKopecks, 1);
   assert.equal(getGrantApplication("vlasna-sprava", answers, { ...context, details: {} })?.readyForReview, false);
   assert.equal(grantApplicationAnswersSchema.safeParse({ requestedGrantKopecks: 1.1 }).success, false);
