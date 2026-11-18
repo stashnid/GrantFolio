@@ -1451,4 +1451,3 @@ test("grant-sync hydrate() accepts grant_source_checks rows matching PROGRAM_MON
     if (catalogEntry) catalogEntry.availability = priorAvailability;
   }
 });
-

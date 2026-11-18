@@ -671,9 +671,16 @@ test("grant applications isolate owners, reject concurrent writes and invalidate
   assert.equal(created.status, 201);
   const id = (await created.json()).case.id;
   const path = `/api/cases/${id}/grant-application`;
+  const template = await call(owner, `${path}/working-example`);
+  assert.equal(template.status, 200);
+  assert.match(template.headers.get("content-type") ?? "", /spreadsheetml/);
+  assert.equal((await template.arrayBuffer()).byteLength > 0, true);
+  assert.equal((await call(stranger, `${path}/working-example`)).status, 404);
   const initial = await call(owner, path);
   assert.equal(initial.headers.get("cache-control"), "no-store");
-  assert.equal((await initial.json()).application.nextQuestion.id, "track");
+  const initialBody = await initial.json();
+  assert.equal(initialBody.application.nextQuestion.id, "track");
+  assert(initialBody.documentCoverage.missingOfficialInputs.length > 0);
   assert.equal((await call(stranger, path)).status, 404);
   const command = { expectedRevision: 0, expectedCaseRevision: 0, answers: { track: "start" } };
   assert.equal((await call(stranger, path, "PUT", command)).status, 404);
@@ -688,6 +695,9 @@ test("grant applications isolate owners, reject concurrent writes and invalidate
   assert.match(exported, /Анкета програми · версія 2/);
   assert.match(exported, /Напрям гранту:\nЗапочаткування/);
   assert.match(exported, /Тип заявника:\nНе вказано/);
+  assert.equal((await call(owner, `${path}/diia-draft/export`, "POST", {
+    expectedRevision: 2, expectedCaseRevision: 0,
+  })).status, 422);
   assert.equal((await call(owner, `/api/cases/${id}/program`, "PUT", { programId: null, expectedRevision: 0 })).status, 200);
   assert.equal((await call(owner, path, "PUT", { ...command, expectedRevision: 2 })).status, 409);
   assert.equal((await (await call(owner, path)).json()).application, null);
