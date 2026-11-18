@@ -218,7 +218,7 @@ export function advisorRouter(
         if (profile.rowCount) {
           const { details, ...base } = profile.rows[0];
           const rawDetails = details && typeof details === "object" ? details : {};
-          const { contactName: _n, phone: _p, website: _w, ...safe } = rawDetails;
+          const { contactName: _n, phone: _p, website: _w, newsletterEmail: _e, ...safe } = rawDetails;
           businessProfile = { ...base, details: safe };
         }
 
@@ -261,7 +261,7 @@ export function advisorRouter(
                   [uid, nextBusinessName, nextDescription, nextRegion, JSON.stringify(details)]
                 );
                 profileUpdated = true;
-                const { contactName: _n, phone: _p, website: _w, ...safeDetails } = details;
+                const { contactName: _n, phone: _p, website: _w, newsletterEmail: _e, ...safeDetails } = details;
                 businessProfile = { businessName: nextBusinessName, description: nextDescription, region: nextRegion, details: safeDetails };
               }
             } else {
@@ -276,11 +276,12 @@ export function advisorRouter(
                 [uid, extractedData.businessName || "", extractedData.description || "", extractedData.region || "", JSON.stringify(details)]
               );
               profileUpdated = true;
+              const { contactName: _n, phone: _p, website: _w, newsletterEmail: _e, ...safeDetails } = details;
               businessProfile = {
                 businessName: extractedData.businessName || "",
                 description: extractedData.description || "",
                 region: extractedData.region || "",
-                details,
+                details: safeDetails,
               };
             }
           } catch {

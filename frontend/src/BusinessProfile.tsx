@@ -55,7 +55,39 @@ function fieldError(key: FieldKey, value: string): string {
   if (key === "newsletterEmail" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Вкажіть дійсну адресу електронної пошти.";
   return "";
 }
-export function BusinessProfile({ profile, email, displayName = "", photoURL = "", ready, busy, dirty, error, message, loading = false, conflict = false, onChange, onSubmit, onRetry }: { profile: Profile; email: string; displayName?: string; photoURL?: string; ready: boolean; busy: boolean; loading?: boolean; conflict?: boolean; dirty: boolean; error: string; message: string; onChange: (profile: Profile) => void; onSubmit: (e: React.FormEvent) => void; onRetry: () => void }) {
+export function BusinessProfile({
+  profile,
+  email,
+  displayName = "",
+  photoURL = "",
+  ready,
+  busy,
+  dirty,
+  error,
+  message,
+  loading = false,
+  conflict = false,
+  onChange,
+  onSynced,
+  onSubmit,
+  onRetry,
+}: {
+  profile: Profile;
+  email: string;
+  displayName?: string;
+  photoURL?: string;
+  ready: boolean;
+  busy: boolean;
+  loading?: boolean;
+  conflict?: boolean;
+  dirty: boolean;
+  error: string;
+  message: string;
+  onChange: (profile: Profile) => void;
+  onSynced?: (profile: Profile, revision: number) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  onRetry: () => void;
+}) {
   const [section, setSection] = useState(0);
   const [attempted, setAttempted] = useState(false);
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({});
@@ -103,7 +135,11 @@ export function BusinessProfile({ profile, email, displayName = "", photoURL = "
       if (!res.ok) throw new Error("HTTP error " + res.status);
       const data = await res.json();
       if (data?.profile) {
-        onChange(normalizeProfile(data.profile));
+        if (onSynced && typeof data.revision === "number") {
+          onSynced(data.profile, data.revision);
+        } else {
+          onChange(normalizeProfile(data.profile));
+        }
         if (data.mergedCount > 0) {
           setAiFeedback({
             type: "success",

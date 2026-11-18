@@ -33,15 +33,26 @@ test("extracts sewing production in Kyiv with TOV and 500k budget", () => {
 });
 
 test("extracts startup idea with no registered business", () => {
-  const text = "Планую відкрити дитячий розвиваючий центр в Одесі, бізнесу ще немає, тільки ідея. Працюватиму сам на першому етапі.";
+  const text = "Планую відкрити дитячий розвивальний центр в Одесі, бізнесу ще немає, тільки ідея. Працюватиму сам на першому етапі.";
   const { data } = extractProfileFromText(text);
 
-  assert.equal(data.businessName, "Дитячий розвиваючий центр");
+  assert.equal(data.businessName, "Дитячий розвивальний центр");
   assert.equal(data.city, "Одеса");
   assert.equal(data.region, "Одеська область");
   assert.equal(data.legalForm, "idea");
   assert.equal(data.industry, "Освіта");
   assert.equal(data.teamSize, "1");
+});
+
+test("does not produce false positives on common words (допоможіть, сума, рівні, один)", () => {
+  const text = "Допоможіть, будь ласка. Потрібна сума один мільйон на початковому рівні для відкриття медичного кабінету.";
+  const { data } = extractProfileFromText(text);
+
+  assert.notEqual(data.industry, "Інформаційні технології");
+  assert.equal(data.industry, "Охорона здоров’я");
+  assert.notEqual(data.city, "Суми");
+  assert.notEqual(data.city, "Рівне");
+  assert.notEqual(data.teamSize, "1");
 });
 
 test("extracts facts progressively across multiple conversation turns", () => {
