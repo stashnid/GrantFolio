@@ -51,7 +51,25 @@ const call = (owner: string, path = "", body?: unknown) =>
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
+const callMethod = (
+  owner: string,
+  method: "PATCH" | "DELETE",
+  path: string,
+  body?: unknown,
+) =>
+  fetch(base + path, {
+    method,
+    headers: {
+      "X-Test-Owner": owner,
+      ...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+    },
+    ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+  });
 after(async () => {
+  await db.query(
+    "DELETE FROM advisor_conversation_meta WHERE owner_id=ANY($1::text[])",
+    [[a, b]],
+  );
   await db.query(
     "DELETE FROM advisor_messages WHERE owner_id=ANY($1::text[])",
     [[a, b]],
@@ -262,6 +280,223 @@ test("student questions stay focused on business and personal study is outside s
       /фінансування для відкриття або розвитку бізнесу/,
     );
     assert.equal(education.search.matches.length, 0);
+  } finally {
+    listener.close();
+  }
+});
+
+test("unauthenticated PATCH and DELETE on advisor conversations return 401", async () => {
+  const s = createApp(db).listen(0, "127.0.0.1");
+  await once(s, "listening");
+  const x = s.address();
+  if (!x || typeof x === "string") throw Error();
+  const id = crypto.randomUUID();
+  try {
+    const patchRes = await fetch(
+      `http://127.0.0.1:${x.port}/api/advisor/conversations/${id}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ title: "Нова назва" }),
+      },
+    );
+    assert.equal(patchRes.status, 401);
+    const deleteRes = await fetch(
+      `http://127.0.0.1:${x.port}/api/advisor/conversations/${id}`,
+      { method: "DELETE" },
+    );
+    assert.equal(deleteRes.status, 401);
+  } finally {
+    s.close();
+  }
+});
+
+test("PATCH and DELETE validate conversationId UUID and title payload strictly", async () => {
+  const badPatch = await callMethod(a, "PATCH", "/conversations/not-a-uuid", {
+    title: "Назва",
+  });
+  assert.equal(badPatch.status, 400);
+  assert.deepEqual(await badPatch.json(), { error: "invalid_conversation" });
+
+  const badDelete = await callMethod(a, "DELETE", "/conversations/not-a-uuid");
+  assert.equal(badDelete.status, 400);
+  assert.deepEqual(await badDelete.json(), { error: "invalid_conversation" });
+
+  const conversationId = crypto.randomUUID();
+  for (const invalidBody of [
+    { title: "" },
+    { title: "   \t\n  " },
+    { title: "а".repeat(71) },
+    { title: "Кав'ярня\nінжекція" },
+    { title: "Кав'ярня\u0000нуль" },
+    { title: "Коректна назва", extra: "forbidden" },
+  ]) {
+    const res = await callMethod(
+      a,
+      "PATCH",
+      `/conversations/${conversationId}`,
+      invalidBody,
+    );
+    assert.equal(res.status, 400);
+    assert.deepEqual(await res.json(), { error: "invalid_title" });
+  }
+});
+
+test("owner can rename and delete own conversation while another user is isolated", async () => {
+  const conversationId = crypto.randomUUID();
+  const created = await call(a, "", {
+    id: crypto.randomUUID(),
+    conversationId,
+    message: "Потрібне обладнання для пекарні у Львові",
+  });
+  assert.equal(created.status, 200);
+
+  // Rename trims whitespace and persists in GET /conversations
+  const renamed = await callMethod(
+    a,
+    "PATCH",
+    `/conversations/${conversationId}`,
+    { title: "   Пекарня у Львові — грант   " },
+  );
+  assert.equal(renamed.status, 200);
+  assert.deepEqual(await renamed.json(), {
+    conversation: { id: conversationId, title: "Пекарня у Львові — грант" },
+  });
+
+  const listAfterRename = await (await call(a, "/conversations")).json();
+  const found = listAfterRename.conversations.find(
+    (c: { id: string }) => c.id === conversationId,
+  );
+  assert.ok(found);
+  assert.equal(found.title, "Пекарня у Львові — грант");
+
+  // Re-renaming updates existing metadata row (ON CONFLICT DO UPDATE)
+  const renamedAgain = await callMethod(
+    a,
+    "PATCH",
+    `/conversations/${conversationId}`,
+    { title: "Оновлена назва чату" },
+  );
+  assert.equal(renamedAgain.status, 200);
+  assert.deepEqual(await renamedAgain.json(), {
+    conversation: { id: conversationId, title: "Оновлена назва чату" },
+  });
+
+  // Owner isolation: User B cannot PATCH or DELETE User A's conversation
+  const bPatch = await callMethod(
+    b,
+    "PATCH",
+    `/conversations/${conversationId}`,
+    { title: "Спроба чужої зміни" },
+  );
+  assert.equal(bPatch.status, 404);
+  assert.deepEqual(await bPatch.json(), { error: "not_found" });
+
+  const bDelete = await callMethod(
+    b,
+    "DELETE",
+    `/conversations/${conversationId}`,
+  );
+  assert.equal(bDelete.status, 404);
+  assert.deepEqual(await bDelete.json(), { error: "not_found" });
+
+  // User A's title and messages remain completely intact
+  const aListIntact = await (await call(a, "/conversations")).json();
+  const intact = aListIntact.conversations.find(
+    (c: { id: string }) => c.id === conversationId,
+  );
+  assert.ok(intact);
+  assert.equal(intact.title, "Оновлена назва чату");
+  const aMessagesIntact = await (
+    await call(a, `?conversationId=${conversationId}`)
+  ).json();
+  assert.equal(aMessagesIntact.messages.length, 1);
+
+  // User A deletes own conversation: removes messages and metadata
+  const deleted = await callMethod(
+    a,
+    "DELETE",
+    `/conversations/${conversationId}`,
+  );
+  assert.equal(deleted.status, 200);
+  assert.deepEqual(await deleted.json(), { deleted: true, id: conversationId });
+
+  const metaCount = await db.query(
+    "SELECT COUNT(*)::int AS count FROM advisor_conversation_meta WHERE owner_id=$1 AND conversation_id=$2",
+    [a, conversationId],
+  );
+  assert.equal(metaCount.rows[0].count, 0);
+
+  const listAfterDelete = await (await call(a, "/conversations")).json();
+  assert.equal(
+    listAfterDelete.conversations.some(
+      (c: { id: string }) => c.id === conversationId,
+    ),
+    false,
+  );
+
+  const messagesAfterDelete = await (
+    await call(a, `?conversationId=${conversationId}`)
+  ).json();
+  assert.equal(messagesAfterDelete.messages.length, 0);
+
+  // Second DELETE returns 404
+  const deletedAgain = await callMethod(
+    a,
+    "DELETE",
+    `/conversations/${conversationId}`,
+  );
+  assert.equal(deletedAgain.status, 404);
+  assert.deepEqual(await deletedAgain.json(), { error: "not_found" });
+});
+
+test("DELETE returns 429 advisor_busy while generation is in flight for the owner", async () => {
+  let started!: () => void;
+  const responderStarted = new Promise<void>((resolve) => {
+    started = resolve;
+  });
+  let finish!: (reply: string) => void;
+  const responderDone = new Promise<string>((resolve) => {
+    finish = resolve;
+  });
+
+  const s = express();
+  s.use(express.json());
+  s.use((_q, r, n) => {
+    r.locals.uid = a;
+    n();
+  });
+  s.use(
+    advisorRouter(db, async () => {
+      started();
+      return await responderDone;
+    }),
+  );
+  const listener = s.listen(0, "127.0.0.1");
+  await once(listener, "listening");
+  const addr = listener.address();
+  if (!addr || typeof addr === "string") throw Error();
+  const conversationId = crypto.randomUUID();
+  try {
+    const postPromise = fetch(`http://127.0.0.1:${addr.port}/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: crypto.randomUUID(),
+        conversationId,
+        message: "Шукаю грант на обладнання",
+      }),
+    });
+    await responderStarted;
+    const busyDelete = await fetch(
+      `http://127.0.0.1:${addr.port}/conversations/${conversationId}`,
+      { method: "DELETE" },
+    );
+    assert.equal(busyDelete.status, 429);
+    assert.deepEqual(await busyDelete.json(), { error: "advisor_busy" });
+    finish("Готова відповідь");
+    const postRes = await postPromise;
+    assert.equal(postRes.status, 200);
   } finally {
     listener.close();
   }
