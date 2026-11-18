@@ -116,16 +116,25 @@
 
 .fb-modal-body {
   flex: 1;
+  min-height: 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 18px 22px 20px;
   overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .fb-modal-form {
   display: flex;
   flex-direction: column;
   gap: 18px;
+}
+
+.fb-modal-dialog > .fb-modal-form {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  gap: 0;
 }
 
 .fb-modal-field {
