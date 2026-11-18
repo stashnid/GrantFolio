@@ -134,6 +134,8 @@ test("personal transport and unconfirmed or negated purchases are not treated as
   assert.notEqual(unknown.matches[0]?.programId, "uvf-reimbursement");
   assert.match(unknown.questions[0], /вже придбали/i);
   assert.match(unknown.matches.find(m => m.programId === "uvf-reimbursement")?.reason ?? "", /уточніть/i);
+  const cafe = "Хочу відкрити невелику кав’ярню у Львові. На кавомашину та холодильник потрібно 150 тисяч грн. Бізнес ще не зареєстрований.";
+  assert.match(nextQuestion(cafe, searchGrants(cafe).intents, false), /Збережіть опис потреби/);
   assert.match(nextQuestion("Авто для доставки 200 тис, Львів. Я вже ФОП", ["transport"], true), /Наступний крок/);
 });
 
