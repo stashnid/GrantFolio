@@ -25,11 +25,14 @@ type Row = {
   saved_case_revision: number | null;
   saved_application_revision: number | null;
   plan: FinancialPlan | null;
+  payment_confirmed: boolean;
 };
 
 const queryProject = `SELECT c.title, c.program_id, c.revision AS case_revision,
     a.revision AS application_revision, a.answers, f.revision AS plan_revision,
-    f.case_revision AS saved_case_revision, f.application_revision AS saved_application_revision, f.plan
+    f.case_revision AS saved_case_revision, f.application_revision AS saved_application_revision, f.plan,
+    EXISTS (SELECT 1 FROM grant_preparation_pilot gp WHERE gp.case_id=c.id
+      AND gp.program_id=c.program_id AND gp.confirmed_at IS NOT NULL) AS payment_confirmed
   FROM cases c
   LEFT JOIN grant_applications a ON a.case_id=c.id AND a.program_id=c.program_id AND a.rules_version=$3
   LEFT JOIN grant_financial_plans f ON f.case_id=a.case_id AND f.program_id=a.program_id AND f.rules_version=a.rules_version
@@ -119,6 +122,7 @@ export function grantFinancialPlanRouter(db: Pool) {
       const row = (await db.query<Row>(queryProject, [req.params.id, res.locals.uid, rulesVersion])).rows[0];
       if (!row) { res.status(404).json({ error: "not_found" }); return; }
       if (row.program_id !== "vlasna-sprava") { res.status(422).json({ error: "financial_plan_unavailable" }); return; }
+      if (!row.payment_confirmed) { res.status(402).json({ error: "preparation_payment_pending" }); return; }
       const state = view(row);
       if (!matches(row, command.data) || state.stale) { res.status(409).json({ error: "revision_conflict" }); return; }
       if (!state.forecast || !state.reconciled || !state.officialRowsReady) { res.status(422).json({ error: "financial_plan_not_reconciled" }); return; }

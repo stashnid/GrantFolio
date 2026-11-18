@@ -1,4 +1,4 @@
-import { grantPreparationPilotRouter } from "./grant-preparation-pilot.js";
+import { grantPreparationPilotRouter, type PaymentConfig } from "./grant-preparation-pilot.js";
 import {GRANT_CATALOG} from "./grant-catalog-data.js";
 import { Router } from "express";
 import type { Pool } from "pg";
@@ -51,13 +51,13 @@ function view(row: CaseRow) {
     totalKopecks: Number(row.total_kopecks),
   };
 }
-export function casesRouter(db: Pool) {
+export function casesRouter(db: Pool, payment?: PaymentConfig) {
   const router = Router();
   router.use((_req, res, next) => {
     res.set("Cache-Control", "no-store");
     next();
   });
-  router.use(grantPreparationPilotRouter(db));
+  router.use(grantPreparationPilotRouter(db, payment));
   router.use(assistantRouter(db, configuredGeminiResponder()));
   router.use(grantApplicationRouter(db));
   router.use(grantFinancialPlanRouter(db));
@@ -174,6 +174,10 @@ export function casesRouter(db: Pool) {
       }
       res.json({ deleted: true });
     } catch (e) {
+      if ((e as { code?: string }).code === "P0001") {
+        res.status(409).json({ error: "payment_pending" });
+        return;
+      }
       next(e);
     }
   });

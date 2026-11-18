@@ -83,10 +83,12 @@ export function grantApplicationRouter(db: Pool) {
     const parsed = z.object({ expectedRevision: revision, expectedCaseRevision: revision }).strict().safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: "invalid_application_export" }); return; }
     try {
-      const result = await db.query<Project & { answers: GrantApplicationAnswers | null; application_revision: number | null; case_revision: number | null; financial_plan: unknown }>(
+      const result = await db.query<Project & { answers: GrantApplicationAnswers | null; application_revision: number | null; case_revision: number | null; financial_plan: unknown; payment_confirmed: boolean }>(
         `SELECT c.program_id, c.revision, c.details, c.total_kopecks, c.items, p.region,
            p.details->>'city' AS city, p.details->>'legalForm' AS legal_form, p.details->>'kved' AS kved,
-           a.answers, a.revision AS application_revision, a.case_revision, f.plan AS financial_plan
+           a.answers, a.revision AS application_revision, a.case_revision, f.plan AS financial_plan,
+           EXISTS (SELECT 1 FROM grant_preparation_pilot gp WHERE gp.case_id=c.id
+             AND gp.program_id=c.program_id AND gp.confirmed_at IS NOT NULL) AS payment_confirmed
          FROM cases c LEFT JOIN profiles p ON p.owner_id=c.owner_id
          LEFT JOIN grant_applications a ON a.case_id=c.id AND a.program_id=c.program_id
            AND a.rules_version=($3::jsonb->>c.program_id)
@@ -96,6 +98,7 @@ export function grantApplicationRouter(db: Pool) {
       );
       const project = result.rows[0];
       if (!project || project.program_id !== "vlasna-sprava") { res.status(404).json({ error: "not_found" }); return; }
+      if (!project.payment_confirmed) { res.status(402).json({ error: "preparation_payment_pending" }); return; }
       if (project.revision !== parsed.data.expectedCaseRevision || project.application_revision !== parsed.data.expectedRevision || project.case_revision !== project.revision) {
         res.status(409).json({ error: "revision_conflict" }); return;
       }

@@ -1,3 +1,4 @@
+import { monobankWebhookRouter, type PaymentConfig } from "./grant-preparation-pilot.js";
 import { configuredGeminiResponder } from "./gemini.js";
 import {GRANT_CATALOG} from "./grant-catalog-data.js";
 import express, { type ErrorRequestHandler } from "express";
@@ -52,10 +53,12 @@ export function createApp(
   catalogStatus: () => unknown[] | Promise<unknown[]> = () => [],
   emailCode = configuredEmailLoginCode(db),
   onCatalogMutated?: () => Promise<void>,
+  payment?: PaymentConfig,
 ) {
   const app = express();
   const privateRoutes = ["/api/advisor", "/api/me", "/api/cases", "/api/feedback", "/api/donations", "/api/admin/monitor", "/api/admin/feedback"];
   app.disable("x-powered-by");
+  app.use("/api/monobank/acquiring/webhook", express.raw({ type: "application/json", limit: "16kb", inflate: false }), monobankWebhookRouter(db, payment));
   app.use(express.json({ limit: "128kb" }));
   app.get("/api/grants", async (_req,res,next) => {try { const sources=await catalogStatus();res.set("Cache-Control","no-store").json({programs:GRANT_CATALOG,sources}); }catch(e){next(e);} });
   app.get("/api/health", async (_req, res) => {
@@ -375,7 +378,7 @@ export function createApp(
     }
   });
   app.use("/api/advisor", advisorRouter(db, configuredGeminiResponder()));
-  app.use("/api/cases", casesRouter(db));
+  app.use("/api/cases", casesRouter(db, payment));
   app.use("/api/feedback", feedbackRouter(db));
   app.use("/api/donations", donationsRouter(db));
   app.use("/api/admin/monitor", monitorAdminRouter(db, { onAvailabilityApproved: onCatalogMutated }));

@@ -7,6 +7,8 @@ import type {
 import { authenticatedRequest, readableApiError } from "./api";
 import { GrantFinancialPlan } from "./GrantFinancialPlan";
 
+type PreparationAccess = { state: "standard" | "pending" | "active" | "terminal"; reference: string | null; paymentUrl: string | null; paymentStatus?: "expired" | "reversed" | null };
+
 type ReviewResponse = {
   application: GrantApplicationReview | null;
   documentCoverage: { mappedAnswers: string[]; remainingAnswers: string[]; missingOfficialInputs: string[] } | null;
@@ -61,8 +63,11 @@ export function GrantApplication({ user, caseId, caseRevision, programId, disabl
   const [stale, setStale] = useState(false);
   const [error, setError] = useState("");
   const [accessError, setAccessError] = useState("");
-  const [access, setAccess] = useState<{ state: "standard" | "pending" | "active"; reference: string | null } | null>(null);
+  const [access, setAccess] = useState<PreparationAccess | null>(null);
   const [startingPayment, setStartingPayment] = useState(false);
+  const [checkingPayment, setCheckingPayment] = useState(false);
+  const [paymentUnavailable, setPaymentUnavailable] = useState(false);
+  const [terminalPayment, setTerminalPayment] = useState<"failure" | "expired" | "reversed" | null>(null);
   const [reload, setReload] = useState(0);
   const path = `/api/cases/${caseId}/grant-application`;
 
@@ -72,6 +77,7 @@ export function GrantApplication({ user, caseId, caseRevision, programId, disabl
     setError("");
     setAccessError("");
     setAccess(null);
+    setTerminalPayment(null);
     Promise.allSettled([
       authenticatedRequest(user, path, { signal: controller.signal }),
       authenticatedRequest(user, `/api/cases/${caseId}/preparation-access`, { signal: controller.signal }),
@@ -86,7 +92,9 @@ export function GrantApplication({ user, caseId, caseRevision, programId, disabl
         setStale(data.caseRevision !== caseRevision);
         if (paymentResult.status === "fulfilled" && paymentResult.value.ok) {
           try {
-            setAccess(await paymentResult.value.json() as NonNullable<typeof access>);
+            const paymentAccess = await paymentResult.value.json() as PreparationAccess;
+            setAccess(paymentAccess);
+            if (paymentAccess.state === "terminal") setTerminalPayment(paymentAccess.paymentStatus ?? "expired");
           } catch {
             setAccess(null);
             setAccessError("Не вдалося перевірити оплату. Спробуйте оновити статус.");
@@ -105,6 +113,74 @@ export function GrantApplication({ user, caseId, caseRevision, programId, disabl
     return () => controller.abort();
   }, [user, path, caseId, caseRevision, reload]);
 
+  useEffect(() => {
+    if (access?.state !== "pending" || terminalPayment) return;
+    const controller = new AbortController();
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let checking = false;
+    const schedule = () => {
+      if (!controller.signal.aborted && document.visibilityState === "visible") timer = setTimeout(() => void check(), 4000);
+    };
+    const check = async () => {
+      if (checking || document.visibilityState !== "visible") return;
+      checking = true;
+      try {
+        const result = await authenticatedRequest(user, `/api/cases/${caseId}/preparation-access`, { signal: controller.signal });
+        if (!result.ok) throw new Error("payment_status_failed");
+        const data = await result.json() as PreparationAccess;
+        if (!controller.signal.aborted) {
+          setAccess(data);
+          setTerminalPayment(data.state === "terminal" ? data.paymentStatus ?? "expired" : null);
+          setAccessError("");
+          if (data.state === "pending") schedule();
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setAccessError("Не вдалося перевірити статус оплати. Повторимо перевірку автоматично.");
+          schedule();
+        }
+      } finally {
+        checking = false;
+      }
+    };
+    const visibilityChanged = () => {
+      if (timer) clearTimeout(timer);
+      if (document.visibilityState === "visible") void check();
+    };
+    document.addEventListener("visibilitychange", visibilityChanged);
+    schedule();
+    return () => {
+      controller.abort();
+      if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", visibilityChanged);
+    };
+  }, [user, caseId, access?.state, terminalPayment]);
+
+  async function refreshPayment() {
+    setCheckingPayment(true);
+    try {
+      const result = await authenticatedRequest(user, `/api/cases/${caseId}/preparation-access`, access?.state === "pending" ? { method: "POST" } : undefined);
+      if (result.status === 409) {
+        const body = await result.json() as { error?: string; paymentStatus?: string };
+        if (body.error === "payment_terminal" && (body.paymentStatus === "failure" || body.paymentStatus === "expired" || body.paymentStatus === "reversed")) {
+          setTerminalPayment(body.paymentStatus);
+          setAccessError("");
+          return;
+        }
+      }
+      if (!result.ok) throw new Error("payment_status_failed");
+      const data = await result.json() as PreparationAccess;
+      setAccess(data);
+      setTerminalPayment(data.state === "terminal" ? data.paymentStatus ?? "expired" : null);
+      setAccessError("");
+      setPaymentUnavailable(false);
+    } catch {
+      setAccessError("Не вдалося підтвердити статус оплати. Спробуйте пізніше або зверніться до підтримки.");
+    } finally {
+      setCheckingPayment(false);
+    }
+  }
+
   const application = response?.application;
   if (response && !application && !loading && !error && programId !== "vlasna-sprava") {
     return <section id="grant-application" className="readiness"><h4>Анкета заявки</h4><p>Для цієї програми доступний загальний план підготовки. Окрему анкету ще не додано.</p></section>;
@@ -117,14 +193,31 @@ export function GrantApplication({ user, caseId, caseRevision, programId, disabl
   const blocked = disabled || stale || loading || saving || response?.caseRevision !== caseRevision;
 
   async function startPayment() {
+    // Open synchronously so the browser does not block the checkout window.
+    const checkout = window.open("", "_blank");
+    if (checkout) checkout.opener = null;
     setStartingPayment(true);
-    setError("");
+    setAccessError("");
+    setPaymentUnavailable(false);
     try {
       const result = await authenticatedRequest(user, `/api/cases/${caseId}/preparation-access`, { method: "POST" });
+      if (result.status === 503) {
+        checkout?.close();
+        setPaymentUnavailable(true);
+        return;
+      }
       if (!result.ok) throw new Error("export_payment_start_failed");
-      setAccess(await result.json() as NonNullable<typeof access>);
+      const data = await result.json() as PreparationAccess;
+      setAccess(data);
+      setTerminalPayment(data.state === "terminal" ? data.paymentStatus ?? "expired" : null);
+      if (data.state === "pending" && data.paymentUrl) {
+        if (checkout) checkout.location.href = data.paymentUrl;
+      } else {
+        checkout?.close();
+      }
     } catch {
-      setError("Не вдалося відкрити оплату. Спробуйте ще раз.");
+      checkout?.close();
+      setAccessError("Не вдалося відкрити оплату. Спробуйте ще раз.");
     } finally {
       setStartingPayment(false);
     }
@@ -202,18 +295,23 @@ export function GrantApplication({ user, caseId, caseRevision, programId, disabl
       </>}
       {access?.state === "standard" && <>
         <p>Вартість комплекту PDF і XLSX для цієї заявки — 5 грн. Після підтвердження переказу відкриється завантаження заповнених файлів.</p>
-        <button type="button" className="primary" disabled={loading || startingPayment} onClick={() => void startPayment()}>
+        {accessError && <p role="alert">{accessError}</p>}
+        {paymentUnavailable ? <>
+          <p role="alert">Не вдалося підтвердити стан оплати. Не повторюйте переказ, доки не перевірите статус або не звернетеся до <a href="mailto:grantfoliomanager@gmail.com">підтримки</a>.</p>
+          <button type="button" className="secondary-btn" disabled={checkingPayment} onClick={() => void refreshPayment()}>{checkingPayment ? "Перевіряємо…" : "Перевірити статус"}</button>
+        </> : <button type="button" className="primary" disabled={loading || startingPayment} onClick={() => void startPayment()}>
           {startingPayment ? "Готуємо оплату…" : "Оплатити PDF і XLSX"}
-        </button>
+        </button>}
       </>}
-      {access?.state === "pending" && <>
-        <p role="status">Очікуємо підтвердження оплати.</p>
-        <p>Поповніть банку рівно на 5 грн через monobank або Apple Pay, якщо він доступний на вашому пристрої. Надішліть <a href="mailto:grantfoliomanager@gmail.com?subject=GrantFolio%20PDF%20XLSX">підтримці GrantFolio</a> код заявки, суму й час переказу, щоб оператор міг знайти його у виписці.</p>
-        <p>Код заявки <code>{access.reference}</code></p>
-        <a className="primary" href="https://send.monobank.ua/jar/9GcNmEBdxD" target="_blank" rel="noopener noreferrer">Відкрити банку monobank ↗</a>
+      {access?.state === "pending" && !terminalPayment && <>
+        <p role="status">Очікуємо підтвердження оплати. Статус оновиться автоматично, коли ви повернетеся на цю сторінку.</p>
+        {access.paymentUrl ? <p>Завершіть оплату 5 грн на захищеній сторінці monobank. Завантаження відкриється після підтвердження оплати.</p> : <p>Стан оплати уточнюється. Не повторюйте переказ; перевірте статус або зверніться до <a href="mailto:grantfoliomanager@gmail.com">підтримки</a>.</p>}
+        {access.paymentUrl && <a className="primary" href={access.paymentUrl} target="_blank" rel="noopener noreferrer">Відкрити оплату monobank ↗</a>}
+        {accessError && <p role="alert">{accessError}</p>}
         {" "}
-        <button type="button" className="secondary-btn" disabled={loading} onClick={() => setReload(value => value + 1)}>Перевірити підтвердження</button>
+        <button type="button" className="secondary-btn" disabled={checkingPayment} onClick={() => void refreshPayment()}>{checkingPayment ? "Перевіряємо…" : "Оновити статус оплати"}</button>
       </>}
+      {terminalPayment && <p role="alert">{terminalPayment === "expired" ? "Термін дії рахунку минув." : terminalPayment === "reversed" ? "Платіж повернуто." : "Платіж не відбувся."} Зверніться до <a href="mailto:grantfoliomanager@gmail.com">підтримки</a>, щоб уточнити подальші дії.</p>}
       {access?.state === "active" && <p role="status">Оплату підтверджено. Готові PDF і XLSX можна завантажити нижче.</p>}
     </section>}
     {application && !loading && <>
