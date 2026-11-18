@@ -117,7 +117,7 @@ export function jarAccessRouter(db: Pool, config: JarConfig | undefined = config
       const row = result.rows[0];
       const legacy = await db.query("SELECT 1 FROM grant_preparation_pilot WHERE case_id = $1 AND confirmed_at IS NOT NULL LIMIT 1", [id.data]);
       let available = false;
-      try { available = Boolean(config && config.secret.length >= 32 && config.accountId && config.jarUrl && new URL(config.jarUrl).protocol === "https:"); } catch { /* invalid URL */ }
+      try { available = process.env.MONOBANK_JAR_ENABLED === "true" && Boolean(config && config.secret.length >= 32 && config.accountId && config.jarUrl && new URL(config.jarUrl).protocol === "https:"); } catch { /* invalid URL */ }
       res.json({ state: row.confirmed_at || row.manual_unlocked_at || legacy.rowCount ? "active" : "pending", code: row.code, jarUrl: available ? config?.jarUrl : "", available, amountKopecks: row.amount_kopecks, confirmedAt: row.confirmed_at, manuallyUnlockedAt: row.manual_unlocked_at });
     } catch { res.sendStatus(503); }
   };

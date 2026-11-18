@@ -13,3 +13,8 @@
 
 ## Перевірки та межі
 Typecheck, production Vite build, diff-check PASS. Чотири цільові тести webhook (включно з реальною тимчасовою схемою PostgreSQL) перевіряють дублі, суму, коди і owner isolation. Незалежне Terra review: повний GET власної збереженої справи залишається дозволеним для збереження доступу до раніше внесених даних; створення нової роботи, чат у справі, анкета, бюджет, експорт вимагають оплати. Legacy entitlement уніфіковано на рівні проєкту. Загальний регресійний набір ще потребує оновлення платіжних fixtures під нову модель перед злиттям. Саме існування PR не активує webhook.
+
+## Продовження активації
+Авторизацію GCP відновлено. Створено `grantfolio-monobank-jar-webhook` version 1, значення не виводилось; runtime отримав доступ лише до цього секрету. Внутрішній ID обраної банки налаштовано в Cloud Run без запису персональної відповіді client-info у Git. Конфігураційна ревізія `grantfolio-web-00039-hmd` має 0% трафіку. `MONOBANK_JAR_ENABLED=false` зберігається до успішної реєстрації webhook. Operator helper отримує секрет через gcloud у пам’ять (fallback прихований ввід), просить лише персональний token; після відповіді банку status=ok вмикає інструкції оплати у Cloud Run.
+
+Оновлено платіжні fixtures. Повний набір із Firebase emulator й окремою базою `grantfolio_jar_verify`: 210 тестів, 209 PASS, 0 FAIL, 1 SKIP; реальний Jar PostgreSQL test PASS. Clean migration001–025 PASS. Попередня спроба на існуючій локальній базі зупинилась на розбіжності migration020; migrate.ts виконує все в одній транзакції з rollback, тому проміжний console output «Applied» не доводить COMMIT. Дані не скидались. Typecheck/backend compile/diff-check PASS. Доставку банком і реальні гроші не тестували.
