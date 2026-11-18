@@ -1,6 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
 import type { Pool } from "pg";
+import type { AssistantResponder } from "./assistant.js";
+import { postgresAssistantLimiter, type AssistantLimiter } from "./assistant-limits.js";
 import { normalize, searchGrants } from "./grant-discovery.js";
 import { GRANT_CATALOG } from "./grant-catalog-data.js";
 import { extractProfileFromText } from "./profile-extractor.js";
@@ -34,7 +36,7 @@ const view = (r: any) => ({
 export function nextQuestion(query: string, intents: string[], hasMatches: boolean): string {
   const q = query.toLocaleLowerCase("uk");
   if (/ферм|господарств/.test(q) && !/тварин|теплиц|садів|ягід|овоч|молок|бджіл|зерн/.test(q)) {
-    return "Що плануєте виробляти на фермі й на яку першу витрату потрібне фінансування? Від цього залежить, чи варто розглядати грант на запуск бізнесу або окрему аграрну програму.";
+    return "Можемо одразу почати з першого рядка кошторису. Для вирощування варто визначити, на чому зосередитесь спочатку: запуск виробництва чи зберігання й збут. Що плануєте виробляти на фермі?";
   }
   // A mention of ФОП alone (e.g. “чи потрібен ФОП?”) is not a status.
   const hasBusinessStatus = /(?:ще\s+)?не\s+(?:є\s+|маю\s+|зареєстрован(?:ий|а)\s+як\s+)?фоп|(?:немає|не маю)\s+(?:зареєстрованого\s+)?фоп|(?:працюю|зареєстрован(?:ий|а)|оформлен(?:ий|а))\s+(?:як\s+)?фоп|(?:маю|відкрив|відкрила|вже)\s+фоп|(?:фоп|бізнес)\s+(?:вже|ще не|немає)|вже працю|планую відкрити/.test(q);
@@ -85,7 +87,7 @@ function namedProgram(message: string) {
   return GRANT_CATALOG.find((p) => {
     const name = normalize(p.title);
     return (name.length > 8 && q.includes(name)) ||
-      (p.id === "vlasna-sprava" && /власн[ауої] справ[ауиі]/.test(q)) ||
+      (p.id === "vlasna-sprava" && /власн(?:а|у|ої|ій) справ[ауиі]/.test(q)) ||
       (p.id === "ua-greenhouse-grant" && /грант(?:у|ом)? на .*теплиц/.test(q)) ||
       (p.id === "agro-gardens" && /грант(?:у|ом)? на (?:сад|ягідник|виноградник)/.test(q));
   });
@@ -119,7 +121,48 @@ export function programFollowUp(message: string, previousMatches: { programId: s
     : "З чого почнемо: з опису продукту, продажів чи кошторису?";
   return [`${example ? "Як приклад розгляну" : "Розглянемо"} «${program.title}».`, ...sections, status, ...(program.details.unresolved.length ? [`Потрібно уточнити: ${program.details.unresolved[0]}`] : []), `[Офіційні умови](${program.officialUrl})`, question].join("\n\n");
 }
-export function advisorRouter(db: Pool) {
+async function preparationIdea(
+  responder: AssistantResponder,
+  limiter: AssistantLimiter,
+  owner: string,
+  context: string,
+  question: string,
+): Promise<string | undefined> {
+  const timeoutMs = 3200;
+  const lease = await limiter.acquire(owner, timeoutMs + 60000).catch(() => null);
+  if (!lease) return undefined;
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const text = await Promise.race([
+      responder({
+        mode: "preparation-ideas",
+        title: "Підготовка бізнес-проєкту",
+        revision: 0,
+        profileRevision: 0,
+        details: context.slice(-2000),
+        items: [],
+        total_kopecks: "0",
+      }, question, controller.signal),
+      new Promise<undefined>(resolve => {
+        timer = setTimeout(() => {
+          controller.abort();
+          resolve(undefined);
+        }, timeoutMs);
+      }),
+    ]);
+    const idea = text?.trim();
+    if (!idea || idea.length > 750 || /[\d<>]|https?:|www\.|грн|%|дедлайн|схвален|дозволен|прийом заяв|умов[иа] гранту|грант |програм[аи]/iu.test(idea)) return undefined;
+    return idea;
+  } catch {
+    return undefined;
+  } finally {
+    if (timer) clearTimeout(timer);
+    await limiter.release(owner, lease).catch(() => {});
+  }
+}
+
+export function advisorRouter(db: Pool, responder?: AssistantResponder, limiter = postgresAssistantLimiter(db)) {
   const router = Router();
   const active = new Set<string>();
   router.get("/conversations", async (_req, res, next) => {
@@ -350,7 +393,7 @@ export function advisorRouter(db: Pool) {
         const namedSelection = namedProgram(p.message);
         const selectedProgramId = namedSelection?.id ?? (!newNeed ? prior.at(-1)?.payload?.selectedProgramId : undefined);
         const followUp = programFollowUp(p.message, prior.at(-1)?.payload?.search?.matches ?? [], newNeed && !namedSelection, selectedProgramId, query) ?? (namedSelection ? `Розглянемо «${namedSelection.title}». ${namedSelection.details.overview} ${namedSelection.intakeStatus === "paused" ? "Прийом призупинено; дату відновлення потрібно підтвердити." : "Актуальний прийом і вашу відповідність потрібно підтвердити."} [Офіційні умови](${namedSelection.officialUrl})\n\nЩо хочете з’ясувати: витрати, вимоги чи подання заявки?` : undefined);
-        const reply = personalEducation
+        const consultation = personalEducation
           ? "GrantFolio допомагає шукати фінансування для відкриття або розвитку бізнесу. Програми для особистого навчання та стипендії не входять до каталогу. Якщо маєте підприємницьку ідею, розкажіть про неї."
           : studentNeedsIdea
             ? "Допоможу розібратися з фінансуванням підприємницької ідеї. Яку справу ви плануєте відкрити або розвинути та на що потрібні кошти?"
@@ -360,6 +403,11 @@ export function advisorRouter(db: Pool) {
                   .slice(0, 3)
                   .map((m) => `${m.title}. ${m.reason}`)
                   .join("\n\n")}\n\n${nextQuestion(query, search.intents, search.matches.length > 0)}`;
+        const idea = responder && !greeting && !personalEducation && !studentNeedsIdea &&
+          (followUp || rawSearch.intents.some(intent => businessIntents.includes(intent)))
+          ? await preparationIdea(responder, limiter, uid, newNeed ? "" : previousSeed, p.message)
+          : undefined;
+        const reply = idea ? `**Ідея для вашої чернетки**\n\n${idea}\n\n${consultation}` : consultation;
         const payload = {
           mode: "guided",
           selectedProgramId,

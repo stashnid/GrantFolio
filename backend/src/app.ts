@@ -1,3 +1,4 @@
+import { configuredGeminiResponder } from "./gemini.js";
 import {GRANT_CATALOG} from "./grant-catalog-data.js";
 import express, { type ErrorRequestHandler } from "express";
 import { getAuth } from "firebase-admin/auth";
@@ -372,7 +373,7 @@ export function createApp(
       next(error);
     }
   });
-  app.use("/api/advisor", advisorRouter(db));
+  app.use("/api/advisor", advisorRouter(db, configuredGeminiResponder()));
   app.use("/api/cases", casesRouter(db));
   app.use("/api/feedback", feedbackRouter(db));
   app.use("/api/donations", donationsRouter(db));

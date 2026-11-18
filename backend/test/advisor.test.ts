@@ -564,3 +564,52 @@ test("farm consultation answers spending, requirements and application questions
   const different = await send("А тепер хочу відкрити кав’ярню");
   assert.equal(different.selectedProgramId, undefined);
 });
+
+test("advisor adds a practical draft idea while preserving catalog guidance and fallback", async () => {
+  const probe = express();
+  probe.use(express.json(), (_req, res, next) => { res.locals.uid = a; next(); });
+  const conversationId = crypto.randomUUID();
+  let calls = 0;
+  let releases = 0;
+  probe.use(advisorRouter(db, async (snapshot) => {
+    assert.equal(snapshot.mode, "preparation-ideas");
+    calls++;
+    if (calls === 1) return "Почнімо з покупців. Для ягідної ферми порівняймо продаж свіжих ягід місцевим магазинам і продаж переробникам.";
+    assert.match(String(snapshot.details), /ягідну ферму/);
+    if (calls === 2) return "Грант схвалено. Отримаєте 500 грн.";
+    throw new Error("upstream");
+  }, {
+    acquire: async () => "test-lease",
+    release: async () => { releases++; },
+  }));
+  const listener = probe.listen(0, "127.0.0.1");
+  try {
+    await once(listener, "listening");
+    const address = listener.address();
+    if (!address || typeof address === "string") throw new Error("No test port");
+    async function send(question: string, id = crypto.randomUUID()) {
+      const response = await fetch(`http://127.0.0.1:${address.port}/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, conversationId, message: question }),
+      });
+      assert.equal(response.status, 200);
+      return (await response.json()).message;
+    }
+    const id = crypto.randomUUID();
+    const question = "Хочу відкрити ягідну ферму";
+    const opening = await send(question, id);
+    assert.match(opening.reply, /продаж переробникам/);
+    assert.equal((await send(question, id)).reply, opening.reply);
+    assert.equal(calls, 1);
+    const costs = await send("На що можна витратити кошти у «Власній справі»?");
+    assert.match(costs.reply, /Офіційні умови/);
+    assert.doesNotMatch(costs.reply, /схвалено|500 грн/);
+    const next = await send("Як подати заявку?");
+    assert.match(next.reply, /XLSX.*PDF/);
+    assert.equal(calls, 3);
+    assert.equal(releases, 3);
+  } finally {
+    listener.close();
+  }
+});
