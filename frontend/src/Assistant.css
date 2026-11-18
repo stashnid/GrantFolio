@@ -251,12 +251,12 @@
   align-self: flex-end;
   max-width: min(82%, 580px);
   padding: 12px 18px;
-  border: 1px solid #dfe8f6;
+  border: 1px solid #cce0f5;
   border-radius: 22px 22px 6px 22px;
-  background: #eef3fb;
-  box-shadow: none;
+  background: #eef4fc;
+  box-shadow: 0 1px 3px rgba(15, 29, 50, 0.04);
   animation: none;
-  color: #0f1d32;
+  color: #0c192c;
   font-size: 15px;
   line-height: 1.62;
 }
@@ -338,15 +338,16 @@
 }
 
 .live-chat-container .assistant-text li + li {
-  margin-top: 6px;
+  margin-top: 8px;
 }
 
 .live-chat-container .assistant-text .reply-heading {
-  margin: 22px 0 8px;
-  color: #0f1d32;
-  font-size: 1.06em;
-  font-weight: 720;
+  margin: 20px 0 8px;
+  color: #0c192c;
+  font-size: 1.16em;
+  font-weight: 750;
   letter-spacing: -0.015em;
+  line-height: 1.35;
 }
 
 .live-chat-container .assistant-text > :first-child {
@@ -728,9 +729,9 @@
 
 .live-chat-container .chat-disclaimer {
   margin: 6px 0 0;
-  color: #6b7a90;
-  font-size: 11px;
-  line-height: 1.35;
+  color: #475569;
+  font-size: 12px;
+  line-height: 1.4;
   text-align: center;
 }
 
@@ -1027,6 +1028,8 @@
     max-width: 90%;
     padding: 10px 14px;
     font-size: 14.5px;
+    border-color: #cce0f5;
+    background: #eef4fc;
   }
   .live-chat-container .assistant-bubble {
     font-size: 14.5px;
@@ -1065,9 +1068,10 @@
     min-height: 40px;
   }
   .live-chat-container .chat-disclaimer {
-    margin: 5px 0 0;
-    font-size: 10.5px;
-    line-height: 1.3;
+    margin: 6px 0 0;
+    font-size: 11.5px;
+    line-height: 1.38;
+    color: #475569;
   }
   .suggestion-comparison {
     grid-template-columns: 1fr;
