@@ -1,5 +1,11 @@
 # Журнал роботи
 
+## 18.11.2026 — Стилізований діалог підтвердження GrantFolio (заміна системних `window.confirm`)
+
+- Створено `frontend/src/ConfirmDialog.tsx` та `frontend/src/ConfirmDialog.css` (`ConfirmProvider` + `useConfirm`) і підключено у `frontend/src/main.tsx`.
+- Замінено всі 10 викликів `window.confirm(...)` у `Advisor.tsx`, `App.tsx`, `Assistant.tsx` та `Cases.tsx` на фірмове модальне вікно у стилі GrantFolio (тони `danger`/`warning`/`default`, портал `z-index: 1200`, WCAG 2.2 AA `alertdialog`, фокус-пастка, перехоплення `Escape`, захист від подвійних кліків і stale-мутацій).
+- Пройдено незалежний аудит `react-reviewer` (усунуто всі 6 зауважень, фінальний вердикт **APPROVE**); `npm run typecheck`, `npm run build`, `git diff --check -- frontend docs` PASS. Звіт: `docs/agents/2026-11-18-styled-confirm-dialog.md`.
+
 ## 18.11.2026 — Керування списком чатів асистента (видалення/перейменування) та клікабельні картки каталогу грантів
 
 - Делеговано дослідження, паралельну реалізацію та незалежний аудит команді субагентів (`code-explorer` ×2, `implementer` ×5, `code-reviewer`, `react-reviewer` ×2, `security-reviewer`) у гілці `feat/chat-management-clickable-catalog` від `origin/main` (`6ecd1dc`).

@@ -1,4 +1,5 @@
 import { ReplyReveal } from "./ReplyReveal";
+import { useConfirm } from "./ConfirmDialog";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import "./Assistant.css";
 import { readableApiError } from "./api";
@@ -407,6 +408,9 @@ export function Assistant({
   onApplySuggestion,
   canApplySuggestions = false,
 }: Props) {
+  const confirm = useConfirm();
+  const activeCaseIdRef = useRef(caseId);
+  activeCaseIdRef.current = caseId;
   const starterPrompts = getStarterPrompts(programTitle, programSelected);
   const [revealingId, setRevealingId] = useState<string | null>(null);
   const scrollArea = useRef<HTMLDivElement>(null);
@@ -567,13 +571,26 @@ export function Assistant({
   }, [message, onDraftChange]);
 
   useEffect(() => {
-    if (prefilledPrompt) {
-      if (!message.trim() || message === prefilledPrompt || window.confirm("Замінити ненадіслане запитання запропонованим текстом?")) {
-        setMessage(prefilledPrompt);
-      }
-      onClearPrefilled?.();
+    if (!prefilledPrompt) return;
+    const promptToApply = prefilledPrompt;
+    const targetCaseId = caseId;
+    onClearPrefilled?.();
+    if (!message.trim() || message === promptToApply) {
+      setMessage(promptToApply);
+      return;
     }
-  }, [prefilledPrompt, onClearPrefilled, caseId]);
+    void confirm({
+      title: "Замінити ненадіслане запитання?",
+      message: "У полі вводу вже є текст. Замінити його запропонованим запитанням?",
+      confirmLabel: "Замінити",
+      cancelLabel: "Залишити мій текст",
+      tone: "warning",
+    }).then((confirmed) => {
+      if (confirmed && active.current && activeCaseIdRef.current === targetCaseId) {
+        setMessage(promptToApply);
+      }
+    });
+  }, [prefilledPrompt, onClearPrefilled, caseId, confirm]);
 
   useEffect(() => {
     if (scrollToBottom.current) {
@@ -666,8 +683,18 @@ export function Assistant({
     }, 5000);
   }
 
-  function usePrompt(text: string) {
-    if (message.trim() && message !== text && !window.confirm("Замінити ненадіслане запитання запропонованим текстом?")) return;
+  async function usePrompt(text: string) {
+    const targetCaseId = caseId;
+    if (message.trim() && message !== text) {
+      const confirmed = await confirm({
+        title: "Замінити ненадіслане запитання?",
+        message: "У полі вводу вже є текст. Замінити його запропонованим запитанням?",
+        confirmLabel: "Замінити",
+        cancelLabel: "Залишити мій текст",
+        tone: "warning",
+      });
+      if (!confirmed || !active.current || activeCaseIdRef.current !== targetCaseId) return;
+    }
     setMessage(text);
     inputRef.current?.focus();
   }

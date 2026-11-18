@@ -9,6 +9,7 @@ import { useSessionDraft } from "./useSessionDraft";
 import "./SessionRecovery.css";
 import { authenticatedRequest, readableApiError } from "./api";
 import { CustomSelect } from "./CustomSelect";
+import { useConfirm } from "./ConfirmDialog";
 import type { GrantProgram } from "./grants";
 import { friendlyTitle } from "../../backend/src/grant-discovery";
 
@@ -171,6 +172,14 @@ export function Cases({
   preparationId?: string;
 }) {
   const {programs: GRANT_PROGRAMS} = useGrantPrograms();
+  const confirm = useConfirm();
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   const [cases, setCases] = useState<Case[]>([]),
     [selected, setSelected] = useState<Case | null>(null),
     [draft, setDraft] = useState<DraftItem[]>([]),
@@ -279,21 +288,24 @@ export function Cases({
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty, pending, chatDraft]);
-  function mayLeaveDraft() {
+  async function mayLeaveDraft() {
     if (pending) {
       setError("Спочатку повторіть збереження, щоб дізнатися його результат.");
       return false;
     }
-    return (
-      (!dirty && !chatDraft) ||
-      window.confirm(
-        "Є незбережені зміни або ненадіслане запитання. Відкрити інший проєкт і втратити їх?",
-      )
-    );
+    if (!dirty && !chatDraft) return true;
+    const confirmed = await confirm({
+      title: "Перейти до іншого проєкту?",
+      message: "Є незбережені зміни або ненадіслане запитання. Якщо відкрити інший проєкт, їх буде втрачено.",
+      confirmLabel: "Перейти без збереження",
+      cancelLabel: "Залишитися",
+      tone: "warning",
+    });
+    return confirmed && mountedRef.current;
   }
   async function select(id: string, discard = false) {
     if (!discard && selected?.id === id) return;
-    if (!discard && !mayLeaveDraft()) return;
+    if (!discard && !(await mayLeaveDraft())) return;
     setBusy(true);
     setError("");
     try {
@@ -327,7 +339,7 @@ export function Cases({
 
   async function create(e?: React.FormEvent, preparation?: { title: string; programId: string; initialDescription: string }) {
     e?.preventDefault();
-    if (programTarget || busy || !ready || (!preparation && !mayLeaveDraft())) return;
+    if (programTarget || busy || !ready || (!preparation && !(await mayLeaveDraft()))) return;
     const targetId = preparation?.programId ?? selectedProgram?.id ?? null;
     const target = targetId ? GRANT_PROGRAMS.find(p => p.id === targetId) : null;
     if (targetId && (!target || !isGrantAvailable(target))) { setError("Прийом за цією програмою зараз не підтверджено. Виберіть актуальну програму в каталозі."); return; }
@@ -371,12 +383,24 @@ export function Cases({
   useEffect(() => {
     if (programTarget || !preparationId || handledPreparation.current === preparationId || !selectedProgram || !ready || busy) return;
     handledPreparation.current = preparationId;
-    if (!mayLeaveDraft()) { setShowCreate(false); onClearProgram?.(); return; }
-    void create(undefined, {
-      title: `${preparationSeed ? preparationSeed.slice(0, 80) : businessName || "Мій проєкт"} — ${friendlyTitle(selectedProgram)}`.slice(0, 160),
-      programId: selectedProgram.id,
-      initialDescription: preparationSeed,
-    });
+    const targetProgram = selectedProgram;
+    const targetSeed = preparationSeed;
+    const targetBusiness = businessName;
+    void (async () => {
+      if (!(await mayLeaveDraft())) {
+        if (mountedRef.current) {
+          setShowCreate(false);
+          onClearProgram?.();
+        }
+        return;
+      }
+      if (!mountedRef.current) return;
+      await create(undefined, {
+        title: `${targetSeed ? targetSeed.slice(0, 80) : targetBusiness || "Мій проєкт"} — ${friendlyTitle(targetProgram)}`.slice(0, 160),
+        programId: targetProgram.id,
+        initialDescription: targetSeed,
+      });
+    })();
   }, [preparationId, selectedProgram, programTarget, ready, busy, preparationSeed, businessName]);
 
   async function attachProgram() {
@@ -632,14 +656,22 @@ export function Cases({
   }
   async function deleteDraft() {
     if (!selected || sessionDraft.recovery) return;
-    if (!window.confirm(`Видалити чернетку «${selected.title}»? Цю дію неможливо скасувати.`)) return;
+    const targetCase = selected;
+    const confirmed = await confirm({
+      title: "Видалити проєкт?",
+      message: `Чернетку «${targetCase.title}» буде видалено. Цю дію неможливо скасувати.`,
+      confirmLabel: "Видалити",
+      cancelLabel: "Скасувати",
+      tone: "danger",
+    });
+    if (!confirmed || !mountedRef.current || sessionDraft.recovery) return;
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      const r = await request(`/api/cases/${selected.id}`, { method: "DELETE" });
+      const r = await request(`/api/cases/${targetCase.id}`, { method: "DELETE" });
       if (!r.ok && r.status !== 404) throw Error();
-      setCases((old) => old.filter((c) => c.id !== selected.id));
+      setCases((old) => old.filter((c) => c.id !== targetCase.id));
       setSelected(null);
       setDraft([]);
       setDetails(emptyDetails);
@@ -875,10 +907,21 @@ export function Cases({
               <p>Щоб редагувати або зберігати проєкт, спочатку відновіть або видаліть цю копію.</p>
               {sessionDraft.recovery.pendingUnknown && <p>Результат попереднього збереження невідомий. Перевірте актуальну версію; повторне збереження не запускається автоматично.</p>}
               {sessionDraft.recovery.baseRevision === selected.revision && !sessionDraft.recovery.pendingUnknown ? (
-                <button type="button" disabled={busy || !!pending || conflict} onClick={() => {
-                  if (dirty && !window.confirm("Замінити поточні незбережені зміни знайденою копією?")) return;
-                  setDetails(sessionDraft.recovery!.details);
-                  setDraft(hydrateDraft(sessionDraft.recovery!.budget));
+                <button type="button" disabled={busy || !!pending || conflict} onClick={async () => {
+                  const recovery = sessionDraft.recovery;
+                  if (!recovery) return;
+                  if (dirty) {
+                    const confirmed = await confirm({
+                      title: "Відновити знайдену копію?",
+                      message: "Поточні незбережені зміни у формі буде замінено знайденою копією.",
+                      confirmLabel: "Відновити",
+                      cancelLabel: "Скасувати",
+                      tone: "warning",
+                    });
+                    if (!confirmed || !mountedRef.current) return;
+                  }
+                  setDetails(recovery.details);
+                  setDraft(hydrateDraft(recovery.budget));
                   sessionDraft.resolved();
                   setNotice("Зміни відновлено у формі. Перевірте й збережіть їх.");
                 }}>Відновити зміни</button>
@@ -1394,13 +1437,18 @@ export function Cases({
               type="button"
               className="link"
               disabled={busy}
-              onClick={() => {
-                if (
-                  window.confirm(
-                    "Завантажити актуальну версію? Незбережені зміни буде втрачено.",
-                  )
-                )
-                  void select(selected.id, true);
+              onClick={async () => {
+                const targetId = selected.id;
+                const confirmed = await confirm({
+                  title: "Завантажити актуальну версію?",
+                  message: "Поточні незбережені зміни буде втрачено, а форму оновлено з сервера.",
+                  confirmLabel: "Завантажити",
+                  cancelLabel: "Скасувати",
+                  tone: "warning",
+                });
+                if (confirmed && mountedRef.current) {
+                  void select(targetId, true);
+                }
               }}
             >
               Завантажити актуальну версію

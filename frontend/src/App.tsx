@@ -12,6 +12,7 @@ import {
 import { auth } from "./firebase";
 import { authenticatedRequest, ApiError, readableApiError } from "./api";
 import { EmailLoginCode } from "./EmailLoginCode";
+import { useConfirm } from "./ConfirmDialog";
 import "./style.css";
 import "./workspace.css";
 import type { GrantProgram } from "./grants";
@@ -36,6 +37,7 @@ function NavIcon({kind}: {kind: WorkspaceTab | "logout"}) {
   return <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[kind]} /></svg>;
 }
 export function App() {
+  const confirm = useConfirm();
   const emailInput = useRef<HTMLInputElement>(null);
   const autoSendEmailCode = useRef(false);
   const activeUid = useRef<string | null>(null);
@@ -181,7 +183,16 @@ export function App() {
     return () => window.removeEventListener("keydown", onKeyDown);
   }, [mobileMenuOpen]);
   async function logout() {
-    if (hasUnsavedChanges && !window.confirm("Є незбережені зміни або ненадіслане запитання. Вийти без збереження?")) return;
+    if (hasUnsavedChanges) {
+      const confirmed = await confirm({
+        title: "Вийти без збереження?",
+        message: "Є незбережені зміни або ненадіслане запитання. Якщо вийти зараз, їх буде втрачено.",
+        confirmLabel: "Вийти",
+        cancelLabel: "Залишитися",
+        tone: "danger",
+      });
+      if (!confirmed) return;
+    }
     if (user) await authenticatedRequest(user, "/api/auth/email-code/clear", { method: "POST" }, 1500).catch(() => {});
     try { await signOut(auth); } catch { setError("Не вдалося вийти. Спробуйте ще раз."); }
   }
@@ -549,7 +560,20 @@ export function App() {
                   setMessage("");
                 }}
                 onSubmit={save}
-                onRetry={() => { if (profileDirty && !window.confirm("Завантажити збережений профіль? Незбережені зміни у формі буде втрачено.")) return; setError(""); setRetry(retry + 1); }}
+                onRetry={async () => {
+                  if (profileDirty) {
+                    const confirmed = await confirm({
+                      title: "Завантажити збережений профіль?",
+                      message: "Незбережені зміни у формі профілю буде втрачено.",
+                      confirmLabel: "Завантажити",
+                      cancelLabel: "Скасувати",
+                      tone: "warning",
+                    });
+                    if (!confirmed) return;
+                  }
+                  setError("");
+                  setRetry((current) => current + 1);
+                }}
               />
               {profileReady && !profileDirty && savedProfile.businessName && <button type="button" className="link" onClick={() => openTab("catalog")}>Перейти до каталогу грантів →</button>}
             </div>
