@@ -1449,8 +1449,20 @@ export function Cases({
                 </p>
               </div>
 
+              {selected.programId === "vlasna-sprava" && <section className="payment-entry" aria-labelledby="payment-entry-title">
+                <div>
+                  <h5 id="payment-entry-title">Оплата за готові PDF і таблицю Excel</h5>
+                  <p>Комплект заповнених файлів коштує 5 грн. Після підтвердження переказу відкриється завантаження.</p>
+                </div>
+                <a className="primary payment-entry-link" href="#export-payment" onClick={event => {
+                  event.preventDefault();
+                  document.getElementById("export-payment")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}>Перейти до оплати</a>
+              </section>}
+
               {selected.programId && <GrantApplication key={selected.id} user={user} caseId={selected.id}
-                caseRevision={selected.revision} disabled={dirty || !!pending || conflict || !!sessionDraft.recovery} />}
+                caseRevision={selected.revision} programId={selected.programId}
+                disabled={dirty || !!pending || conflict || !!sessionDraft.recovery} />}
 
               <section className="readiness" aria-labelledby="readiness-heading">
                 <h4 id="readiness-heading">Заповненість чернетки проєкту</h4>

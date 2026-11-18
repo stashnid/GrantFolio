@@ -46,10 +46,11 @@ function parseAnswer(question: GrantApplicationQuestion, input: string) {
   return value || undefined;
 }
 
-export function GrantApplication({ user, caseId, caseRevision, disabled }: {
+export function GrantApplication({ user, caseId, caseRevision, programId, disabled }: {
   user: User;
   caseId: string;
   caseRevision: number;
+  programId: string;
   disabled: boolean;
 }) {
   const [response, setResponse] = useState<ReviewResponse | null>(null);
@@ -59,6 +60,7 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
   const [downloadingTemplate, setDownloadingTemplate] = useState(false);
   const [stale, setStale] = useState(false);
   const [error, setError] = useState("");
+  const [accessError, setAccessError] = useState("");
   const [access, setAccess] = useState<{ state: "standard" | "pending" | "active"; reference: string | null } | null>(null);
   const [startingPayment, setStartingPayment] = useState(false);
   const [reload, setReload] = useState(0);
@@ -68,20 +70,31 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
     const controller = new AbortController();
     setLoading(true);
     setError("");
+    setAccessError("");
     setAccess(null);
-    Promise.all([
+    Promise.allSettled([
       authenticatedRequest(user, path, { signal: controller.signal }),
       authenticatedRequest(user, `/api/cases/${caseId}/preparation-access`, { signal: controller.signal }),
     ])
-      .then(async ([result, status]) => {
-        if (!result.ok || !status.ok) throw new Error("application_read_failed");
+      .then(async ([applicationResult, paymentResult]) => {
+        if (applicationResult.status === "rejected" || !applicationResult.value.ok) throw new Error("application_read_failed");
+        const result = applicationResult.value;
         const data = await result.json() as ReviewResponse;
-        const paymentAccess = await status.json() as NonNullable<typeof access>;
         if (controller.signal.aborted) return;
-        setAccess(paymentAccess);
         setResponse(data);
         setEditing(null);
         setStale(data.caseRevision !== caseRevision);
+        if (paymentResult.status === "fulfilled" && paymentResult.value.ok) {
+          try {
+            setAccess(await paymentResult.value.json() as NonNullable<typeof access>);
+          } catch {
+            setAccess(null);
+            setAccessError("Не вдалося перевірити оплату. Спробуйте оновити статус.");
+          }
+        } else {
+          setAccess(null);
+          setAccessError("Не вдалося перевірити оплату. Спробуйте оновити статус.");
+        }
       })
       .catch(error => {
         if (!controller.signal.aborted) setError(readableApiError(error, "Не вдалося завантажити анкету."));
@@ -93,7 +106,7 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
   }, [user, path, caseId, caseRevision, reload]);
 
   const application = response?.application;
-  if (response && !application && !loading && !error) {
+  if (response && !application && !loading && !error && programId !== "vlasna-sprava") {
     return <section id="grant-application" className="readiness"><h4>Анкета заявки</h4><p>Для цієї програми доступний загальний план підготовки. Окрему анкету ще не додано.</p></section>;
   }
   const question = application?.questions.find(item => item.id === editing) ?? application?.nextQuestion;
@@ -179,16 +192,21 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
     {loading && <p role="status">Завантажуємо анкету…</p>}
     {error && <p role="alert" className="error">{error}</p>}
     {stale && <p>За потреби повторно відкрийте проєкт, щоб завантажити його актуальну версію.</p>}
-    {(stale || (access === null && !!error)) && <button type="button" className="link" onClick={() => setReload(value => value + 1)}>Оновити анкету</button>}
-    {application?.programId === "vlasna-sprava" && access && <section id="export-payment" className="export-section" aria-labelledby="export-payment-title">
+    {(stale || (access === null && (!!accessError || !!error))) && <button type="button" className="link" onClick={() => setReload(value => value + 1)}>Оновити анкету</button>}
+    {programId === "vlasna-sprava" && <section id="export-payment" className="export-section" aria-labelledby="export-payment-title" tabIndex={-1}>
       <h5 id="export-payment-title">Завантаження PDF і таблиці Excel</h5>
-      {access.state === "standard" && <>
+      {!access && loading && <p role="status">Перевіряємо статус оплати…</p>}
+      {!access && !loading && <>
+        <p role="alert">{accessError || (error ? "Спочатку оновіть анкету, щоб перевірити оплату." : "Не вдалося перевірити оплату. Файли залишаються захищеними до підтвердження.")}</p>
+        <button type="button" className="secondary-btn" onClick={() => setReload(value => value + 1)}>Повторити перевірку</button>
+      </>}
+      {access?.state === "standard" && <>
         <p>Вартість комплекту PDF і XLSX для цієї заявки — 5 грн. Після підтвердження переказу відкриється завантаження заповнених файлів.</p>
         <button type="button" className="primary" disabled={loading || startingPayment} onClick={() => void startPayment()}>
           {startingPayment ? "Готуємо оплату…" : "Оплатити PDF і XLSX"}
         </button>
       </>}
-      {access.state === "pending" && <>
+      {access?.state === "pending" && <>
         <p role="status">Очікуємо підтвердження оплати.</p>
         <p>Поповніть банку рівно на 5 грн через monobank або Apple Pay, якщо він доступний на вашому пристрої. Надішліть <a href="mailto:grantfoliomanager@gmail.com?subject=GrantFolio%20PDF%20XLSX">підтримці GrantFolio</a> код заявки, суму й час переказу, щоб оператор міг знайти його у виписці.</p>
         <p>Код заявки <code>{access.reference}</code></p>
@@ -196,7 +214,7 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
         {" "}
         <button type="button" className="secondary-btn" disabled={loading} onClick={() => setReload(value => value + 1)}>Перевірити підтвердження</button>
       </>}
-      {access.state === "active" && <p role="status">Оплату підтверджено. Готові PDF і XLSX можна завантажити нижче.</p>}
+      {access?.state === "active" && <p role="status">Оплату підтверджено. Готові PDF і XLSX можна завантажити нижче.</p>}
     </section>}
     {application && !loading && <>
       <p>{application.readyForReview ? "Відповіді зібрано для предметної перевірки." : "Заповніть робочу анкету. Вона допоможе зібрати факти й пройти базові перевірки за умовами програми."}</p>
