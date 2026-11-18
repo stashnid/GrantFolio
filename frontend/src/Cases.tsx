@@ -1550,9 +1550,9 @@ export function Cases({
                 {showExportFeedback && onOpenFeedback && (
                   <FeedbackPromptBanner
                     milestoneKey="cases-export"
-                    title="Чернетку сформовано. Чи все спрацювало чітко?"
-                    description="Оцініть зручність підготовки та поділіться порадами щодо покращення експорту."
-                    actionLabel="Оцінити результат"
+                    title="Документи сформовано. Чи все було зручно?"
+                    description="Напишіть, чи все було зрозуміло та що варто зробити простішим для подання заявки."
+                    actionLabel="Оцінити сервіс"
                     onOpenFeedback={() => onOpenFeedback({ screen: "export", programId: selected.programId })}
                   />
                 )}

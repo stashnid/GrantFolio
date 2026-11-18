@@ -540,17 +540,17 @@ export interface FeedbackNotificationEmailInput {
 }
 
 const FEEDBACK_TASK_LABELS: Record<string, string> = {
-  profile: "Профіль бізнесу",
-  project: "Проєкт / кейс",
-  budget: "Бюджет",
-  assistant: "AI-асистент",
+  project: "Весь сайт загалом",
   catalog: "Каталог грантів",
-  export: "Експорт документів",
+  assistant: "Поради помічника",
+  budget: "Бюджет",
+  profile: "Дані про бізнес",
+  export: "Завантаження документів",
 };
 
 const FEEDBACK_OUTCOME_LABELS: Record<string, string> = {
   completed: "Завдання виконано",
-  partial: "Виконано частково",
+  partial: "Вийшло частково",
   failed: "Не вдалося виконати",
   unspecified: "Не вказано",
 };
@@ -565,11 +565,11 @@ const FEEDBACK_WTP_LABELS: Record<string, string> = {
 };
 
 const FEEDBACK_ROLE_LABELS: Record<string, string> = {
-  entrepreneur: "Підприємець",
+  entrepreneur: "Підприємець / власник справи",
   fop: "ФОП",
-  startup_founder: "Засновник стартапу",
-  accountant: "Бухгалтер / фінансист",
-  student_business: "Студент / навчальний проєкт",
+  startup_founder: "Планує розпочати власну справу",
+  accountant: "Бухгалтер або юрист",
+  student_business: "Студент або початківець",
   volunteer: "Волонтер / ГО",
   other: "Інше",
 };
@@ -661,9 +661,9 @@ export function renderFeedbackNotificationEmail(
     input.contactConsent && input.contactInfo?.trim() ? input.contactInfo.trim() : null;
 
   const subRatings = [
-    input.ratingUx != null ? `UX: ${input.ratingUx}/5` : "",
-    input.ratingUsefulness != null ? `Користь: ${input.ratingUsefulness}/5` : "",
-    input.ratingAi != null ? `AI: ${input.ratingAi}/5` : "",
+    input.ratingUx != null ? `Зручність сайту: ${input.ratingUx}/5` : "",
+    input.ratingUsefulness != null ? `Користь для справи: ${input.ratingUsefulness}/5` : "",
+    input.ratingAi != null ? `Поради помічника: ${input.ratingAi}/5` : "",
   ].filter(Boolean);
 
   const contextParts = Object.entries(input.contextSnapshot ?? {})

@@ -42,55 +42,55 @@ type WillingnessToPay =
   | "free_only";
 
 const RATINGS = [
-  { value: 1, label: "1 — Потрібно доопрацювати" },
+  { value: 1, label: "1 — Потрібно значно доопрацювати" },
   { value: 2, label: "2 — Складно розібратися" },
-  { value: 3, label: "3 — Нормально" },
-  { value: 4, label: "4 — Добре" },
-  { value: 5, label: "5 — Дуже допомогло" },
+  { value: 3, label: "3 — Нормально, є що покращити" },
+  { value: 4, label: "4 — Добре, майже все зрозуміло" },
+  { value: 5, label: "5 — Відмінно, дуже допомогло" },
 ] as const;
 
 const SCALE_VALUES = [1, 2, 3, 4, 5] as const;
 
 const TASK_OPTIONS: ReadonlyArray<{ value: FeedbackTask; label: string }> = [
-  { value: "assistant", label: "Асистент" },
-  { value: "project", label: "Мої проєкти" },
-  { value: "budget", label: "Кошторис" },
-  { value: "catalog", label: "Каталог грантів" },
-  { value: "profile", label: "Профіль бізнесу" },
-  { value: "export", label: "Експорт" },
+  { value: "project", label: "Весь сайт загалом" },
+  { value: "catalog", label: "Пошук грантів" },
+  { value: "assistant", label: "Поради помічника" },
+  { value: "budget", label: "Розрахунок витрат" },
+  { value: "profile", label: "Дані про бізнес" },
+  { value: "export", label: "Завантаження документів" },
 ];
 
 const TASK_GUIDING_PROMPTS: Record<FeedbackTask, string> = {
-  assistant:
-    "Чи зрозумів асистент специфіку вашого бізнесу? Якого уточнення або прикладу бракувало?",
-  budget:
-    "Чи вдалося коректно розкласти витрати й зрозуміти власний внесок? Де виникли сумніви?",
   project:
-    "Чи зручно структурувати опис проєкту? Чого бракує, щоб довести чернетку до подання?",
-  export:
-    "Чи готовий сформований документ стати основою для подання? Що варто додати або виправити?",
+    "Чи зручно було користуватися сайтом загалом? Що здалося заплутаним, а що сподобалося?",
   catalog:
-    "Чи знайшли ви релевантну програму для своєї справи? Яких фільтрів або умов не вистачило?",
+    "Чи вдалося знайти грант для вашої справи? Якої інформації або умов вам бракувало?",
+  assistant:
+    "Чи зрозуміло відповідав електронний помічник? Чи допомогли його підказки?",
+  budget:
+    "Чи легко було порахувати витрати на проєкт? Де виникли труднощі чи сумніви?",
   profile:
-    "Чи зручно було заповнювати профіль бізнесу? Які поля здалися зайвими або незрозумілими?",
+    "Чи зрозуміло, які дані про бізнес потрібно вказати? Що варто спростити?",
+  export:
+    "Чи зрозумілі готові документи для заявки? Чого в них не вистачає?",
 };
 
 const LOW_RATING_TAGS = [
-  "Помітив помилку / збій",
-  "Незрозумілі умови",
-  "Складно з бюджетом",
-  "Бракує потрібної фічі",
-  "Мобільна верстка",
-  "Повільно працює",
+  "Виникла помилка на сайті",
+  "Складно розібратися",
+  "Важко рахувати суми",
+  "Бракує потрібної можливості",
+  "Незручно з телефона",
+  "Сайт повільно відкривається",
 ] as const;
 
 const HIGH_RATING_TAGS = [
-  "Усе працює стабільно",
-  "Зручний функціонал",
-  "Швидкий підбір",
-  "Зрозуміла чернетка",
-  "Є ідея для нової фічі",
-  "Корисний каталог",
+  "Все просто й зрозуміло",
+  "Працює надійно, без збоїв",
+  "Швидко знайшов грант",
+  "Зрозумілі підказки та тексти",
+  "Маю ідею для покращення",
+  "Корисний перелік грантів",
 ] as const;
 
 const CRITERIA_ITEMS: ReadonlyArray<{
@@ -100,32 +100,32 @@ const CRITERIA_ITEMS: ReadonlyArray<{
 }> = [
   {
     key: "ux",
-    title: "Стабільність і зручність (UX)",
-    hint: "Чи все працювало без збоїв і зрозуміло?",
+    title: "Простота та зручність сайту",
+    hint: "Чи легко було розібратися з кнопками і сторінками, без збоїв?",
   },
   {
     key: "usefulness",
-    title: "Повнота функціоналу і користь",
-    hint: "Чи вистачило функцій для вашої задачі?",
+    title: "Користь для вашої справи",
+    hint: "Чи допоміг сервіс розібратися з грантом і заощадити ваш час?",
   },
   {
     key: "ai",
-    title: "Якість ШІ-асистента",
-    hint: "Наскільки точними й корисними були відповіді?",
+    title: "Зрозумілість відповідей і порад",
+    hint: "Чи простою людською мовою пояснював електронний помічник?",
   },
 ];
 
 const OUTCOME_OPTIONS: ReadonlyArray<{ value: TaskOutcome; label: string }> = [
-  { value: "completed", label: "Так, повністю" },
-  { value: "partial", label: "Частково" },
-  { value: "failed", label: "Ні, зупинився на складному кроці" },
+  { value: "completed", label: "Так, усе вийшло" },
+  { value: "partial", label: "Вийшло частково" },
+  { value: "failed", label: "Ні, виникли труднощі" },
 ];
 
 const WTP_OPTIONS: ReadonlyArray<{ value: WillingnessToPay; label: string }> = [
-  { value: "pay_per_application", label: "Разова оплата заявки" },
-  { value: "monthly_subscription", label: "Щомісячна підписка" },
-  { value: "donation_ready", label: "Донат на волонтерський збір" },
-  { value: "free_only", label: "Лише безкоштовна версія" },
+  { value: "pay_per_application", label: "Оплата за готову заявку" },
+  { value: "monthly_subscription", label: "Невелика щомісячна оплата" },
+  { value: "donation_ready", label: "Добровільний внесок (донат)" },
+  { value: "free_only", label: "Користуватимуся тільки безкоштовно" },
 ];
 
 const WTP_SUPPORTS_PRICE = new Set<WillingnessToPay>([
@@ -136,12 +136,12 @@ const WTP_SUPPORTS_PRICE = new Set<WillingnessToPay>([
 
 const ROLE_OPTIONS: SelectOption[] = [
   { value: "", label: "Не вказувати" },
-  { value: "entrepreneur", label: "Підприємець" },
-  { value: "fop", label: "ФОП" },
-  { value: "startup_founder", label: "Засновник стартапу" },
-  { value: "accountant", label: "Бухгалтер/консультант" },
-  { value: "student_business", label: "Студент із бізнес-ідеєю" },
-  { value: "volunteer", label: "Волонтер" },
+  { value: "entrepreneur", label: "Підприємець / власник справи" },
+  { value: "fop", label: "ФОП (працюю на себе)" },
+  { value: "startup_founder", label: "Планую розпочати власну справу" },
+  { value: "accountant", label: "Бухгалтер або юрист" },
+  { value: "student_business", label: "Студент або початківець" },
+  { value: "volunteer", label: "Волонтер або громадська діяльність" },
   { value: "other", label: "Інше" },
 ];
 
@@ -153,13 +153,13 @@ const FEEDBACK_SUBMITTED_EVENT = "grantfolio:feedback-submitted";
 
 function getRatingAdaptivePrompt(rating: number): string | null {
   if (rating === 1 || rating === 2) {
-    return "Опишіть, що саме не спрацювало або спричинило збій, і як нам це виправити.";
+    return "Розкажіть, будь ласка, що саме не вдалося зробити або де виникла помилка. Ми все виправимо.";
   }
   if (rating === 3) {
-    return "Чи все працювало стабільно? Які конкретні покращення функціоналу підняли б оцінку до 5/5?";
+    return "Що на сайті було зручним, а що викликало труднощі чи виглядало незрозуміло?";
   }
   if (rating === 4 || rating === 5) {
-    return "Що спрацювало найкраще? Які поради маєте для покращення функціоналу або нові фічі?";
+    return "Що вам найбільше сподобалося на сайті? Які поради ви б дали нам для покращення?";
   }
   return null;
 }
@@ -181,7 +181,7 @@ function mapScreenToTask(
     case "export":
       return "export";
     default:
-      return "assistant";
+      return "project";
   }
 }
 
@@ -695,15 +695,15 @@ export function FeedbackModal({
             <p className="fb-modal-eyebrow">
               {step === 1
                 ? "Зворотний зв’язок · Крок 1 з 2"
-                : "Детальна оцінка · Крок 2 з 2"}
+                : "Детальніша оцінка · Крок 2 з 2"}
             </p>
             <h2 id={titleId} className="fb-modal-title">
-              {step === 1 ? "Оцінити роботу GrantFolio" : "Дякуємо за відгук"}
+              {step === 1 ? "Ваша думка про GrantFolio" : "Дякуємо за вашу відповідь!"}
             </h2>
             <p className="fb-modal-subtitle">
               {step === 1
-                ? "Займе близько 10 секунд. Ваша оцінка допомагає вдосконалювати підбір і підготовку заявок."
-                : "Якщо маєте ще 20 секунд, оцініть ключові критерії та контекст — або просто закрийте це вікно."}
+                ? "Оцініть, будь ласка, роботу сайту загалом. Це займе менше хвилини і допоможе нам зробити його простим і зрозумілим для кожного."
+                : "Якщо маєте ще пів хвилини, дайте відповіді на кілька простих запитань або просто закрийте це вікно."}
             </p>
           </div>
           <button
@@ -736,7 +736,7 @@ export function FeedbackModal({
             <div className="fb-modal-body">
               <div className="fb-modal-form">
                 <fieldset className="fb-modal-fieldset">
-                  <legend className="fb-modal-legend">Загальна оцінка</legend>
+                  <legend className="fb-modal-legend">Загальна оцінка сайту</legend>
                   <div className="fb-modal-stars-row">
                     <div
                       className="fb-modal-stars"
@@ -803,8 +803,8 @@ export function FeedbackModal({
                 </fieldset>
 
                 <fieldset className="fb-modal-fieldset">
-                  <legend className="fb-modal-legend">Розділ сервісу</legend>
-                  <div className="fb-modal-pills" role="group" aria-label="Розділ сервісу">
+                  <legend className="fb-modal-legend">Про що саме ваш відгук?</legend>
+                  <div className="fb-modal-pills" role="group" aria-label="Про що саме ваш відгук">
                     {TASK_OPTIONS.map((option) => (
                       <button
                         key={option.value}
@@ -827,7 +827,7 @@ export function FeedbackModal({
                 {availableTags.length > 0 && (
                   <fieldset className="fb-modal-fieldset">
                     <legend className="fb-modal-legend">
-                      <span>Що саме вплинуло на оцінку?</span>
+                      <span>Що саме вплинуло на вашу оцінку?</span>
                       <span className="fb-modal-label-meta">
                         {categoryTags.length} / {MAX_TAGS}
                       </span>
@@ -864,7 +864,7 @@ export function FeedbackModal({
                   </div>
 
                   <label htmlFor={commentId} className="fb-modal-label">
-                    <span>Оцінка роботи сервісу та поради щодо покращення</span>
+                    <span>Що вам сподобалося, а що варто покращити?</span>
                     <span className="fb-modal-label-meta">
                       {comment.length} / {MAX_COMMENT_LENGTH}
                     </span>
@@ -885,7 +885,7 @@ export function FeedbackModal({
                     }}
                     placeholder={
                       ratingAdaptivePrompt ??
-                      "Розкажіть, чи все працювало стабільно, чого бракує та які поради маєте для покращення функціоналу…"
+                      "Напишіть своїми словами: чи все було зрозуміло, що викликало труднощі, та що варто змінити чи додати на сайті…"
                     }
                     aria-invalid={step1Error ? true : undefined}
                   />
@@ -937,13 +937,13 @@ export function FeedbackModal({
                     <polyline points="22 4 12 14.01 9 11.01" />
                   </svg>
                   <span>
-                    Дякуємо! Відгук збережено та передано команді GrantFolio.
+                    Дякуємо! Вашу відповідь збережено та передано розробникам.
                   </span>
                 </div>
 
                 <fieldset className="fb-modal-fieldset">
                   <legend className="fb-modal-legend">
-                    Оцініть за ключовими критеріями (1–5, необов’язково)
+                    Оцініть три важливі речі (від 1 до 5, необов’язково)
                   </legend>
                   <div className="fb-modal-criteria-list">
                     {CRITERIA_ITEMS.map((item) => {
@@ -981,7 +981,7 @@ export function FeedbackModal({
 
                 <fieldset className="fb-modal-fieldset">
                   <legend className="fb-modal-legend">
-                    Чи вдалося виконати заплановане?
+                    Чи вдалося вам виконати те, що планували?
                   </legend>
                   <div
                     className="fb-modal-pills"
@@ -1009,12 +1009,12 @@ export function FeedbackModal({
 
                 <fieldset className="fb-modal-fieldset">
                   <legend className="fb-modal-legend">
-                    Чи порадили б GrantFolio іншому підприємцю?
+                    Чи порадили б ви цей сайт знайомим або колегам?
                   </legend>
                   <div
                     className="fb-modal-pills"
                     role="group"
-                    aria-label="Рекомендація підприємцям"
+                    aria-label="Рекомендація знайомим або колегам"
                   >
                     <button
                       type="button"
@@ -1025,7 +1025,7 @@ export function FeedbackModal({
                         setWouldRecommend((prev) => (prev === true ? null : true))
                       }
                     >
-                      Так
+                      Так, пораджу
                     </button>
                     <button
                       type="button"
@@ -1036,19 +1036,19 @@ export function FeedbackModal({
                         setWouldRecommend((prev) => (prev === false ? null : false))
                       }
                     >
-                      Ні
+                      Скоріше ні
                     </button>
                   </div>
                 </fieldset>
 
                 <fieldset className="fb-modal-fieldset">
                   <legend className="fb-modal-legend">
-                    Готовність підтримати сервіс:
+                    Якби сервіс розвивався далі, який варіант підтримки вам ближчий?
                   </legend>
                   <div
                     className="fb-modal-pills"
                     role="group"
-                    aria-label="Готовність підтримати сервіс"
+                    aria-label="Варіант підтримки сервісу"
                   >
                     {WTP_OPTIONS.map((option) => (
                       <button
@@ -1075,7 +1075,7 @@ export function FeedbackModal({
                   {showPriceField && (
                     <div className="fb-modal-price-field">
                       <label htmlFor={priceInputId} className="fb-modal-label">
-                        <span>Яка сума здається справедливою (грн)?</span>
+                        <span>Скільки гривень ви вважаєте справедливою ціною за таку допомогу?</span>
                       </label>
                       <input
                         id={priceInputId}
@@ -1091,7 +1091,7 @@ export function FeedbackModal({
                           setSuggestedPriceRaw(event.target.value);
                           setStep2Error("");
                         }}
-                        placeholder="Наприклад, 300"
+                        placeholder="Наприклад, 200"
                       />
                     </div>
                   )}
@@ -1099,7 +1099,7 @@ export function FeedbackModal({
 
                 <div className="fb-modal-field">
                   <label htmlFor={roleSelectId} className="fb-modal-label">
-                    <span>Ваша роль (необов’язково)</span>
+                    <span>Хто ви (необов’язково)?</span>
                   </label>
                   <CustomSelect
                     id={roleSelectId}
@@ -1119,12 +1119,12 @@ export function FeedbackModal({
                       disabled={step2Busy}
                       onChange={(event) => setContactConsent(event.target.checked)}
                     />
-                    <span>Дозволяю зв’язатися зі мною для уточнення деталей</span>
+                    <span>Дозволяю розробникам зв’язатися зі мною, якщо знадобиться щось уточнити</span>
                   </label>
                   {contactConsent && (
                     <div className="fb-modal-field">
                       <label htmlFor={contactInputId} className="fb-modal-label">
-                        <span>Контакт для зв’язку (Email або Telegram)</span>
+                        <span>Ваша електронна пошта або номер телефону</span>
                       </label>
                       <input
                         id={contactInputId}
@@ -1134,7 +1134,7 @@ export function FeedbackModal({
                         disabled={step2Busy}
                         value={contactInfo}
                         onChange={(event) => setContactInfo(event.target.value)}
-                        placeholder="name@company.ua або @telegram_handle"
+                        placeholder="Наприклад, name@email.com або +380..."
                       />
                     </div>
                   )}
@@ -1155,14 +1155,14 @@ export function FeedbackModal({
                 disabled={step2Busy}
                 onClick={onClose}
               >
-                {hasStep2Data ? "Закрити" : "Готово"}
+                {hasStep2Data ? "Закрити" : "Пропустити й закрити"}
               </button>
               <button
                 type="submit"
                 className="fb-modal-btn fb-modal-btn--primary"
                 disabled={step2Busy || !hasStep2Data}
               >
-                {step2Busy ? "Збереження…" : "Зберегти додаткові дані"}
+                {step2Busy ? "Збереження…" : "Зберегти відповіді"}
               </button>
             </div>
           </form>

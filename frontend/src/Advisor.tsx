@@ -1154,9 +1154,9 @@ export function Advisor({
                     {revealingId !== m.id && !selectedProgram && m.search.matches.length > 0 && index === messages.length - 1 && onOpenFeedback && (
                       <FeedbackPromptBanner
                         milestoneKey="advisor-matches"
-                        title="Чи підійшли вам запропоновані програми?"
-                        description="Оцініть якість підбору й дайте пораду щодо покращення функціоналу асистента."
-                        actionLabel="Оцінити за 10 с"
+                        title="Чи підійшли вам запропоновані гранти?"
+                        description="Будь ласка, поділіться, чи легко було розібратися та що варто покращити на сайті."
+                        actionLabel="Поділитися думкою"
                         onOpenFeedback={() => onOpenFeedback({ programId: m.search.matches[0]?.programId ?? null })}
                       />
                     )}
