@@ -2,6 +2,7 @@ import { Router } from "express";
 import type { Pool } from "pg";
 import { z } from "zod";
 import { GRANT_CATALOG } from "./grant-catalog-data.js";
+import { GRANT_SOURCE_RULES } from "./grant-source-rules.js";
 import {
   PROGRAM_MONITOR_PROFILES,
   getMonitorProfile,
@@ -351,6 +352,13 @@ export function monitorAdminRouter(db: Pool, options: MonitorAdminOptions = {}) 
         if (!parsedAvailability.success) {
           await client.query("ROLLBACK");
           res.status(400).json({ error: "invalid_availability_proposal" });
+          return;
+        }
+        if (parsedAvailability.data.state === "open" && GRANT_SOURCE_RULES.some(rule =>
+          rule.programId === proposal.program_id && rule.suspensionOpenDeadlinePattern,
+        )) {
+          await client.query("ROLLBACK");
+          res.status(409).json({ error: "availability_requires_service_confirmation" });
           return;
         }
         const profile = getMonitorProfile(proposal.program_id);

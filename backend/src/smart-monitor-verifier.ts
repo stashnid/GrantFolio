@@ -496,4 +496,3 @@ export function refreshExistingAvailability(
     validUntil: new Date(at.getTime() + VALID_UNTIL_MS).toISOString(),
   };
 }
-

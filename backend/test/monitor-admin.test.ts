@@ -624,6 +624,36 @@ test("approving availability proposal updates grant_source_checks and invokes on
   );
 });
 
+test("a calendar-based opening still requires confirmation from the service", async () => {
+  const proposalId = crypto.randomUUID();
+  const { db, proposals, sourceCheckUpserts } = createMockDb({
+    proposals: [{
+      id: proposalId,
+      program_id: "vlasna-sprava",
+      field_name: "availability",
+      old_value: null,
+      new_value: { state: "open", sourceUrl: "https://zakon.rada.gov.ua/laws/show/z1185-26", deadlineAt: "2026-11-27T21:59:59Z" },
+      evidence_quote: "Календар містить дату подання",
+      confidence: "high",
+      status: "pending_review",
+      detected_at: "2026-11-18T08:00:00Z",
+      reviewed_at: null,
+      reviewed_by: null,
+      review_notes: null,
+    }],
+  });
+  await withServer(db, () => ({ uid: "admin" }), { isAdmin: () => true }, async request => {
+    const res = await request(`/proposals/${proposalId}/review`, {
+      method: "POST",
+      body: { decision: "approved" },
+    });
+    assert.equal(res.status, 409);
+    assert.deepEqual(await res.json(), { error: "availability_requires_service_confirmation" });
+    assert.equal(proposals.get(proposalId)?.status, "pending_review");
+    assert.equal(sourceCheckUpserts.length, 0);
+  });
+});
+
 test("rejecting material proposal updates proposal without touching grant_source_checks", async () => {
   const proposalId = crypto.randomUUID();
   const { db, proposals, sourceCheckUpserts } = createMockDb({

@@ -354,9 +354,12 @@ export function MonitorAdminDrawer({ active, onCatalogMutated }: Props) {
         },
       );
       if (response.status === 409) {
+        const result = await response.json().catch(() => null);
         setBanner({
           tone: "info",
-          text: "Цю пропозицію вже розглянуто раніше. Список оновлено.",
+          text: result?.error === "availability_requires_service_confirmation"
+            ? "Відкриття прийому потребує збігу календаря зі строком на сторінці послуги."
+            : "Цю пропозицію вже розглянуто раніше. Список оновлено.",
         });
         await loadStatus(user);
         await loadProposals(user, proposalFilter);

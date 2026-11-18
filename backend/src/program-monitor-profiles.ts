@@ -32,7 +32,8 @@ export const PROGRAM_MONITOR_PROFILES: readonly ProgramMonitorProfile[] = [
       "Check application format requirements (Diia portal submission, official PDF business plan, electronic signature/КЕП) and job creation rules.",
     ],
     currency: "UAH",
-    autoPromoteAvailability: true,
+    // The hourly grant sync compares the legal schedule with the service deadline.
+    autoPromoteAvailability: false,
   },
   {
     programId: "processing-business",

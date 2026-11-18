@@ -1,3 +1,4 @@
+import { hasGuidedApplication } from "./grants";
 import { advisorFollowups } from "./advisor-followups";
 import { isGrantAvailable } from "../../backend/src/grant-availability";
 import { useGrantPrograms } from "./GrantPrograms";
@@ -26,7 +27,6 @@ type Message = {
   mode: string;
   search: SearchResult;
   seed: string;
-  profileUpdated?: boolean;
   extractedFacts?: ExtractedProfileFact[];
 };
 type Conversation = { id: string; title: string };
@@ -117,6 +117,10 @@ export function Advisor({
   onOpenProfile?: () => void;
 }) {
   const { programs: GRANT_PROGRAMS } = useGrantPrograms();
+  const preparablePilot = GRANT_PROGRAMS.find(program =>
+    program.id === "vlasna-sprava" && !isGrantAvailable(program),
+  );
+
   const [conversations, setConversations] = useState<Conversation[]>([]),
     [conversation, setConversation] = useState(""),
     [messages, setMessages] = useState<Message[]>([]),
@@ -1033,7 +1037,7 @@ export function Advisor({
                       <AiEmblem />
                       <strong className="author-name">GrantFolio Асистент</strong>
                       <span className="revision-badge">
-                        {m.mode === "guided" ? "Підбір за умовами каталогу" : "З урахуванням вашої розмови"}
+                        {m.mode === "guided" ? "Підбір за умовами каталогу" : "Раніше збережена відповідь ШІ"}
                       </span>
                     </div>
                     <div className="bubble-text assistant-text">
@@ -1065,7 +1069,7 @@ export function Advisor({
                           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                             <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
                           </svg>
-                          <span>{m.profileUpdated ? "Дані збережено у Профіль бізнесу:" : "Виявлено деталі для Профілю:"}</span>
+                          <span>Можливі дані для профілю. Звірте їх перед збереженням.</span>
                         </div>
                         <div className="advisor-sync-chips">
                           {m.extractedFacts.map((f) => (
@@ -1095,6 +1099,10 @@ export function Advisor({
                               <h3>{match.title}</h3>
                               <p>{match.reason}</p>
                               <small>{match.caution}</small>
+                              <p>{hasGuidedApplication(p.id)
+                                ? "У GrantFolio доступні анкета та підготовка робочих матеріалів."
+                                : "У GrantFolio доступні умови програми та посилання на надавача."}</p>
+                              <p><a href={p.officialUrl} target="_blank" rel="noopener noreferrer" aria-label={`Офіційне джерело програми: ${match.title} (відкриється в новій вкладці)`}>Офіційне джерело ↗</a></p>
                               <div className="advisor-grant-actions">
                                 <button
                                   type="button"
@@ -1104,20 +1112,32 @@ export function Advisor({
                                 >
                                   Умови програми
                                 </button>
-                                <button
+                                {hasGuidedApplication(p.id) && <button
                                   type="button"
                                   className="advisor-grant-primary"
                                   aria-label={`Готувати матеріали для програми: ${match.title}`}
                                   onClick={() => onPrepare(p, m.seed)}
                                 >
                                   Готувати матеріали
-                                </button>
+                                </button>}
                               </div>
                             </article>
                           );
                         })}
                       </div>
                     )}
+                    {revealingId !== m.id && preparablePilot &&
+                      m.search.intents.includes("business") &&
+                      !m.search.intents.includes("study") && (
+                        <aside className="advisor-grant" aria-label="Підготовка до майбутнього прийому">
+                          <h3>Власна справа 2.0 · прийом не підтверджено</h3>
+                          <p>Можна заздалегідь підготувати опис і кошторис. Перевірте свій статус, КВЕД і допустимі витрати в умовах програми.</p>
+                          <div className="advisor-grant-actions">
+                            <button type="button" className="advisor-grant-secondary" onClick={() => onView(preparablePilot)}>Переглянути умови «Власної справи»</button>
+                            <button type="button" className="advisor-grant-primary" onClick={() => onPrepare(preparablePilot, m.seed)}>Готувати робочу чернетку</button>
+                          </div>
+                        </aside>
+                      )}
                     {revealingId !== m.id && (
                       <div className="advisor-followups">
                         {advisorFollowups(m.seed, m.search.intents.includes("transport")).map((q) => (

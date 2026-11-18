@@ -1,3 +1,4 @@
+import { grantPreparationPilotRouter } from "./grant-preparation-pilot.js";
 import {GRANT_CATALOG} from "./grant-catalog-data.js";
 import { Router } from "express";
 import type { Pool } from "pg";
@@ -5,9 +6,12 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { commandSchema, totalKopecks } from "./budget.js";
 import { detailsCommandSchema, readiness } from "./project-details.js";
+import { grantApplicationVersions } from "./grant-application.js";
 import { draftExport } from "./draft-export.js";
 import { assistantRouter } from "./assistant.js";
 import { configuredGeminiResponder } from "./gemini.js";
+import { grantApplicationRouter } from "./grant-application-router.js";
+import { grantFinancialPlanRouter } from "./grant-financial-plan-router.js";
 const idSchema = z.string().uuid();
 const ALLOWED_PROGRAMS = GRANT_CATALOG.map(p=>p.id) as [string,...string[]];
 
@@ -49,11 +53,14 @@ function view(row: CaseRow) {
 }
 export function casesRouter(db: Pool) {
   const router = Router();
-  router.use(assistantRouter(db, configuredGeminiResponder()));
   router.use((_req, res, next) => {
     res.set("Cache-Control", "no-store");
     next();
   });
+  router.use(grantPreparationPilotRouter(db));
+  router.use(assistantRouter(db, configuredGeminiResponder()));
+  router.use(grantApplicationRouter(db));
+  router.use(grantFinancialPlanRouter(db));
   router.get("/", async (_req, res, next) => {
     try {
       const result = await db.query(
@@ -177,8 +184,12 @@ export function casesRouter(db: Pool) {
     }
     try {
       const result = await db.query(
-        "SELECT title, program_id, revision, details, items, total_kopecks FROM cases WHERE id=$1 AND owner_id=$2",
-        [req.params.id, res.locals.uid],
+        `SELECT c.title, c.program_id, c.revision, c.details, c.items, c.total_kopecks,
+           a.answers AS application_answers, a.revision AS application_revision
+         FROM cases c LEFT JOIN grant_applications a ON a.case_id=c.id AND a.program_id=c.program_id
+           AND a.rules_version=($3::jsonb->>c.program_id)
+         WHERE c.id=$1 AND c.owner_id=$2`,
+        [req.params.id, res.locals.uid, JSON.stringify(grantApplicationVersions)],
       );
       if (!result.rowCount) {
         res.status(404).json({ error: "not_found" });

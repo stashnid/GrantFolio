@@ -1,5 +1,7 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { once } from "node:events";
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
@@ -657,4 +659,141 @@ test("case creation reuses its request identity safely under concurrent retries"
   for(const reply of replies)assert.equal((await reply.json() as {case:{id:string}}).case.id,body.id);
   assert.equal((await call(owner,{...body,title:"Changed request"})).status,409);
   assert.equal((await call(foreign)).status,409);
+});
+
+test("grant applications isolate owners, reject concurrent writes and invalidate confirmation on case edits", async () => {
+  const [owner, stranger] = await Promise.all([signup(), signup()]);
+  const call = (token: string, path: string, method = "GET", body?: object) =>
+    fetch(`${base}${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${token}`, ...(body && { "Content-Type": "application/json" }) },
+      body: body && JSON.stringify(body),
+    });
+  const created = await call(owner, "/api/cases", "POST", { title: "Тестова пекарня", programId: "vlasna-sprava" });
+  assert.equal(created.status, 201);
+  const id = (await created.json()).case.id;
+  const path = `/api/cases/${id}/grant-application`;
+  const template = await call(owner, `${path}/working-example`);
+  assert.equal(template.status, 200);
+  assert.match(template.headers.get("content-type") ?? "", /spreadsheetml/);
+  assert.equal((await template.arrayBuffer()).byteLength > 0, true);
+  assert.equal((await call(stranger, `${path}/working-example`)).status, 404);
+  const initial = await call(owner, path);
+  assert.equal(initial.headers.get("cache-control"), "no-store");
+  const initialBody = await initial.json();
+  assert.equal(initialBody.application.nextQuestion.id, "track");
+  assert(initialBody.documentCoverage.missingOfficialInputs.length > 0);
+  assert.equal((await call(stranger, path)).status, 404);
+  const command = { expectedRevision: 0, expectedCaseRevision: 0, answers: { track: "start" } };
+  assert.equal((await call(stranger, path, "PUT", command)).status, 404);
+  const saves = await Promise.all([call(owner, path, "PUT", command), call(owner, path, "PUT", command)]);
+  assert.deepEqual(saves.map(response => response.status).sort(), [200, 409]);
+  const confirmed = await call(owner, path, "PUT", { ...command, expectedRevision: 1, answers: { ...command.answers, confirmAccuracy: true } });
+  assert.equal(confirmed.status, 200);
+  assert.equal((await confirmed.json()).answers.confirmAccuracy, true);
+  const exportPath = `/api/cases/${id}/draft-export`;
+  assert.equal((await call(stranger, exportPath)).status, 404);
+  const exported = await (await call(owner, exportPath)).text();
+  assert.match(exported, /Анкета програми · версія 2/);
+  assert.match(exported, /Напрям гранту:\nЗапочаткування/);
+  assert.match(exported, /Тип заявника:\nНе вказано/);
+  assert.equal((await call(owner, `${path}/diia-draft/export`, "POST", {
+    expectedRevision: 2, expectedCaseRevision: 0,
+  })).status, 422);
+  assert.equal((await call(owner, `/api/cases/${id}/program`, "PUT", { programId: null, expectedRevision: 0 })).status, 200);
+  assert.equal((await call(owner, path, "PUT", { ...command, expectedRevision: 2 })).status, 409);
+  assert.equal((await (await call(owner, path)).json()).application, null);
+  assert.equal((await call(owner, `/api/cases/${id}/program`, "PUT", { programId: "vlasna-sprava", expectedRevision: 1 })).status, 200);
+  const restored = await (await call(owner, path)).json();
+  assert.deepEqual(restored.answers, { track: "start" });
+  assert.equal(restored.caseRevision, 2);
+  assert.equal((await call(owner, `/api/cases/${id}`, "DELETE")).status, 200);
+  assert.equal((await db.query("SELECT 1 FROM grant_applications WHERE case_id=$1", [id])).rowCount, 0);
+});
+
+test("financial plans reconcile a private snapshot and block stale exports", async () => {
+  const [owner, stranger] = await Promise.all([signup(), signup()]);
+  const call = (token: string, path: string, method = "GET", body?: object) =>
+    fetch(`${base}${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${token}`, ...(body && { "Content-Type": "application/json" }) },
+      body: body && JSON.stringify(body),
+    });
+
+  const created = await call(owner, "/api/cases", "POST", { title: "Фінансовий план для тесту", programId: "vlasna-sprava" });
+  assert.equal(created.status, 201);
+  const id = (await created.json()).case.id;
+  const path = `/api/cases/${id}`;
+  const financialPath = `${path}/grant-financial-plan`;
+  const applicationPath = `${path}/grant-application`;
+  const answers = { track: "start", requestedGrantKopecks: 100_500, ownContributionKopecks: 50_000 };
+  assert.equal((await call(owner, applicationPath, "PUT", { answers, expectedRevision: 0, expectedCaseRevision: 0 })).status, 200);
+
+  const first = { salesKopecks: 20_000, grantKopecks: 100_500, ownKopecks: 50_000, operatingCostsKopecks: 0, payrollKopecks: 0, taxesKopecks: 500, capitalCostsKopecks: 171_000 };
+  const empty = { salesKopecks: 0, grantKopecks: 0, ownKopecks: 0, operatingCostsKopecks: 0, payrollKopecks: 0, taxesKopecks: 0, capitalCostsKopecks: 0 };
+  const plan = { openingBalanceKopecks: 0, months: [first, ...Array.from({ length: 23 }, () => empty)] };
+  const revisions = { expectedCaseRevision: 0, expectedApplicationRevision: 1, expectedPlanRevision: 0 };
+  assert.equal((await call(stranger, financialPath)).status, 404);
+  assert.equal((await call(stranger, financialPath, "PUT", { ...revisions, plan })).status, 404);
+  const saves = await Promise.all([call(owner, financialPath, "PUT", { ...revisions, plan }), call(owner, financialPath, "PUT", { ...revisions, plan })]);
+  assert.deepEqual(saves.map(result => result.status).sort(), [200, 409]);
+  const saved = await (await call(owner, financialPath)).json();
+  assert.equal(saved.reconciled, true);
+  assert.equal(saved.forecast.totals.closingBalanceKopecks, -1000);
+  assert.equal(saved.planRevision, 1);
+  const attempt = { ...revisions, expectedPlanRevision: 1 };
+  assert.equal((await call(stranger, `${financialPath}/export`, "POST", attempt)).status, 404);
+
+  if (process.env.LIBREOFFICE_TEST) {
+    const archive = await call(owner, `${financialPath}/export`, "POST", attempt);
+    assert.equal(archive.status, 200);
+    assert.equal(archive.headers.get("cache-control"), "no-store");
+    assert.match(archive.headers.get("content-disposition") ?? "", /grantfolio-financial-draft\.zip/);
+    assert.equal(Buffer.from(await archive.arrayBuffer()).subarray(0, 2).toString(), "PK");
+  }
+
+  assert.equal((await call(owner, applicationPath, "PUT", { answers: { ...answers, ownContributionKopecks: 49_999 }, expectedRevision: 1, expectedCaseRevision: 0 })).status, 200);
+  const updated = await (await call(owner, financialPath)).json();
+  assert.equal(updated.stale, true);
+  assert.equal(updated.reconciled, false);
+  assert.equal((await call(owner, `${financialPath}/export`, "POST", { ...attempt, expectedApplicationRevision: 2 })).status, 409);
+  assert.equal((await call(owner, path, "DELETE")).status, 200);
+  assert.equal((await db.query("SELECT 1 FROM grant_financial_plans WHERE case_id=$1", [id])).rowCount, 0);
+});
+
+test("a pilot Jar payment unlocks only its enrolled application after confirmation", async () => {
+  const [owner, stranger] = await Promise.all([signup(), signup()]);
+  const call = (token: string, path: string, method = "GET", body?: object) =>
+    fetch(`${base}${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${token}`, ...(body && { "Content-Type": "application/json" }) },
+      body: body && JSON.stringify(body),
+    });
+  async function createCase() {
+    const created = await call(owner, "/api/cases", "POST", { title: "Платіжний пілот", programId: "vlasna-sprava" });
+    assert.equal(created.status, 201);
+    return (await created.json()).case.id as string;
+  }
+  const first = await createCase();
+  const second = await createCase();
+  const operator = (...args: string[]) => promisify(execFile)(
+    process.execPath, ["--import", "tsx", "backend/src/grant-preparation-pilot-cli.ts", ...args],
+  );
+  const reference = (await operator("enroll", first)).stdout.trim();
+  const otherReference = (await operator("enroll", second)).stdout.trim();
+  const statusPath = `/api/cases/${first}/preparation-access`;
+  const body = { expectedRevision: 0, expectedCaseRevision: 0, answers: { track: "start" } };
+  assert.deepEqual(await (await call(owner, statusPath)).json(), { state: "pending", reference });
+  assert.equal((await call(stranger, statusPath)).status, 404);
+  for (const route of ["grant-application", "grant-financial-plan", "assistant"]) {
+    assert.equal((await call(owner, `/api/cases/${first}/${route}`, route === "assistant" ? "POST" : "PUT", body)).status, 402);
+  }
+  const operation = crypto.randomUUID();
+  await assert.rejects(operator("confirm", reference, operation, "0"));
+  await operator("confirm", reference, operation, "137");
+  assert.equal((await operator("confirm", reference, operation, "137")).stdout.trim(), reference);
+  await assert.rejects(operator("confirm", otherReference, operation, "137"), /Operation already assigned/);
+  assert.deepEqual(await (await call(owner, statusPath)).json(), { state: "active", reference });
+  assert.equal((await call(owner, `/api/cases/${first}/grant-application`, "PUT", body)).status, 200);
+  assert.equal((await call(owner, `/api/cases/${second}/grant-application`, "PUT", body)).status, 402);
 });

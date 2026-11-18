@@ -258,3 +258,45 @@ test('calendar is overridden by an explicit suspension, and a failed gate cannot
  const sync=createGrantSync(db,[rule],fake as typeof fetch,()=>at);
  try{assert.deepEqual(await sync.refresh(),{checked:1,failed:0,skipped:0});const first=sync.status()[0].availability;assert.equal(first?.state,'closed');assert.equal(first?.basis,'calendar');assert.equal(first?.sourceUrl,rule.suspensionUrl);assert.match(first?.evidence??'',/призупинено/i);at=new Date('2026-11-16T13:00:00Z');gate='error';assert.equal((await sync.refresh()).failed,1);assert.deepEqual(sync.status()[0].availability,first);gate='Невідома сторінка';assert.equal((await sync.refresh()).failed,1);assert.deepEqual(sync.status()[0].availability,first);gate='Сторінка бізнес-гранту. Інформація про послугу.';assert.equal((await sync.refresh()).checked,1);assert.equal(sync.status()[0].availability?.state,'open');}finally{await db.query('DELETE FROM grant_source_checks WHERE program_id=$1',[rule.programId]);}
 });
+
+test("calendar opening requires a matching current service deadline", async () => {
+  const at = new Date("2026-11-18T12:00:00Z");
+  const rule: GrantSourceRule = {
+    programId: "test-calendar-confirmation",
+    url: "https://test.example/confirmed-calendar",
+    requiredText: "Кінцеві строки подання заяв",
+    schedule: true,
+    suspensionUrl: "https://test.example/confirmed-service",
+    suspensionRequiredText: "Сторінка бізнес-гранту",
+    suspensionClosedPattern: "прийом заяв призупинено",
+    suspensionOpenDeadlinePattern: "поточний етап прийому заявок триває до (\\d{1,2}\\s+[а-яіїєґ]+\\s+20\\d{2})",
+  };
+  let service = "Сторінка бізнес-гранту. поточний етап прийому заявок триває до 27 листопада 2026";
+  const fake = async (input: string | URL | Request) => new Response(String(input).endsWith("/confirmed-service") ? service : table);
+  const sync = createGrantSync(db, [rule], fake as typeof fetch, () => at);
+  try {
+    await db.query(
+      "INSERT INTO grant_source_checks(program_id,source_url,availability,last_attempt_at,last_error) VALUES($1,$2,$3::jsonb,$4,NULL) ON CONFLICT(program_id) DO UPDATE SET source_url=EXCLUDED.source_url,availability=EXCLUDED.availability,last_attempt_at=EXCLUDED.last_attempt_at,last_error=NULL",
+      [rule.programId, rule.url, JSON.stringify({state: "open", basis: "calendar", checkedAt: at.toISOString(), validUntil: new Date(at.getTime() + 3600000).toISOString(), sourceUrl: rule.url, evidence: "Old calendar only", deadlineAt: "2026-11-27T21:59:59.000Z"}), at],
+    );
+    await sync.hydrate();
+    assert.equal(sync.status()[0].availability, null);
+    assert.equal((await sync.refresh()).checked, 1);
+    assert.equal(sync.status()[0].availability?.state, "open");
+    for (const uncertain of [
+      "Сторінка бізнес-гранту. поточний етап прийому заявок триває до 27 жовтня 2026",
+      "Сторінка бізнес-гранту. поточний етап прийому заявок триває до 15 грудня 2026",
+      "Сторінка бізнес-гранту. Інформація про послугу.",
+    ]) {
+      service = uncertain;
+      assert.equal((await sync.refresh()).failed, 1);
+      assert.equal(sync.status()[0].availability, null);
+      assert.equal(sync.status()[0].lastError, "service_deadline_unconfirmed");
+    }
+    service = "Сторінка бізнес-гранту. Прийом заяв призупинено. поточний етап прийому заявок триває до 27 листопада 2026";
+    assert.equal((await sync.refresh()).checked, 1);
+    assert.equal(sync.status()[0].availability?.state, "closed");
+  } finally {
+    await db.query("DELETE FROM grant_source_checks WHERE program_id=$1", [rule.programId]);
+  }
+});

@@ -1,4 +1,6 @@
-import { test, after } from "node:test";
+import { GRANT_CATALOG } from "../src/grant-catalog-data.js";
+import { confirmedTestRound } from "./grant-availability-fixture.js";
+import { test, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
 import { once } from "node:events";
@@ -15,7 +17,6 @@ if (
 const db = new pg.Pool({ connectionString: config.databaseUrl });
 const a = crypto.randomUUID(),
   b = crypto.randomUUID();
-let providerCalls = 0;
 const app = express();
 app.use(express.json());
 app.use((req, res, next) => {
@@ -27,16 +28,7 @@ app.use((req, res, next) => {
   res.locals.uid = owner;
   next();
 });
-app.use(
-  "/api/advisor",
-  advisorRouter(db, async (snapshot) => {
-    providerCalls++;
-    assert.equal(snapshot.mode, "discovery");
-    const data = JSON.stringify(snapshot);
-    assert(!data.includes("private-contact"));
-    return "Контрольована порада. Уточніть призначення коштів.";
-  }),
-);
+app.use("/api/advisor", advisorRouter(db));
 const server = app.listen(0, "127.0.0.1");
 await once(server, "listening");
 const address = server.address();
@@ -51,6 +43,10 @@ const call = (owner: string, path = "", body?: unknown) =>
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
+before(() => {
+  GRANT_CATALOG.find(p => p.id === "vlasna-sprava")!.availability = confirmedTestRound;
+  mock.timers.enable({ apis: ["Date"], now: new Date("2026-11-16T15:00:00Z") });
+});
 const callMethod = (
   owner: string,
   method: "PATCH" | "DELETE",
@@ -66,6 +62,7 @@ const callMethod = (
     ...(body !== undefined ? { body: JSON.stringify(body) } : {}),
   });
 after(async () => {
+  mock.timers.reset();
   await db.query(
     "DELETE FROM advisor_conversation_meta WHERE owner_id=ANY($1::text[])",
     [[a, b]],
@@ -110,10 +107,9 @@ test("advisor saves private conversation, replays message once and grounds trans
   assert.equal(r.status, 200);
   const data = await r.json();
   assert.equal(data.message.search.matches[0].programId, "vlasna-sprava");
-  assert.equal(data.message.mode, "ai");
-  assert.equal(providerCalls, 1);
+  assert.equal(data.message.mode, "guided");
+  assert.match(data.message.reply, /авто|транспорт/i);
   assert.equal((await call(a, "", message)).status, 200);
-  assert.equal(providerCalls, 1);
   assert.equal((await call(b, "", message)).status, 409);
   assert.equal(
     (await call(a, "", { ...message, message: "Other" })).status,
@@ -136,18 +132,14 @@ test("advisor saves private conversation, replays message once and grounds trans
     404,
   );
 });
-test("when model is unavailable, verified guidance still works and is identified as guided", async () => {
+test("unmatched funding needs receive guided catalog guidance", async () => {
   const s = express();
   s.use(express.json());
   s.use((_q, r, n) => {
     r.locals.uid = b;
     n();
   });
-  s.use(
-    advisorRouter(db, async () => {
-      throw Error("quota");
-    }),
-  );
+  s.use(advisorRouter(db));
   const listener = s.listen(0, "127.0.0.1");
   await once(listener, "listening");
   const addr = listener.address();
@@ -179,11 +171,7 @@ test("guided follow-ups retain the need and advance after amount and location", 
     r.locals.uid = b;
     n();
   });
-  s.use(
-    advisorRouter(db, async () => {
-      throw Error("unavailable");
-    }),
-  );
+  s.use(advisorRouter(db));
   const listener = s.listen(0, "127.0.0.1");
   await once(listener, "listening");
   const addr = listener.address();
@@ -231,11 +219,7 @@ test("student questions stay focused on business and personal study is outside s
     r.locals.uid = b;
     n();
   });
-  s.use(
-    advisorRouter(db, async () => {
-      throw Error("unavailable");
-    }),
-  );
+  s.use(advisorRouter(db));
   const listener = s.listen(0, "127.0.0.1");
   await once(listener, "listening");
   const addr = listener.address();
@@ -282,6 +266,65 @@ test("student questions stay focused on business and personal study is outside s
     assert.equal(education.search.matches.length, 0);
   } finally {
     listener.close();
+  }
+});
+
+test("a question about applicant status does not write inferred business facts", async () => {
+  const before = await db.query("SELECT * FROM profiles WHERE owner_id=$1", [a]);
+  const response = await call(a, "", { id: crypto.randomUUID(), conversationId: crypto.randomUUID(), message: "Чи потрібен ФОП для гранту у Львові?" });
+  assert.equal(response.status, 200);
+  const after = await db.query("SELECT * FROM profiles WHERE owner_id=$1", [a]);
+  assert.deepEqual(after.rows, before.rows);
+});
+
+test("unconfirmed rounds stay unconfirmed when a model is configured", async (t) => {
+  const program = GRANT_CATALOG.find(p => p.id === "vlasna-sprava")!;
+  const original = program.availability;
+  program.availability = undefined;
+  const apiKey = process.env.GEMINI_API_KEY;
+  const vertexProject = process.env.GEMINI_VERTEX_PROJECT;
+  process.env.GEMINI_API_KEY = "fixture-only";
+  delete process.env.GEMINI_VERTEX_PROJECT;
+  const realFetch = globalThis.fetch;
+  let modelCalls = 0;
+  t.mock.method(globalThis, "fetch", (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+    if (String(input).startsWith("https://generativelanguage.googleapis.com/")) {
+      modelCalls++;
+      return Promise.resolve(Response.json({
+        candidates: [{ finishReason: "STOP", content: { parts: [{ text: "Прийом відкрито до 27 листопада." }] } }],
+      }));
+    }
+    return realFetch(input, init);
+  });
+  const probe = express();
+  probe.use(express.json(), (_req, res, next) => { res.locals.uid = b; next(); });
+  probe.use(advisorRouter(db));
+  const listener = probe.listen(0, "127.0.0.1");
+  try {
+    await once(listener, "listening");
+    const address = listener.address();
+    if (!address || typeof address === "string") throw new Error("No test port");
+    const response = await fetch(`http://127.0.0.1:${address.port}/`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        id: crypto.randomUUID(),
+        conversationId: crypto.randomUUID(),
+        message: "Хочу відкрити кав’ярню у Львові. Прийом Власної справи зараз відкритий до 27 листопада?",
+      }),
+    });
+    assert.equal(response.status, 200);
+    assert.equal(modelCalls, 0);
+    const message = (await response.json()).message;
+    assert.equal(message.mode, "guided");
+    assert(!message.search.matches.some((match: { programId: string }) => match.programId === "vlasna-sprava"));
+    assert.doesNotMatch(message.reply, /прийом (?:зараз )?відкрит|27 листопада/i);
+  } finally {
+    listener.close();
+    if (apiKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = apiKey;
+    if (vertexProject !== undefined) process.env.GEMINI_VERTEX_PROJECT = vertexProject;
+    program.availability = original;
   }
 });
 
@@ -450,54 +493,45 @@ test("owner can rename and delete own conversation while another user is isolate
   assert.deepEqual(await deletedAgain.json(), { error: "not_found" });
 });
 
-test("DELETE returns 429 advisor_busy while generation is in flight for the owner", async () => {
-  let started!: () => void;
-  const responderStarted = new Promise<void>((resolve) => {
-    started = resolve;
-  });
-  let finish!: (reply: string) => void;
-  const responderDone = new Promise<string>((resolve) => {
-    finish = resolve;
-  });
 
-  const s = express();
-  s.use(express.json());
-  s.use((_q, r, n) => {
-    r.locals.uid = a;
-    n();
-  });
-  s.use(
-    advisorRouter(db, async () => {
-      started();
-      return await responderDone;
-    }),
-  );
-  const listener = s.listen(0, "127.0.0.1");
+test("DELETE returns 429 advisor_busy while a reply is in flight for the owner", async () => {
+  let started!: () => void;
+  let finish!: () => void;
+  const historyStarted = new Promise<void>(resolve => { started = resolve; });
+  const historyReady = new Promise<void>(resolve => { finish = resolve; });
+  const gatedDb = {
+    query: async (sql: string, params: unknown[]) => {
+      if (sql.startsWith("SELECT question,reply,payload FROM advisor_messages")) {
+        started();
+        await historyReady;
+      }
+      return db.query(sql, params);
+    },
+  } as pg.Pool;
+  const probe = express();
+  probe.use(express.json(), (_req, res, next) => { res.locals.uid = a; next(); });
+  probe.use(advisorRouter(gatedDb));
+  const listener = probe.listen(0, "127.0.0.1");
   await once(listener, "listening");
-  const addr = listener.address();
-  if (!addr || typeof addr === "string") throw Error();
+  const address = listener.address();
+  if (!address || typeof address === "string") throw new Error("No test port");
+  const url = `http://127.0.0.1:${address.port}`;
   const conversationId = crypto.randomUUID();
+  const post = fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ id: crypto.randomUUID(), conversationId, message: "Шукаю грант на обладнання" }),
+  });
   try {
-    const postPromise = fetch(`http://127.0.0.1:${addr.port}/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        id: crypto.randomUUID(),
-        conversationId,
-        message: "Шукаю грант на обладнання",
-      }),
-    });
-    await responderStarted;
-    const busyDelete = await fetch(
-      `http://127.0.0.1:${addr.port}/conversations/${conversationId}`,
-      { method: "DELETE" },
-    );
-    assert.equal(busyDelete.status, 429);
-    assert.deepEqual(await busyDelete.json(), { error: "advisor_busy" });
-    finish("Готова відповідь");
-    const postRes = await postPromise;
-    assert.equal(postRes.status, 200);
+    await Promise.race([historyStarted, post.then(() => { throw new Error("Reply completed before reaching query gate"); })]);
+    const busy = await fetch(`${url}/conversations/${conversationId}`, { method: "DELETE" });
+    assert.equal(busy.status, 429);
+    assert.deepEqual(await busy.json(), { error: "advisor_busy" });
+    finish();
+    assert.equal((await post).status, 200);
   } finally {
+    finish();
+    await post.catch(() => {});
     listener.close();
   }
 });

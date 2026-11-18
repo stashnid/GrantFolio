@@ -7,13 +7,6 @@ import { searchGrants } from "./grant-discovery.js";
 const APP_ORIGIN = "https://grantfolio.pp.ua";
 const DEFAULT_SUPPORT_EMAIL = "grantfoliomanager@gmail.com";
 
-const LEGAL_FORM_LABELS: Record<string, string> = {
-  idea: "Ідея / старт",
-  fop: "ФОП",
-  company: "Компанія (ТОВ)",
-  ngo: "Громадська організація",
-};
-
 const FUNDING_TYPE_LABELS: Record<string, string> = {
   grant: "Безповоротний грант",
   microgrant: "Мікрогрант",
@@ -164,7 +157,7 @@ function formatProgramDeadline(program: GrantProgram): string {
     : program.deadline;
 }
 
-function toDigestProgram(program: GrantProgram, customReason?: string, isPrimary = false): DigestProgramItem {
+function toDigestProgram(program: GrantProgram, customReason?: string): DigestProgramItem {
   const fundingLabel =
     FUNDING_TYPE_LABELS[program.fundingType ?? "grant"] ?? "Програма фінансування";
   return {
@@ -175,7 +168,7 @@ function toDigestProgram(program: GrantProgram, customReason?: string, isPrimary
     fundingLabel,
     deadlineLabel: formatProgramDeadline(program),
     reason: customReason || program.summary,
-    statusLabel: isPrimary ? "Рекомендовано за профілем" : "Відкритий прийом",
+    statusLabel: "Відкритий прийом",
     url: `${APP_ORIGIN}/#grants/${encodeURIComponent(program.id)}`,
   };
 }
@@ -190,8 +183,6 @@ export function selectDigestPrograms(profile: DigestProfileInput): DigestProgram
   const queryParts = [
     profile.industry,
     profile.fundingPurpose,
-    profile.businessName,
-    profile.legalForm ? LEGAL_FORM_LABELS[profile.legalForm] : "",
   ]
     .filter((v): v is string => Boolean(v && v.trim()))
     .join(" ");
@@ -206,25 +197,8 @@ export function selectDigestPrograms(profile: DigestProfileInput): DigestProgram
       const program = eligible.find((p) => p.id === match.programId);
       if (!program || seen.has(program.id)) continue;
       seen.add(program.id);
-      picked.push(toDigestProgram(program, match.reason || program.summary, picked.length === 0));
+      picked.push(toDigestProgram(program, match.reason || program.summary));
     }
-  }
-
-  const defaults = ["vlasna-sprava", "bloom-sme"];
-  for (const id of defaults) {
-    if (picked.length >= 2) break;
-    if (seen.has(id)) continue;
-    const program = eligible.find((p) => p.id === id);
-    if (!program) continue;
-    seen.add(program.id);
-    picked.push(toDigestProgram(program, program.summary, picked.length === 0));
-  }
-
-  for (const program of eligible) {
-    if (picked.length >= 2) break;
-    if (seen.has(program.id)) continue;
-    seen.add(program.id);
-    picked.push(toDigestProgram(program, program.summary, picked.length === 0));
   }
 
   return picked;
@@ -306,22 +280,14 @@ export function renderGrantDigestEmail(
 
   const criteriaItems = [
     profile.industry?.trim() ? `Сфера: ${profile.industry.trim()}` : "",
-    profile.city?.trim() || profile.region?.trim()
-      ? `Локація: ${profile.city?.trim() || profile.region?.trim()}`
-      : "",
-    profile.legalForm && LEGAL_FORM_LABELS[profile.legalForm]
-      ? `Форма: ${LEGAL_FORM_LABELS[profile.legalForm]}`
-      : "",
-    profile.requestedAmount?.trim()
-      ? `Орієнтовна сума: ${profile.requestedAmount.trim()} грн`
-      : "",
+    profile.fundingPurpose?.trim() ? `Потреба: ${profile.fundingPurpose.trim()}` : "",
   ].filter(Boolean);
 
   const criteriaHtml = criteriaItems.length
     ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
         <tr>
           <td style="padding:12px 16px;font-family:${font};font-size:12px;line-height:1.6;color:#475569;">
-            <strong style="color:#0f1d32;font-weight:700;">Критерії вашого профілю:</strong>
+            <strong style="color:#0f1d32;font-weight:700;">Дані для пошуку:</strong>
             ${escapeHtml(criteriaItems.join("  ·  "))}
           </td>
         </tr>
@@ -341,7 +307,7 @@ export function renderGrantDigestEmail(
             <tr>
               <td align="center" style="border-radius:9px;background-color:#0f1d32;">
                 <a href="${escapeHtml(p.url)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:11px 20px;font-family:${font};font-size:13px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:9px;">
-                  Підготувати заявку в GrantFolio &rarr;
+                  Переглянути умови програми &rarr;
                 </a>
               </td>
             </tr>
@@ -381,7 +347,7 @@ export function renderGrantDigestEmail(
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8fafc;border-left:3px solid #315fd7;border-radius:0 8px 8px 0;">
               <tr>
                 <td style="padding:10px 14px;font-family:${font};font-size:13px;line-height:1.55;color:#334155;">
-                  <strong style="color:#0f1d32;">Чому підходить:</strong> ${escapeHtml(p.reason)}
+                  <strong style="color:#0f1d32;">Пояснення збігу:</strong> ${escapeHtml(p.reason)}
                 </td>
               </tr>
             </table>
@@ -392,17 +358,17 @@ export function renderGrantDigestEmail(
     })
     .join("");
 
-  const countLabel =
-    programs.length === 1
-      ? "1 актуальну програму"
-      : `${programs.length} актуальні програми`;
+  const countLabel = programs.length === 1 ? "1 можливість" : `${programs.length} можливості`;
+  const introduction = programs.length
+    ? `Знайдено ${countLabel} за словами вашого запиту. Перевірте умови участі, витрати та строки в офіційному джерелі.`
+    : "За наданими даними зараз не знайдено можливостей із підтвердженим відкритим прийомом. Уточніть потребу або перегляньте каталог.";
 
   const bodyHtml = `
     <p style="margin:0 0 8px 0;font-family:${font};font-size:18px;font-weight:700;letter-spacing:-0.02em;color:#0f1d32;">
       Вітаємо, ${escapeHtml(greetingName)}!
     </p>
     <p style="margin:0 0 22px 0;font-family:${font};font-size:14.5px;line-height:1.6;color:#475569;">
-      Ми підібрали <strong style="color:#0f1d32;">${escapeHtml(countLabel)}</strong> фінансування з відкритим прийомом, які відповідають параметрам вашого бізнес-профілю.
+      ${escapeHtml(introduction)}
     </p>
     ${criteriaHtml}
     ${programCardsHtml}
@@ -443,7 +409,7 @@ export function renderGrantDigestEmail(
   `;
 
   const html = emailShell({
-    preheader: `Підібрано ${countLabel} для «${displayTarget}» — перевірте умови та строки подання.`,
+    preheader: introduction,
     badgeText: "Персональний дайджест",
     bodyHtml,
     footerNoteHtml,
@@ -452,13 +418,13 @@ export function renderGrantDigestEmail(
   const textLines = [
     `Вітаємо, ${greetingName}!`,
     "",
-    `Підібрано ${countLabel} фінансування для «${displayTarget}»:`,
+    introduction,
     ...(criteriaItems.length ? [`(${criteriaItems.join(" · ")})`, ""] : [""]),
     ...programs.flatMap((p, i) => [
       `${i + 1}. ${p.title} (${p.provider})`,
       `   Сума: ${p.amount} · ${p.fundingLabel}`,
       `   Строк: ${p.deadlineLabel}`,
-      `   Чому підходить: ${p.reason}`,
+      `   Пояснення збігу: ${p.reason}`,
       `   Деталі: ${p.url}`,
       "",
     ]),

@@ -194,10 +194,22 @@ export function createApp(
         return;
       }
       const token = res.locals.firebaseToken;
-      const fallbackEmail = z.email().max(254).safeParse(token?.email);
-      const targetEmail = parsed.data.email || (fallbackEmail.success ? fallbackEmail.data : "");
-      if (!targetEmail) {
-        res.status(400).json({ error: "missing_recipient" });
+      const recipient = z.email().max(254).safeParse(token?.email);
+      if (!recipient.success || !(token?.email_verified === true || res.locals.emailVerifiedByOtp === true)) {
+        res.status(403).json({ error: "verified_email_required" });
+        return;
+      }
+      if (parsed.data.email && parsed.data.email.toLowerCase() !== recipient.data.toLowerCase()) {
+        res.status(400).json({ error: "invalid_preview_recipient" });
+        return;
+      }
+      const permit = await db.query(`INSERT INTO newsletter_preview_cooldowns (owner_id, last_requested_at)
+        VALUES ($1, now())
+        ON CONFLICT (owner_id) DO UPDATE SET last_requested_at = excluded.last_requested_at
+        WHERE newsletter_preview_cooldowns.last_requested_at <= excluded.last_requested_at - interval '5 minutes'
+        RETURNING owner_id`, [res.locals.uid]);
+      if (!permit.rowCount) {
+        res.status(429).json({ error: "preview_cooldown" });
         return;
       }
       const saved = await db.query(
@@ -227,7 +239,7 @@ export function createApp(
       let delivered = false;
       try {
         delivered = await sendGmailMessage(
-          targetEmail,
+          recipient.data,
           digest.subject,
           digest.text,
           digest.html,
@@ -236,7 +248,11 @@ export function createApp(
       } catch {
         delivered = false;
       }
-      res.json({ ok: true, delivered, recipient: targetEmail });
+      if (!delivered) {
+        res.status(503).json({ error: "email_delivery_unavailable" });
+        return;
+      }
+      res.json({ ok: true, delivered: true, recipient: recipient.data });
     } catch (error) {
       next(error);
     }
@@ -329,18 +345,20 @@ export function createApp(
         saved = await db.query(
           `UPDATE profiles SET business_name=$2, description=$3, region=$4,
             details=$5::jsonb, updated_at=now(), revision=revision+1
-           WHERE owner_id=$1
+           WHERE owner_id=$1 AND revision=$6
            RETURNING business_name AS "businessName", description, region, details, revision`,
-          [uid, newBusinessName, newDescription, newRegion, JSON.stringify(details)]
+          [uid, newBusinessName, newDescription, newRegion, JSON.stringify(details), currentRevision]
         );
       } else {
         saved = await db.query(
           `INSERT INTO profiles(owner_id, business_name, description, region, details, revision)
            VALUES ($1,$2,$3,$4,$5::jsonb,1)
+           ON CONFLICT (owner_id) DO NOTHING
            RETURNING business_name AS "businessName", description, region, details, revision`,
           [uid, newBusinessName, newDescription, newRegion, JSON.stringify(details)]
         );
       }
+      if (!saved.rowCount) { res.status(409).json({ error: "profile_conflict" }); return; }
       const row = saved.rows[0];
       res.json({
         ok: true,

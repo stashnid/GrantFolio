@@ -10,6 +10,7 @@ export type GrantSourceRule = {
   suspensionUrl?: string;
   suspensionRequiredText?: string;
   suspensionClosedPattern?: string;
+  suspensionOpenDeadlinePattern?: string;
 };
 export const GRANT_SOURCE_RULES: GrantSourceRule[] = [
   {
@@ -23,6 +24,8 @@ export const GRANT_SOURCE_RULES: GrantSourceRule[] = [
     suspensionRequiredText: "Започаткування та масштабування власної справи",
     suspensionClosedPattern:
       "Прийом заяв(?:ок)?\\s+(?:тимчасово\\s+)?призупинено",
+    suspensionOpenDeadlinePattern:
+      "поточний етап прийому заявок триває до (\\d{1,2}\\s+[а-яіїєґ]+\\s+20\\d{2})",
   },
   {
     programId: "uvf-reimbursement",
