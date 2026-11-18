@@ -7,6 +7,7 @@ import { advisorRouter } from "./advisor.js";
 import { casesRouter } from "./cases.js";
 import { feedbackRouter } from "./feedback.js";
 import { donationsRouter } from "./donations.js";
+import { monitorAdminRouter } from "./monitor-admin.js";
 import { configuredEmailLoginCode, sendGmailMessage } from "./email-login-code.js";
 import { renderGrantDigestEmail, selectDigestPrograms } from "./email-templates.js";
 import {
@@ -48,9 +49,10 @@ export function createApp(
   db: Pool,
   catalogStatus: () => unknown[] | Promise<unknown[]> = () => [],
   emailCode = configuredEmailLoginCode(db),
+  onCatalogMutated?: () => Promise<void>,
 ) {
   const app = express();
-  const privateRoutes = ["/api/advisor", "/api/me", "/api/cases", "/api/feedback", "/api/donations"];
+  const privateRoutes = ["/api/advisor", "/api/me", "/api/cases", "/api/feedback", "/api/donations", "/api/admin/monitor"];
   app.disable("x-powered-by");
   app.use(express.json({ limit: "128kb" }));
   app.get("/api/grants", async (_req,res,next) => {try { const sources=await catalogStatus();res.set("Cache-Control","no-store").json({programs:GRANT_CATALOG,sources}); }catch(e){next(e);} });
@@ -123,6 +125,9 @@ export function createApp(
         res.status(403).json({ error: "email_code_required" });
         return;
       }
+      if (res.locals.firebaseToken?.firebase?.sign_in_provider === "password") {
+        res.locals.emailVerifiedByOtp = true;
+      }
       next();
     });
   } else {
@@ -189,10 +194,22 @@ export function createApp(
         return;
       }
       const token = res.locals.firebaseToken;
-      const fallbackEmail = z.email().max(254).safeParse(token?.email);
-      const targetEmail = parsed.data.email || (fallbackEmail.success ? fallbackEmail.data : "");
-      if (!targetEmail) {
-        res.status(400).json({ error: "missing_recipient" });
+      const recipient = z.email().max(254).safeParse(token?.email);
+      if (!recipient.success || !(token?.email_verified === true || res.locals.emailVerifiedByOtp === true)) {
+        res.status(403).json({ error: "verified_email_required" });
+        return;
+      }
+      if (parsed.data.email && parsed.data.email.toLowerCase() !== recipient.data.toLowerCase()) {
+        res.status(400).json({ error: "invalid_preview_recipient" });
+        return;
+      }
+      const permit = await db.query(`INSERT INTO newsletter_preview_cooldowns (owner_id, last_requested_at)
+        VALUES ($1, now())
+        ON CONFLICT (owner_id) DO UPDATE SET last_requested_at = excluded.last_requested_at
+        WHERE newsletter_preview_cooldowns.last_requested_at <= excluded.last_requested_at - interval '5 minutes'
+        RETURNING owner_id`, [res.locals.uid]);
+      if (!permit.rowCount) {
+        res.status(429).json({ error: "preview_cooldown" });
         return;
       }
       const saved = await db.query(
@@ -222,7 +239,7 @@ export function createApp(
       let delivered = false;
       try {
         delivered = await sendGmailMessage(
-          targetEmail,
+          recipient.data,
           digest.subject,
           digest.text,
           digest.html,
@@ -231,7 +248,11 @@ export function createApp(
       } catch {
         delivered = false;
       }
-      res.json({ ok: true, delivered, recipient: targetEmail });
+      if (!delivered) {
+        res.status(503).json({ error: "email_delivery_unavailable" });
+        return;
+      }
+      res.json({ ok: true, delivered: true, recipient: recipient.data });
     } catch (error) {
       next(error);
     }
@@ -355,6 +376,7 @@ export function createApp(
   app.use("/api/cases", casesRouter(db));
   app.use("/api/feedback", feedbackRouter(db));
   app.use("/api/donations", donationsRouter(db));
+  app.use("/api/admin/monitor", monitorAdminRouter(db, { onAvailabilityApproved: onCatalogMutated }));
   app.use("/api", (_req, res) => res.status(404).json({ error: "not_found" }));
   const errors: ErrorRequestHandler = (error, _req, res, _next) => {
     const status =

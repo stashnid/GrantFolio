@@ -4,14 +4,14 @@ import type { Pool } from "pg";
 import { z } from "zod";
 import { parseDraftSuggestions } from "./draft-suggestions.js";
 import type { ProfileDetails } from "./profile-details.js";
+import { postgresAssistantLimiter, type AssistantLimiter } from "./assistant-limits.js";
 
 const input = z.object({ expectedRevision: z.number().int().min(0).max(2147483646), message: z.string().trim().min(1).max(2000) }).strict();
 type Snapshot = { mode?: "discovery"; discovery?: unknown; title: string; program_id?: string | null; revision: number; profileRevision: number; details: unknown; items: unknown; total_kopecks: string; businessProfile?: { businessName: string; description: string; region: string; details?: Omit<ProfileDetails, "contactName" | "phone" | "website"> }; conversation?: { question: string; reply: string; revision: number; stale: boolean; truncated: boolean }[] };
 export type AssistantResponder = (snapshot: Snapshot, message: string, signal: AbortSignal) => Promise<string>;
 
-export function assistantRouter(db: Pool, responder: AssistantResponder | null | undefined = undefined, timeoutMs = 25000) {
+export function assistantRouter(db: Pool, responder: AssistantResponder | null | undefined = undefined, timeoutMs = 25000, limiter: AssistantLimiter = postgresAssistantLimiter(db)) {
   const router = Router();
-  const users = new Map<string, { last: number; active: number }>();
   router.get("/:id/assistant/history", async (req, res, next) => {
     if (!z.string().uuid().safeParse(req.params.id).success) { res.status(404).json({ error: "not_found" }); return; }
     const before = req.query.before;
@@ -46,13 +46,9 @@ export function assistantRouter(db: Pool, responder: AssistantResponder | null |
       const snapshot: Snapshot = result.rows[0];
       if (snapshot.revision !== parsed.data.expectedRevision) { res.status(409).json({ error: "revision_conflict" }); return; }
       if (!responder) { res.status(503).json({ error: "assistant_unavailable" }); return; }
-      const now = Date.now();
-      for (const [uid, state] of users) if (!state.active && now - state.last >= 15000) users.delete(uid);
       const uid: string = res.locals.uid;
-      const state = users.get(uid);
-      if ((state && (state.active >= 2 || now - state.last < 15000)) || (!state && users.size >= 10000)) { res.status(429).json({ error: "rate_limited" }); return; }
-      const entry = state ?? { last: now, active: 0 };
-      entry.last = now; entry.active++; users.set(uid, entry);
+      const lease = await limiter.acquire(uid, timeoutMs + 60000);
+      if (!lease) { res.status(429).json({ error: "rate_limited" }); return; }
       const controller = new AbortController();
       let timer: ReturnType<typeof setTimeout> | undefined;
       try {
@@ -87,7 +83,7 @@ export function assistantRouter(db: Pool, responder: AssistantResponder | null |
         if (controller.signal.aborted) res.status(504).json({ error: "assistant_timeout" });
         else if (error instanceof Error && error.message === "upstream") res.status(502).json({ error: "assistant_error" });
         else res.status(502).json({ error: "assistant_error" });
-      } finally { if (timer) clearTimeout(timer); entry.active--; }
+      } finally { if (timer) clearTimeout(timer); await limiter.release(uid, lease).catch(() => {}); }
     } catch (error) { next(error); }
   });
   return router;

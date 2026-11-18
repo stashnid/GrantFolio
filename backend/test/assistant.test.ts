@@ -16,8 +16,17 @@ async function setup(responder?: AssistantResponder, timeout = 100, failSave = f
     return { rowCount: 1, rows: [sql.startsWith("SELECT revision") ? { revision } : { title: "Проєкт", revision, details: {}, items: [], total_kopecks: "0" }] };
   } } as unknown as Pool;
   const app = express(); app.use(express.json());
+  let admitted = false;
+  const limiter = {
+    acquire: async () => {
+      if (admitted) return null;
+      admitted = true;
+      return crypto.randomUUID();
+    },
+    release: async () => {},
+  };
   app.use((req, res, next) => { const uid = req.header("x-test-user"); if (!uid) { res.sendStatus(401); return; } res.locals.uid = uid; next(); });
-  app.use(responder ? assistantRouter(db, responder, timeout) : assistantRouter(db));
+  app.use(assistantRouter(db, responder, timeout, limiter));
   const server = app.listen(0, "127.0.0.1");
   await new Promise<void>((resolve) => server.once("listening", resolve));
   const port = (server.address() as { port: number }).port;

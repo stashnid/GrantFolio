@@ -137,9 +137,9 @@ export function BusinessProfile({
   }
   async function handleSendTestEmail() {
     if (!auth.currentUser) return;
-    const targetEmail = (profile.details.newsletterEmail || email || "").trim();
+    const targetEmail = email.trim();
     if (!targetEmail) {
-      setTestResult({ success: false, message: "Вкажіть адресу електронної пошти." });
+      setTestResult({ success: false, message: "Для тестового листа потрібна підтверджена адреса акаунта." });
       return;
     }
     if (fieldError("newsletterEmail", targetEmail)) {
@@ -164,6 +164,14 @@ export function BusinessProfile({
           fundingPurpose: profile.details.fundingPurpose.trim().slice(0, 500) || undefined,
         }),
       });
+      if (res.status === 429) {
+        setTestResult({ success: false, message: "Тестовий лист можна запитувати раз на 5 хвилин." });
+        return;
+      }
+      if (res.status === 403) {
+        setTestResult({ success: false, message: "Підтвердьте адресу акаунта, щоб надіслати тестовий лист." });
+        return;
+      }
       if (!res.ok) throw new Error("HTTP error " + res.status);
       const data = await res.json();
       setTestResult(
@@ -312,7 +320,7 @@ export function BusinessProfile({
                       onChange={e => change("newsletterEmail", e.target.value)}
                       className="bp-nl-input"
                     />
-                    <small>За замовчуванням лист надходить на пошту акаунта ({email || "не вказано"}).</small>
+                    <small>Тестовий лист надходить на підтверджену пошту акаунта ({email || "не вказано"}).</small>
                   </div>
 
                   <div className="bp-nl-field-group">

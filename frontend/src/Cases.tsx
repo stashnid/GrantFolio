@@ -146,6 +146,14 @@ const serializeBudget = (
 ) => rows.map(({ name, quantity, price }) => ({ name, quantity, price }));
 const money = (n: number) =>
   `${Math.floor(n / 100).toLocaleString("uk-UA")},${String(n % 100).padStart(2, "0")} грн`;
+function printSourceUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password ? url.href : null;
+  } catch {
+    return null;
+  }
+}
 export function Cases({
   user,
   onUnsavedChange,
@@ -725,6 +733,9 @@ export function Cases({
 
   const printReadiness = selected ? snapshotReadiness({ revision: selected.revision, details: selected.details, items: selected.items, total_kopecks: selected.totalKopecks }) : null;
   const printBudget = selected ? assessBudget(selected.items, selected.totalKopecks) : null;
+  const printBlocked = busy || dirty || !!pending || conflict || !!sessionDraft.recovery;
+  const printFields = [...basicsFields, ...planFields].filter(({ key }) => selected?.details[key]?.trim());
+  const printMissingChecks = printReadiness?.checks.filter(check => check.status === "missing") ?? [];
 
   const isStep1Done = Boolean(details.projectDescription.trim() && details.customers.trim());
   const isStep2Done = Boolean(details.implementationPlan.trim());
@@ -733,32 +744,51 @@ export function Cases({
 
   return (
     <div className="card cases-card">
-      {selected && createPortal(
-        <article className="print-document" aria-label="Чернетка проєкту для друку">
-          <p>GrantFolio · Робоча чернетка</p>
+      {selected && !printBlocked && createPortal(
+        <article className="print-document" lang="uk" aria-label="Робоча чернетка проєкту">
+          <header className="print-document-header">
+            <div className="print-brand">GrantFolio</div>
+            <p>РОБОЧА ЧЕРНЕТКА · ЗВІРТЕ З ОФІЦІЙНОЮ ФОРМОЮ</p>
+          </header>
           <h1>{selected.title}</h1>
-          <p>{activeProgram ? `Цільова програма: ${activeProgram.title} (${activeProgram.provider})` : "Фінансування підберемо далі"}</p>
-          <p>Збережена версія: {selected.revision}. Документ не замінює офіційної форми заявки.</p>
-          <p>Джерело відомостей про проєкт і бюджет: збережені дані заявника. Перевірте факти та узгодженість перед використанням.</p>
-          {printReadiness && <p>{printReadiness.checks.some(check => check.status === "missing") ? `Потребує доопрацювання: ${printReadiness.checks.filter(check => check.status === "missing").map(check => check.label).join(", ")}.` : "Базову перевірку заповнення пройдено; зміст і факти ще потрібно перевірити."}</p>}
-          {[...basicsFields, ...planFields].map((field) => (
+          <p className="print-document-lead">Опис проєкту та кошторис зі збережених даних заявника.</p>
+          <table className="print-metadata" aria-label="Відомості про проєкт"><tbody>
+            <tr><th scope="row">Цільова програма</th><td>{activeProgram ? `${activeProgram.title} · ${activeProgram.provider}` : "Не обрано"}</td></tr>
+            <tr><th scope="row">Збережена версія</th><td>{selected.revision}</td></tr>
+            <tr><th scope="row">Дата формування</th><td>{new Date().toLocaleDateString("uk-UA", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Kyiv" })}</td></tr>
+          </tbody></table>
+          <h2>Опис і план проєкту</h2>
+          {printReadiness && <p className="print-document-note">{printMissingChecks.length ? `Потребує доопрацювання: ${printMissingChecks.map(check => check.label).join(", ")}.` : "Базову перевірку заповнення пройдено. Перевірте факти та узгодженість."}</p>}
+          {printFields.map((field) => (
             <section key={field.key}>
-              <h2>{field.label}</h2>
-              <p className="print-paragraph">{selected.details[field.key] || "Не заповнено"}</p>
+              <h3>{field.label}</h3>
+              <p className="print-paragraph">{selected.details[field.key]}</p>
             </section>
           ))}
-          <h2>{"Бюджет"}</h2>
-          {printBudget?.validItems && selected.items.length > 0 ? <table>
-            <thead><tr><th>Витрата</th><th>Кількість</th><th>Ціна за одиницю</th><th>Сума</th></tr></thead>
+          <h2>Бюджет</h2>
+          {printBudget?.validItems && selected.items.length > 0 ? <table className="print-budget" aria-label="Кошторис проєкту">
+            <thead><tr><th scope="col">Стаття витрат</th><th scope="col">Кількість</th><th scope="col">Ціна за одиницю</th><th scope="col">Сума</th></tr></thead>
             <tbody>{selected.items.map((item, index) => <tr key={index}><td>{item.name}</td><td>{item.quantity}</td><td>{money(item.unitPriceKopecks)}</td><td>{money(item.quantity * item.unitPriceKopecks)}</td></tr>)}</tbody>
-          </table> : <p>{printBudget?.validItems ? "Не вказано" : "Позиції бюджету пошкоджені; перевірте та збережіть кошторис повторно."}</p>}
-          <p><strong>{printBudget?.totalMatches ? `Разом: ${money(selected.totalKopecks)}` : "Підсумок потребує перевірки: збережена сума не збігається з позиціями або бюджет пошкоджений."}</strong></p>
+          </table> : <p className="print-document-note">{printBudget?.validItems ? "Витрати ще не додано." : "Позиції бюджету пошкоджені. Перевірте та збережіть кошторис повторно."}</p>}
+          {printBudget?.totalMatches
+            ? <p className="print-total">Загальна сума бюджету <strong>{money(selected.totalKopecks)}</strong></p>
+            : <p className="print-document-note">Підсумок потребує перевірки. Збережена сума має збігатися із сумою позицій.</p>}
           {activeProgram && <><h2>Документи та наступні кроки</h2>
           <ul>{activeProgram.details.documents.map(document => <li key={document}>{document}</li>)}</ul>
           <ol>{activeProgram.details.steps.map(step => <li key={step}>{step}</li>)}</ol>
           <h2>Офіційні джерела</h2>
-          {activeProgram.details.sources.map(source => <p key={source.url}>{source.title}: {source.url} (перевірено {source.checkedAt})</p>)}</>}
-          <p>Умови участі, актуальний прийом, формат документів і дозволені витрати перевіряйте у конкретному конкурсі. Це робоча чернетка, не підтвердження офіційного подання.</p>
+          {activeProgram.details.sources.map(source => {
+            const url = printSourceUrl(source.url);
+            return <p className="print-source" key={source.url}>
+              <strong>{source.title}</strong>{" "}
+              <small>· Перевірено {source.checkedAt}</small>
+              {url && <><br /><a href={url}>{url}</a></>}
+            </p>;
+          })}</>}
+          <footer className="print-document-footer">
+            <strong>Перевірка перед поданням</strong>
+            <p>Звірте умови участі, актуальний прийом, перелік документів і дозволені витрати на сайті організатора. Перенесіть перевірені матеріали до актуальної форми заявки.</p>
+          </footer>
         </article>, document.body
       )}
       <div className="cases-toolbar">
@@ -1331,6 +1361,7 @@ export function Cases({
                 <p>
                   Сформований файл містить структуровані відповіді та бюджет. Перенесіть перевірений текст у форму обраного організатора.
                 </p>
+                <p>Для PDF зі збереженим описом і кошторисом виберіть «Зберегти як PDF» у вікні друку.</p>
                 <div className="export-buttons-group">
                   <button
                     type="button"
@@ -1350,10 +1381,10 @@ export function Cases({
                   <button
                     type="button"
                     className="secondary-btn print-pdf-btn"
-                    disabled={busy || dirty || !!pending || conflict}
+                    disabled={printBlocked}
                     onClick={() => window.print()}
                   >
-                    📄 Зберегти як PDF / Друк ↗
+                    Відкрити друк / PDF
                   </button>
                 </div>
                 {(dirty || pending) && (

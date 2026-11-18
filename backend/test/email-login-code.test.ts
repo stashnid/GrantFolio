@@ -33,6 +33,7 @@ after(async () => {
 });
 await once(server, "listening");
 await db.query(await readFile("backend/migrations/016_email_login_codes.sql", "utf8"));
+await db.query(await readFile("backend/migrations/018_newsletter_preview_cooldown.sql", "utf8"));
 await db.query("CREATE TABLE profiles (owner_id TEXT PRIMARY KEY, business_name TEXT, description TEXT, region TEXT, details JSONB, revision INTEGER)");
 const address = server.address();
 assert.ok(address && typeof address !== "string");
@@ -81,4 +82,30 @@ test("password accounts need a single-use email code and the resulting grant sta
   assert.equal((await request("me", first.token, { cookie })).status, 200);
   assert.equal((await request("me", second.token, { cookie })).status, 403);
   assert.equal((await request("auth/email-code/verify", first.token, { method: "POST", code })).status, 400);
+});
+
+test("newsletter preview requires confirmation, restricts recipient, and enforces a shared cooldown", async (t) => {
+  const originalFetch = globalThis.fetch;
+  t.mock.method(globalThis, "fetch", (input: Parameters<typeof fetch>[0], init?: RequestInit) => {
+    const url = typeof input === "string" ? input : input instanceof URL ? input.href : input.url;
+    if (/^https:\/\/(api\.resend\.com|oauth2\.googleapis\.com|gmail\.googleapis\.com)\//.test(url)) {
+      return Promise.resolve(new Response(null, { status: 503 }));
+    }
+    return originalFetch(input, init);
+  });
+  const account = await signup();
+  const path = "me/newsletter/preview";
+  assert.equal((await request(path, account.token, { method: "POST" })).status, 403);
+  assert.equal((await request("auth/email-code/send", account.token, { method: "POST" })).status, 204);
+  const verified = await request("auth/email-code/verify", account.token, { method: "POST", code: delivered.get(account.email) });
+  assert.equal(verified.status, 204);
+  const cookie = verified.headers.get("set-cookie")!.split(";")[0];
+  const send = (recipient?: string) => fetch(`${base}/api/${path}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${account.token}`, Cookie: cookie, "Content-Type": "application/json" },
+    body: JSON.stringify(recipient ? { email: recipient } : {}),
+  });
+  assert.equal((await send("other@example.test")).status, 400);
+  const responses = await Promise.all([send(), send()]);
+  assert.deepEqual(responses.map(response => response.status).sort(), [429, 503]);
 });
