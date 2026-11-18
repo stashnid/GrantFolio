@@ -5,6 +5,8 @@ import {
   onAuthStateChanged,
   signInWithEmailAndPassword,
   signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   sendPasswordResetEmail,
   signOut,
   type User,
@@ -39,6 +41,18 @@ function NavIcon({kind}: {kind: WorkspaceTab | "logout" | "feedback"}) {
     feedback: "M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z",
   };
   return <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.65" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d={paths[kind]} /></svg>;
+}
+function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") return false;
+  return /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+}
+function detectInAppBrowser(): boolean {
+  if (typeof navigator === "undefined") return false;
+  const ua = navigator.userAgent || "";
+  return (
+    /FBAN|FBAV|Instagram|Line|Twitter|Telegram|MicroMessenger|musical_ly|BytedanceWebview/i.test(ua) ||
+    (/WebKit/i.test(ua) && !/Safari/i.test(ua) && /iPhone|iPad/i.test(ua))
+  );
 }
 export function App() {
   const confirm = useConfirm();
@@ -77,7 +91,8 @@ export function App() {
     [feedbackContext, setFeedbackContext] = useState<{
       screen?: "advisor" | "cases" | "catalog" | "budget" | "profile" | "export";
       programId?: string | null;
-    }>({});
+    }>({}),
+    [inAppBrowser] = useState(detectInAppBrowser);
 
   function openFeedback(
     task?: FeedbackTask,
@@ -89,6 +104,27 @@ export function App() {
     setFeedbackOpen(true);
     setMobileMenuOpen(false);
   }
+  useEffect(() => {
+    let active = true;
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user && active) {
+          setMessage("Вхід успішно виконано!");
+        }
+      })
+      .catch((error) => {
+        if (!active) return;
+        const code = (error as { code?: string })?.code;
+        if (code === "auth/unauthorized-domain") {
+          setError("Цей домен не додано до дозволених у налаштуваннях авторизації.");
+        } else if (code && code !== "auth/popup-closed-by-user" && code !== "auth/cancelled-popup-request") {
+          setError("Не вдалося завершити вхід через Google. Спробуйте ще раз або увійдіть за допомогою пошти.");
+        }
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
   useEffect(
     () =>
       onAuthStateChanged(auth, (u) => {
@@ -243,14 +279,41 @@ export function App() {
     setBusy(true);
     setError("");
     setMessage("");
+
+    const isMobile = isMobileDevice();
+    const provider = new GoogleAuthProvider();
+
+    if (isMobile) {
+      setMessage("Перенаправляємо на сторінку входу Google…");
+      try {
+        await signInWithRedirect(auth, provider);
+      } catch (error) {
+        setBusy(false);
+        setMessage("");
+        const code = (error as { code?: string }).code;
+        setError(
+          code === "auth/unauthorized-domain"
+            ? "Цей домен не додано до дозволених у налаштуваннях авторизації."
+            : "Не вдалося відкрити вхід через Google. Спробуйте ще раз або скористайтеся входом за поштою нижче.",
+        );
+      }
+      return;
+    }
+
     try {
-      await signInWithPopup(auth, new GoogleAuthProvider());
+      await signInWithPopup(auth, provider);
     } catch (error) {
       const code = (error as { code?: string }).code;
       if (code === "auth/popup-blocked") {
-        setError("Дозвольте спливні вікна для GrantFolio та спробуйте ще раз.");
+        setMessage("Спливне вікно заблоковано, перенаправляємо на вхід Google…");
+        try {
+          await signInWithRedirect(auth, provider);
+          return;
+        } catch {
+          setError("Дозвольте спливні вікна для сайту або увійдіть за допомогою пошти та пароля.");
+        }
       } else if (code !== "auth/popup-closed-by-user" && code !== "auth/cancelled-popup-request") {
-        setError("Не вдалося увійти через Google. Спробуйте ще раз.");
+        setError("Не вдалося увійти через Google. Спробуйте ще раз або скористайтеся входом за поштою.");
       }
     } finally {
       setBusy(false);
@@ -537,6 +600,13 @@ export function App() {
                   </svg>
                   <span>Продовжити через Google</span>
                 </button>
+                {inAppBrowser && (
+                  <div className="auth-inapp-notice" role="note">
+                    <p>
+                      💡 <strong>Ви відкрили сайт у вбудованому браузері</strong> (наприклад, Telegram чи Instagram). Google обмежує вхід у таких вікнах. Натисніть <strong>⋯</strong> та виберіть <strong>«Відкрити в Safari»</strong> чи <strong>«Відкрити в Chrome»</strong>, або скористайтеся входом за поштою нижче.
+                    </p>
+                  </div>
+                )}
                 {!register && <button type="button" className="link" disabled={busy} onClick={() => void resetPassword()}>Забули пароль?</button>}
               </form>
               <div className="switch">
