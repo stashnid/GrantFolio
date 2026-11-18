@@ -7,7 +7,7 @@ import type { ProfileDetails } from "./profile-details.js";
 import { postgresAssistantLimiter, type AssistantLimiter } from "./assistant-limits.js";
 
 const input = z.object({ expectedRevision: z.number().int().min(0).max(2147483646), message: z.string().trim().min(1).max(2000) }).strict();
-type Snapshot = { mode?: "discovery"; discovery?: unknown; title: string; program_id?: string | null; revision: number; profileRevision: number; details: unknown; items: unknown; total_kopecks: string; businessProfile?: { businessName: string; description: string; region: string; details?: Omit<ProfileDetails, "contactName" | "phone" | "website"> }; conversation?: { question: string; reply: string; revision: number; stale: boolean; truncated: boolean }[] };
+type Snapshot = { mode?: "discovery" | "preparation-ideas"; discovery?: unknown; title: string; program_id?: string | null; revision: number; profileRevision: number; details: unknown; items: unknown; total_kopecks: string; businessProfile?: { businessName: string; description: string; region: string; details?: Omit<ProfileDetails, "contactName" | "phone" | "website"> }; conversation?: { question: string; reply: string; revision: number; stale: boolean; truncated: boolean }[] };
 export type AssistantResponder = (snapshot: Snapshot, message: string, signal: AbortSignal) => Promise<string>;
 
 export function assistantRouter(db: Pool, responder: AssistantResponder | null | undefined = undefined, timeoutMs = 25000, limiter: AssistantLimiter = postgresAssistantLimiter(db)) {
