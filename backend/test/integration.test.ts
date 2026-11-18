@@ -726,12 +726,23 @@ test("financial plans reconcile a private snapshot and block stale exports", asy
   const path = `/api/cases/${id}`;
   const financialPath = `${path}/grant-financial-plan`;
   const applicationPath = `${path}/grant-application`;
-  const answers = { track: "start", requestedGrantKopecks: 100_500, ownContributionKopecks: 50_000 };
+  const answers = { track: "start", requestedGrantKopecks: 100_500, ownContributionKopecks: 50_000, taxProfile: "fop_simplified" as const };
   assert.equal((await call(owner, applicationPath, "PUT", { answers, expectedRevision: 0, expectedCaseRevision: 0 })).status, 200);
 
   const first = { salesKopecks: 20_000, grantKopecks: 100_500, ownKopecks: 50_000, operatingCostsKopecks: 0, payrollKopecks: 0, taxesKopecks: 500, capitalCostsKopecks: 171_000 };
   const empty = { salesKopecks: 0, grantKopecks: 0, ownKopecks: 0, operatingCostsKopecks: 0, payrollKopecks: 0, taxesKopecks: 0, capitalCostsKopecks: 0 };
-  const plan = { openingBalanceKopecks: 0, months: [first, ...Array.from({ length: 23 }, () => empty)] };
+  const emptyRows = {
+    additionalSalesKopecks: 0, assetSaleIncomeKopecks: 0, otherIncomeKopecks: 0,
+    propertyPurchaseKopecks: 0, premisesRentKopecks: 0, equipmentRentalKopecks: 0, otherBusinessCostsKopecks: 0,
+    utilitiesKopecks: 0, insuranceKopecks: 0, marketingKopecks: 0, communicationsKopecks: 0, equipmentKopecks: 0,
+    repairsKopecks: 0, transportKopecks: 0, professionalServicesKopecks: 0, applicantSalaryKopecks: 0,
+    existingStaffSalaryKopecks: 0, newStaffSalaryKopecks: 0, simplifiedTaxKopecks: 0, simplifiedMilitaryLevyKopecks: 0,
+    fopTaxableIncomeKopecks: 0, fopIncomeTaxKopecks: 0, fopMilitaryLevyKopecks: 0, fopEsvKopecks: 0,
+    ecologicalTaxKopecks: 0, rentPaymentKopecks: 0,
+  };
+  const firstRows = { ...emptyRows, equipmentKopecks: 171_000, simplifiedTaxKopecks: 500 };
+  const businessPlanRows = [firstRows, ...Array.from({ length: 23 }, () => emptyRows)];
+  const plan = { openingBalanceKopecks: 0, months: [first, ...Array.from({ length: 23 }, () => empty)], businessPlanRows };
   const revisions = { expectedCaseRevision: 0, expectedApplicationRevision: 1, expectedPlanRevision: 0 };
   assert.equal((await call(stranger, financialPath)).status, 404);
   assert.equal((await call(stranger, financialPath, "PUT", { ...revisions, plan })).status, 404);
