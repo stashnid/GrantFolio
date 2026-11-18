@@ -61,11 +61,11 @@ test("scaling checks tenure, job count and published amount limits", () => {
   assert(view.questions.some(q => q.id === "existingJobs"));
 });
 
-test("completion requires matches in integer kopecks, saved details and confirmation", () => {
+test("full-form completion requires the added official fields before review", () => {
   const view = getGrantApplication("vlasna-sprava", answers, context)!;
-  assert.equal(view.nextQuestion, null);
+  assert.equal(view.nextQuestion?.id, "applicantName");
   assert.equal(view.financials.uncoveredKopecks, 0);
-  assert.equal(view.readyForReview, true);
+  assert.equal(view.readyForReview, false);
   assert.equal(getGrantApplication("vlasna-sprava", { ...answers, confirmAccuracy: false }, context)?.nextQuestion?.id, "confirmAccuracy");
   assert.equal(getGrantApplication("vlasna-sprava", answers, { ...context, budgetTotalKopecks: "23000051" })?.financials.uncoveredKopecks, 1);
   assert.equal(getGrantApplication("vlasna-sprava", answers, { ...context, details: {} })?.readyForReview, false);

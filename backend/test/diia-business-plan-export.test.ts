@@ -1,20 +1,11 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-import { strFromU8, strToU8, unzipSync, zipSync } from "fflate";
+import { strFromU8, unzipSync } from "fflate";
 import { buildDiiaBusinessPlanWorkbook, createDiiaBusinessPlanExport, mapGrantApplicationAnswersToDiiaCells } from "../src/diia-business-plan-export.js";
+import type { FinancialBusinessPlanRows, FinancialPlan } from "../src/grant-financial-plan.js";
 
-function fixture() {
-  return zipSync({
-    "xl/workbook.xml": strToU8('<?xml version="1.0"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="Бізнес план" sheetId="1" r:id="rId1"/><sheet name="Прибутки та збитки" sheetId="2" r:id="rId2"/><sheet name="Довідник" sheetId="3" r:id="rId3"/></sheets></workbook>'),
-    "xl/_rels/workbook.xml.rels": strToU8('<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Target="worksheets/sheet2.xml"/><Relationship Id="rId3" Target="worksheets/sheet3.xml"/></Relationships>'),
-    "xl/worksheets/sheet1.xml": strToU8('<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="C1" s="5" t="inlineStr"><is><t>Приклад</t></is></c><c r="C2" s="6"><f>1+1</f><v>2</v></c><c r="C3" s="5" t="inlineStr"><is><t>Старий приклад</t></is></c></row></sheetData><dataValidations count="1"/></worksheet>'),
-    "xl/worksheets/sheet2.xml": strToU8('<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData><row r="1"><c r="D1" s="7"><v>100</v></c></row></sheetData></worksheet>'),
-    "xl/worksheets/sheet3.xml": strToU8('<worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetData/></worksheet>'),
-    "xl/styles.xml": strToU8("styles"),
-    "xl/sharedStrings.xml": strToU8("shared"),
-  });
-}
+const templateUrl = new URL("../assets/vlasna-sprava-2026-diia-example-sanitized.xlsx", import.meta.url);
 
 function sheetPath(files: Record<string, Uint8Array>, sheetName: string) {
   const workbook = strFromU8(files["xl/workbook.xml"]);
@@ -24,62 +15,69 @@ function sheetPath(files: Record<string, Uint8Array>, sheetName: string) {
   ]));
   const sheet = [...workbook.matchAll(/<sheet\b([^>]+)\/?\s*>/g)].find(match => match[1].includes(`name="${sheetName}"`));
   assert(sheet);
-  const id = sheet[1].match(/\b(?:r:)?id="([^"]+)"/)![1];
-  const target = rels.get(id)!;
+  const target = rels.get(sheet[1].match(/\b(?:r:)?id="([^"]+)"/)![1])!;
   return target.startsWith("/") ? target.slice(1) : `xl/${target}`;
 }
 
-test("preserves official package structure and formulas while clearing and filling explicit cells", () => {
-  const original = fixture();
-  const changed = unzipSync(buildDiiaBusinessPlanWorkbook(original, {
-    "Бізнес план": { C1: "Значення заявника" },
-    "Прибутки та збитки": { D1: 250.5 },
-  }, [{ sheet: "Бізнес план", cell: "C3" }]));
-  const source = unzipSync(original);
-  const plan = strFromU8(changed["xl/worksheets/sheet1.xml"]);
-  const finance = strFromU8(changed["xl/worksheets/sheet2.xml"]);
-  assert.match(plan, /<c r="C1" s="5" t="inlineStr"><is><t xml:space="preserve">Значення заявника<\/t><\/is><\/c>/);
-  assert.match(plan, /<c r="C2" s="6"><f>1\+1<\/f><v>2<\/v><\/c>/);
-  assert.match(plan, /<c r="C3" s="5"\/>/);
-  assert.match(plan, /<dataValidations count="1"\/>/);
-  assert.match(finance, /<c r="D1" s="7"><v>250\.5<\/v><\/c>/);
-  assert.deepEqual(Object.keys(changed).sort(), Object.keys(source).sort());
-  assert.equal(strFromU8(changed["xl/styles.xml"]), strFromU8(source["xl/styles.xml"]));
-  assert.equal(strFromU8(changed["xl/sharedStrings.xml"]), strFromU8(source["xl/sharedStrings.xml"]));
-  assert.match(strFromU8(changed["xl/workbook.xml"]), /fullCalcOnLoad="1" forceFullCalc="1"/);
-});
+function assertCurrencyStyle(files: Record<string, Uint8Array>, sheetName: string, cell: string) {
+  const xml = strFromU8(files[sheetPath(files, sheetName)]);
+  const style = xml.match(new RegExp(`<c r="${cell}"[^>]* s="(\\d+)"`))?.[1];
+  assert(style, `currency cell ${sheetName}!${cell} has no style`);
+  const styles = strFromU8(files["xl/styles.xml"]);
+  const xfs = styles.match(/<cellXfs\b[^>]*>([\s\S]*?)<\/cellXfs>/)?.[1];
+  assert(xfs);
+  const entries = [...xfs.matchAll(/<xf\b[^>]*\/>|<xf\b[^>]*>[\s\S]*?<\/xf>/g)].map(match => match[0]);
+  assert.match(entries[Number(style)], /numFmtId="4"/);
+}
 
-test("refuses formula edits and unsupported cells", () => {
-  const original = fixture();
-  assert.throws(() => buildDiiaBusinessPlanWorkbook(original, { "Бізнес план": { C2: 9 } }, []), /formula cell/i);
-  assert.throws(() => buildDiiaBusinessPlanWorkbook(original, { "Бізнес план": { Z99: 9 } }, []), /missing official template cell/i);
-});
+function financialPlan(): FinancialPlan {
+  const emptyRows: FinancialBusinessPlanRows = {
+    additionalSalesKopecks: 0, assetSaleIncomeKopecks: 0, otherIncomeKopecks: 0,
+    propertyPurchaseKopecks: 0, premisesRentKopecks: 0, equipmentRentalKopecks: 0, otherBusinessCostsKopecks: 0,
+    utilitiesKopecks: 0, insuranceKopecks: 0, marketingKopecks: 0, communicationsKopecks: 0, equipmentKopecks: 0,
+    repairsKopecks: 0, transportKopecks: 0, professionalServicesKopecks: 0, applicantSalaryKopecks: 0,
+    existingStaffSalaryKopecks: 0, newStaffSalaryKopecks: 0, simplifiedTaxKopecks: 0, simplifiedMilitaryLevyKopecks: 0,
+    fopTaxableIncomeKopecks: 0, fopIncomeTaxKopecks: 0, fopMilitaryLevyKopecks: 0, fopEsvKopecks: 0,
+    ecologicalTaxKopecks: 0, rentPaymentKopecks: 0,
+  };
+  const months = Array.from({ length: 24 }, () => ({ salesKopecks: 0, grantKopecks: 0, ownKopecks: 0,
+    operatingCostsKopecks: 0, payrollKopecks: 0, taxesKopecks: 0, capitalCostsKopecks: 0 }));
+  months[0] = { salesKopecks: 500000, grantKopecks: 12500500, ownKopecks: 2500000,
+    operatingCostsKopecks: 4050, payrollKopecks: 100000, taxesKopecks: 5000, capitalCostsKopecks: 100000 };
+  const businessPlanRows = Array.from({ length: 24 }, () => ({ ...emptyRows }));
+  businessPlanRows[0] = { ...emptyRows, additionalSalesKopecks: 150, assetSaleIncomeKopecks: 250, otherIncomeKopecks: 350,
+    marketingKopecks: 4050, equipmentKopecks: 100000,
+    newStaffSalaryKopecks: 100000, simplifiedTaxKopecks: 5000 };
+  return { openingBalanceKopecks: 0, months, businessPlanRows };
+}
 
-test("maps only direct application answers and reports fields that still need applicant input", () => {
-  const mapping = mapGrantApplicationAnswersToDiiaCells({
-    track: "scale", requestedGrantKopecks: 12500500, newJobs: 2, permits: "Ліцензія потрібна, подання заплановане до початку роботи.",
-    projectObjective: "Відкрити цех для виробництва деталей.", pricingStrategy: "Ціна покриває матеріали, оплату праці та логістику.",
-    staffingPlan: "Майстер — 1 працівник, 24 000 грн на місяць.", projectRisks: "Постачання обладнання може затриматися.",
-    applicantIdentity: "Назва і контакти, код буде уточнено.",
-  });
-  assert.deepEqual(mapping.cells["Бізнес план"], {
-    B24: "Масштабування власної справи", C26: 125005, B99: 2,
-    B16: "Ліцензія потрібна, подання заплановане до початку роботи.",
-    B45: "Відкрити цех для виробництва деталей.",
-    B59: "Ціна покриває матеріали, оплату праці та логістику.",
-    B101: "Майстер — 1 працівник, 24 000 грн на місяць.",
-    B104: "Постачання обладнання може затриматися.",
-  });
-  assert(mapping.remainingAnswers.includes("applicantIdentity"));
-  assert(mapping.missingOfficialInputs.some(item => item.includes("окремо від коду ЄДРПОУ")));
-});
+const answers = {
+  track: "start" as const, requestedGrantKopecks: 12500500, ownContributionKopecks: 2500000,
+  newJobs: 2, applicantType: "entrepreneur" as const, applicantName: "ФОП Тестовий $& заявник", applicantTaxId: "0000000000",
+  legalForm: "ФОП", taxSystem: "simplified" as const, taxProfile: "fop_simplified" as const, vatStatus: "nonpayer" as const,
+  vatBonusBasis: "no" as const, youngApplicant: "no" as const, veteranBusiness: "no" as const, patentBasis: "no" as const, displacedApplicant: "no" as const,
+  priorityTerritory: "no" as const, damagedAssets: "no" as const, prioritySector: "no" as const,
+  location: "Київська область, тестова громада", activity: "01.13 — вирощування овочів", applicantBusinessHistory: "Нова справа, діяльність ще не розпочата.",
+  businessAddress: "Тестова адреса, пошта test@example.com", applicantIdentity: "Контактна особа тестова", applicantExperience: "Досвід команди в сільському господарстві.",
+  projectConcept: "Унікальна концепція ферми.", expectedImpact: "Створення двох робочих місць.", permits: "Дозволи перевірені.",
+  grantUsePlan: "Обладнання та запуск теплиці.", grantExpenseLines: "Насосна станція | 125005 | Для зрошення теплиці", ownExpenseLines: "Підготовка майданчика | 25000 | Власні кошти",
+  projectDurationMonths: 24, projectObjective: "Запустити ферму.", projectSchedule: "Січень 2027\nЗакупівля обладнання — лютий 2027\nМонтаж — березень 2027\nЗапуск — квітень 2027",
+  productDescription: "Овочі", targetCustomers: "Місцеві магазини", pricingStrategy: "Собівартість і ринкова ціна.",
+  salesForecast: "Продажі згідно з фінпланом.", profitabilityForecast: "За прогнозом.", financialResultForecast: "За прогнозом.", cashFlowForecast: "За прогнозом.",
+  paybackAssumptions: "За прогнозом.", roiForecast: "За прогнозом.", irrForecast: "За прогнозом.", breakEvenMonths: 12,
+  environmentalImpact: "План мінімізації відходів.", otherResults: "Підтримка місцевих постачальників.", taxEstimate: "За планом.", regionalImpact: "Закупівлі у громаді.",
+  projectRisks: "Затримка обладнання.", projectRiskMitigation: "Запасний постачальник.", staffingPlan: "Двоє працівників.", indirectJobs: "1 у постачальника.",
+  marketAnalysis: "Попит місцевого ринку.", marketEvidence: "Попередні замовлення.", financialAssumptions: "Ціни й обсяги — прогноз.",
+  quoteEvidence: "Пропозиція постачальника від 2026-10-01.", existingAssets: "Земельна ділянка в оренді.", financingSources: "Власні заощадження.",
+};
 
-test("preserves the sanitized Diia workbook when mapped answers are applied", async () => {
-  const template = await readFile(new URL("../assets/vlasna-sprava-2026-diia-example-sanitized.xlsx", import.meta.url));
+test("maps the full applicant and financing data into the official template and preserves every formula", async () => {
+  const template = await readFile(templateUrl);
   const source = unzipSync(template);
-  const mapping = mapGrantApplicationAnswersToDiiaCells({
-    track: "start", requestedGrantKopecks: 25000000, newJobs: 1,
-    permits: "Дозвіл не потрібен за наявної моделі діяльності.",
+  const mapping = mapGrantApplicationAnswersToDiiaCells(answers, {
+    budgetTotalKopecks: 15000500,
+    items: [{ name: "Насосна станція", quantity: 1, unitPriceKopecks: 12500500 }, { name: "Підготовка майданчика", quantity: 1, unitPriceKopecks: 2500000 }],
+    financialPlan: financialPlan(),
   });
   const exported = unzipSync(buildDiiaBusinessPlanWorkbook(template, mapping.cells, []));
   const planPath = sheetPath(exported, "Бізнес план");
@@ -91,48 +89,55 @@ test("preserves the sanitized Diia workbook when mapped answers are applied", as
   for (const path of Object.keys(source)) assert(exported[path], `preserved package entry ${path}`);
   assert.equal((exportedPlan.match(/<f(?:\s|>)/g) ?? []).length, (originalPlan.match(/<f(?:\s|>)/g) ?? []).length);
   assert.equal((exportedFinance.match(/<f(?:\s|>)/g) ?? []).length, (originalFinance.match(/<f(?:\s|>)/g) ?? []).length);
-  assert.equal((exportedPlan.match(/<dataValidation\b/g) ?? []).length, (originalPlan.match(/<dataValidation\b/g) ?? []).length);
-  assert.match(exportedPlan, /<c r="B24"[^>]*>.*?Масштабування власної справи/s);
+  assert.equal((exportedPlan.match(/<row\b/g) ?? []).length, (originalPlan.match(/<row\b/g) ?? []).length);
+  assert.equal((exportedPlan.match(/<mergeCell\b/g) ?? []).length, (originalPlan.match(/<mergeCell\b/g) ?? []).length);
+  assert.match(exportedPlan, /<c r="B22"[^>]*>.*?24 місяці/s);
+  assert.match(exportedPlan, /<c r="B82"[^>]*>.*?Насосна станція/s);
+  assert.match(exportedPlan, /<c r="E82"[^>]*><v>125005<\/v><\/c>/);
+  assert.match(exportedPlan, /<c r="E92"[^>]*><v>25000<\/v><\/c>/);
+  assert.match(exportedPlan, /<c r="C34"[^>]*>.*?Так/s);
+  assert.match(exportedPlan, /<c r="B106"[^>]*>.*?Запасний постачальник/s);
+  assert.match(exportedFinance, /<c r="D4"[^>]*>.*?ФОП Тестовий \$&amp; заявник/s);
+  assert.match(exportedFinance, /<c r="E16"[^>]*><v>5000<\/v><\/c>/);
+  assert.match(exportedFinance, /<c r="E17"[^>]*><v>1\.5<\/v><\/c>/);
+  assert.match(exportedFinance, /<c r="E18"[^>]*><v>2\.5<\/v><\/c>/);
+  assert.match(exportedFinance, /<c r="E19"[^>]*><v>3\.5<\/v><\/c>/);
+  assert.match(exportedFinance, /<c r="E39"[^>]*><v>40\.5<\/v><\/c>/);
+  assertCurrencyStyle(exported, "Прибутки та збитки", "E39");
+  assertCurrencyStyle(exported, "Бізнес план", "E82");
+  assert.match(exportedFinance, /<c r="E41"[^>]*><v>1000<\/v><\/c>/);
+  assert.match(exportedFinance, /<c r="E49"[^>]*><v>1000<\/v><\/c>/);
+  assert.match(exportedFinance, /<c r="E60"[^>]*><v>50<\/v><\/c>/);
+  assert.match(exportedFinance, /<c r="AB16"[^>]*><v>0<\/v><\/c>/);
 });
 
-test("packaged workbook clears example entries and keeps form headings and formulas", async () => {
-  const template = await readFile(new URL("../assets/vlasna-sprava-2026-diia-example-sanitized.xlsx", import.meta.url));
-  const files = unzipSync(template);
-  const plan = strFromU8(files[sheetPath(files, "Бізнес план")]);
-  for (const cell of ["B6", "B14", "B16", "B22", "C34", "C41", "C43", "B45", "B59", "B104"]) {
-    assert.match(plan, new RegExp(`<c\\b[^>]*\\br="${cell}"[^>]*/>`), `sample value removed from ${cell}`);
-  }
-  assert.match(plan, /<c r="B13"[^>]*><v>/);
-  assert.match(plan, /<c r="K14"[^>]*><v>/);
-  const finance = strFromU8(files[sheetPath(files, "Прибутки та збитки")]);
-  assert.equal((plan.match(/<f(?:\s|>)/g) ?? []).length, 18);
-  assert.equal((finance.match(/<f(?:\s|>)/g) ?? []).length, 1138);
+test("paired and self-closing cells are replaced without consuming neighboring table rows", async () => {
+  const template = await readFile(templateUrl);
+  const source = unzipSync(template);
+  const changed = unzipSync(buildDiiaBusinessPlanWorkbook(template, { "Бізнес план": {
+    B82: "Item $& 1", E82: 1.5, F82: "Reason $1", B92: "Own line", E92: 0, F92: "None",
+  } }, []));
+  const path = sheetPath(changed, "Бізнес план");
+  const original = strFromU8(source[path]);
+  const output = strFromU8(changed[path]);
+  assert.equal((output.match(/<row\b/g) ?? []).length, (original.match(/<row\b/g) ?? []).length);
+  assert.equal((output.match(/<mergeCell\b/g) ?? []).length, (original.match(/<mergeCell\b/g) ?? []).length);
+  assert.equal((output.match(/<f(?:\s|>)/g) ?? []).length, (original.match(/<f(?:\s|>)/g) ?? []).length);
+  assert.match(output, /Item \$&amp; 1/);
+  assert.match(output, /Reason \$1/);
+  assert.match(output, /<c r="F95"/);
 });
 
-test("applies values to the sanitized Diia workbook without changing form structure", async () => {
-  const original = await readFile(new URL("../assets/vlasna-sprava-2026-diia-example-sanitized.xlsx", import.meta.url));
-  const source = unzipSync(original);
-  const changed = unzipSync(buildDiiaBusinessPlanWorkbook(original, {
-    "Бізнес план": { C41: "Загальна система" },
-  }, [
-    { sheet: "Бізнес план", cell: "C41" },
-    { sheet: "Бізнес план", cell: "C43" },
-  ]));
-  for (const file of Object.keys(source)) assert(changed[file], `preserved package entry ${file}`);
-  const planPath = sheetPath(changed, "Бізнес план");
-  const plan = strFromU8(changed[planPath]);
-  assert.match(plan, /<c r="C41" s="230" t="inlineStr"><is><t xml:space="preserve">Загальна система<\/t><\/is><\/c>/);
-  assert.match(plan, /<c r="C43" s="230"\/>/);
-  const oldPlan = strFromU8(source[planPath]);
-  assert.equal((plan.match(/<f(?:\s|>)/g) ?? []).length, (oldPlan.match(/<f(?:\s|>)/g) ?? []).length);
-  assert.equal((plan.match(/<dataValidation\b/g) ?? []).length, (oldPlan.match(/<dataValidation\b/g) ?? []).length);
+test("rejects formula edits and missing cells", async () => {
+  const template = await readFile(templateUrl);
+  assert.throws(() => buildDiiaBusinessPlanWorkbook(template, { "Бізнес план": { C27: 9 } }, []), /formula cell/i);
+  assert.throws(() => buildDiiaBusinessPlanWorkbook(template, { "Бізнес план": { Z999: 9 } }, []), /missing official template cell/i);
 });
 
-test("builds PDF from the same preserved workbook while excluding reference sheets", async () => {
-  const template = await readFile(new URL("../assets/vlasna-sprava-2026-diia-example-sanitized.xlsx", import.meta.url));
-  const archive = unzipSync(await createDiiaBusinessPlanExport(template, {}, [
-    { sheet: "Бізнес план", cell: "C41" },
-    { sheet: "Бізнес план", cell: "C43" },
+test("official export creates a PDF from the same workbook and hides reference sheets", async () => {
+  const template = await readFile(templateUrl);
+  const archive = unzipSync(await createDiiaBusinessPlanExport(template, { "Бізнес план": { B41: "Загальна система" } }, [
+    { sheet: "Бізнес план", cell: "B43" },
   ]));
   assert.match(strFromU8(archive["business-plan.pdf"].slice(0, 5)), /^%PDF-$/);
   const exported = unzipSync(archive["business-plan.xlsx"]);
