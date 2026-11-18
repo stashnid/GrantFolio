@@ -1,5 +1,24 @@
 # Поточний стан GrantFolio
 
+## Система відгуків, оцінювання, сповіщень розробникам і розумного аналізу — 18.11.2026
+
+1. **Збір відгуків та розумне оцінювання всередині застосунку (`frontend/src/FeedbackModal.tsx`, `frontend/src/FeedbackModal.css`, `frontend/src/FeedbackPromptBanner.tsx`, `frontend/src/App.tsx`, `frontend/src/Advisor.tsx`, `frontend/src/Cases.tsx`)**:
+   - Розроблено 2-крокову доступну модальну форму (WCAG 2.2 AA, портал `z-index: 1100` під `ConfirmDialog`, `aria-modal`, фокус-пастка, захист від скидання під час набору тексту через `wasOpenRef` та `requestCloseRef`, hit areas 44×44px, нуль native `<select>` — 100% `CustomSelect`).
+   - **Крок 1 (10 секунд):** 5 зірок із клавіатурною навігацією, автовизначений розділ, швидкі чіпи стабільності й функціоналу (`Усе працює стабільно`, `Зручний функціонал`, `Помітив помилку / збій`, `Бракує потрібної фічі`, `Мобільна верстка`), адаптивна підказка під оцінку й розділ (запитує як про баги, так і про поради щодо покращення фіч) та коментар до 3000 символів з лічильником.
+   - **Крок 2 (поглиблена оцінка):** 3 виміри якості (1–5): «Стабільність і зручність (UX)», «Повнота функціоналу і користь», «Якість ШІ-асистента»; статус виконання завдання (`completed` / `partial` / `failed`); готовність підтримати сервіс фінансово (разова оплата monobank / підписка / донат на волонтерський збір / лише безоплатно) + бажана сума в грн; роль тестувальника та контактні дані за згодою.
+   - Контекстний банер `FeedbackPromptBanner` з’являється ненав’язливо на останньому повідомленні з рекомендаціями в `Advisor` та після успішного експорту чернетки в `Cases` (кап 1 показ на milestone у `localStorage` та 2 год кулдаун після відправки). Додано посилання для незареєстрованих «Виникли складнощі зі входом? Повідомити команду ↗» на формі входу.
+2. **Миттєва багатоканальна доставка розробникам (`backend/src/feedback-notifier.ts`, `backend/src/email-templates.ts`)**:
+   - Асинхронний неблокуючий диспетчер надсилає структурований HTML-лист (`emailShell`, екранування, анти-CRLF, колірні бейджі оцінок, без спам-дужок `[GrantFolio]`) на пошту розробників (`FEEDBACK_NOTIFY_EMAILS` або `MONITOR_ADMIN_EMAILS`) через Resend API / Gmail OAuth2 fallback.
+   - Додано опційну підтримку сповіщень у Telegram-бот (`FEEDBACK_TELEGRAM_BOT_TOKEN` + `FEEDBACK_TELEGRAM_CHAT_ID`, токен ретельно приховано від логів і помилок) та HTTPS Webhook (`FEEDBACK_WEBHOOK_URL`, суворий SSRF-захист від приватних та loopback IP-адрес).
+3. **Двошаровий розумний аналіз, адмін-тріаж та експорт для звіту (`backend/migrations/022_smart_feedback_system.sql`, `backend/src/feedback-ai.ts`, `backend/src/feedback-report.ts`, `backend/src/feedback-admin.ts`, `frontend/src/FeedbackAdminDrawer.tsx`)**:
+   - Застосовано міграцію `022_smart_feedback_system.sql` (адитивне розширення `user_feedback`, таблиця `feedback_change_links` для прив’язки відгуків до комітів/PR та `feedback_batch_syntheses`).
+   - **Шар 1 (детермінований):** миттєві SQL-метрики (CSAT %, NPS-проксі %, успішність завдань %, розподіл оцінок, готовність платити, середня ціна, автоматична звірка з реальними підтвердженими донатами й пілотом monobank).
+   - **Шар 2 (заземлений ШІ Gemini 3.5 Flash-Lite):** opt-in гейт `SMART_FEEDBACK_AI_ENABLED=true`, SHA-256 кешування, захист від prompt-injection та детермінований верифікатор `verifyBatchSynthesis` (гарантує **0 галюцинованих цитат** — кожна цитата обов’язково звіряється як дослівний підрядок реального коментаря з БД ≥ 8 символів).
+   - **Адмін-панель (`FeedbackAdminDrawer`):** доступна лише адміністраторам (`isMonitorAdmin`), містить вкладки «Огляд і ШІ-аналіз» (KPI, кластери болів і побажань, верифіковані цитати), «Усі відгуки» (фільтри, інлайн-тріаж `Новий → В роботі → Виправлено`, поле «Що змінили» + коміт/PR, повтор email), та «Експорт для звіту» (1-клік копіювання/скачування Markdown/CSV/JSON під критерій 3 та бонус [assignment.md](docs/assignment.md)).
+4. **Незалежне рев’ю й верифікація**:
+   - Делеговано ECC-агентам `security-reviewer` (**APPROVE**), `code-reviewer` (**APPROVE**) та `react-reviewer` (**APPROVE** після усунення всіх 8 зауважень, включаючи `React.lazy()` code-splitting на `-103,5 кБ` у бандлі).
+   - `npm run migrate`, `npm run typecheck`, `npm run build`, `git diff --check`, `19/19` тестів `feedback*.test.ts` і повний юніт-набір — **PASS**. [Детальний звіт](agents/2026-11-18-smart-feedback-system.md).
+
 ## Комфортний макет чату асистента в проєктах і на мобільних екранах — 18.11.2026
 
 1. **Пріоритетний макет «Мої проєкти» → «Асистент» (`frontend/src/Cases.tsx`, `frontend/src/Assistant.tsx`, `frontend/src/Assistant.css`, `frontend/src/workspace.css`)**:

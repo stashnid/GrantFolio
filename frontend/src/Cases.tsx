@@ -12,6 +12,7 @@ import "./SessionRecovery.css";
 import { authenticatedRequest, readableApiError } from "./api";
 import { CustomSelect } from "./CustomSelect";
 import { useConfirm } from "./ConfirmDialog";
+import { FeedbackPromptBanner } from "./FeedbackPromptBanner";
 import type { GrantProgram } from "./grants";
 import { friendlyTitle } from "../../backend/src/grant-discovery";
 
@@ -167,6 +168,7 @@ export function Cases({
   profileRevision = 0,
   preparationSeed = "",
   preparationId = "",
+  onOpenFeedback,
 }: {
   user: User;
   onUnsavedChange?: (dirty: boolean) => void;
@@ -180,6 +182,7 @@ export function Cases({
   profileRevision?: number;
   preparationSeed?: string;
   preparationId?: string;
+  onOpenFeedback?: (context?: { screen?: "export" | "budget" | "cases"; programId?: string | null }) => void;
 }) {
   const {programs: GRANT_PROGRAMS} = useGrantPrograms();
   const confirm = useConfirm();
@@ -209,7 +212,8 @@ export function Cases({
     [assistantPrompt, setAssistantPrompt] = useState<string>(""),
     [chatDraft, setChatDraft] = useState(false),
     [showCreate, setShowCreate] = useState(false),
-    [contextDrawerOpen, setContextDrawerOpen] = useState(false);
+    [contextDrawerOpen, setContextDrawerOpen] = useState(false),
+    [showExportFeedback, setShowExportFeedback] = useState(false);
   const contextToggleRef = useRef<HTMLButtonElement>(null);
   const contextDrawerRef = useRef<HTMLElement>(null);
   const isAssistantStep = activeStep === "assistant";
@@ -682,6 +686,7 @@ export function Cases({
         revokeTimer.current = null;
       }, 1000);
       setNotice("Чернетку підготовлено до завантаження.");
+      setShowExportFeedback(true);
     } catch (error) {
       setError(readableApiError(error, "Не вдалося завантажити чернетку. Спробуйте ще раз."));
     } finally {
@@ -1527,6 +1532,15 @@ export function Cases({
                 </div>
                 {(dirty || pending) && (
                   <p className="error">Перед завантаженням збережіть зміни в описі та бюджеті.</p>
+                )}
+                {showExportFeedback && onOpenFeedback && (
+                  <FeedbackPromptBanner
+                    milestoneKey="cases-export"
+                    title="Чернетку сформовано. Чи все спрацювало чітко?"
+                    description="Оцініть зручність підготовки та поділіться порадами щодо покращення експорту."
+                    actionLabel="Оцінити результат"
+                    onOpenFeedback={() => onOpenFeedback({ screen: "export", programId: selected.programId })}
+                  />
                 )}
               </section>
 
