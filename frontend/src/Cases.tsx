@@ -208,7 +208,31 @@ export function Cases({
     [activeStep, setActiveStep] = useState<"basics" | "plan" | "budget" | "review" | "assistant">("assistant"),
     [assistantPrompt, setAssistantPrompt] = useState<string>(""),
     [chatDraft, setChatDraft] = useState(false),
-    [showCreate, setShowCreate] = useState(false);
+    [showCreate, setShowCreate] = useState(false),
+    [contextDrawerOpen, setContextDrawerOpen] = useState(false);
+  const contextToggleRef = useRef<HTMLButtonElement>(null);
+  const contextDrawerRef = useRef<HTMLElement>(null);
+  const isAssistantStep = activeStep === "assistant";
+
+  useEffect(() => {
+    if (!isAssistantStep || showCreate) {
+      setContextDrawerOpen(false);
+    }
+  }, [isAssistantStep, showCreate, selected?.id]);
+
+  useEffect(() => {
+    if (!contextDrawerOpen || !isAssistantStep) return;
+    contextDrawerRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.defaultPrevented) {
+        event.preventDefault();
+        setContextDrawerOpen(false);
+        contextToggleRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [contextDrawerOpen, isAssistantStep]);
   const [pending, setPending] = useState<{
     id: string;
     body: string;
@@ -774,8 +798,14 @@ export function Cases({
   const isStep3Done = draft.length > 0;
 
 
+  const readinessCompleteCount = readiness
+    ? readiness.checks.filter((check) => check.status === "complete").length
+    : null;
+  const readinessTotalCount = readiness ? readiness.checks.length : null;
+  const hasUnifiedPicker = cases.length > 0 && !showCreate;
+
   return (
-    <div className="card cases-card">
+    <div className={`card cases-card${selected && !showCreate && isAssistantStep ? " cases-card--assistant" : ""}`}>
       {selected && !printBlocked && createPortal(
         <article className="print-document" lang="uk" aria-label="Робоча чернетка проєкту">
           <header className="print-document-header">
@@ -823,11 +853,79 @@ export function Cases({
           </footer>
         </article>, document.body
       )}
-      <div className="cases-toolbar">
-        <div><h2>Мої проєкти</h2><p>Підготовка матеріалів з асистентом</p></div>
-        <button type="button" className="secondary-btn" disabled={!ready || !!programTarget} onClick={() => { setShowCreate((open) => !open); if (showCreate) onClearProgram?.(); else requestAnimationFrame(() => createTitleInput.current?.focus()); }} aria-expanded={showCreate} aria-controls="create-case-panel">
-          {showCreate ? "Закрити" : "+ Новий проєкт"}
-        </button>
+      <div className="cases-unified-bar">
+        {hasUnifiedPicker ? (
+          <div className="cases-unified-picker">
+            <h2 className="sr-only">Мої проєкти</h2>
+            <label htmlFor="case-switcher-select" className="cases-unified-label">
+              Проєкт
+            </label>
+            <div className="cases-unified-select">
+              <CustomSelect
+                id="case-switcher-select"
+                className="case-switcher-select"
+                ariaLabel="Обраний проєкт"
+                placeholder="Оберіть проєкт"
+                value={selected?.id ?? ""}
+                disabled={busy}
+                options={cases.map((item) => ({ value: item.id, label: item.title }))}
+                onChange={(val) => void select(val)}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="cases-unified-heading">
+            <h2>Мої проєкти</h2>
+          </div>
+        )}
+        <div className="cases-unified-actions">
+          {selected && !showCreate && isAssistantStep && (
+            <button
+              ref={contextToggleRef}
+              type="button"
+              className={`cases-context-toggle${contextDrawerOpen ? " is-active" : ""}`}
+              onClick={() => setContextDrawerOpen((open) => !open)}
+              aria-expanded={contextDrawerOpen}
+              aria-controls="case-context-drawer"
+              aria-label="Дані проєкту"
+            >
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 16v-4M12 8h.01" />
+              </svg>
+              <span className="cases-context-toggle-label">Дані проєкту</span>
+              <span className="cases-context-toggle-short" aria-hidden="true">Дані</span>
+              {readinessCompleteCount !== null && readinessTotalCount !== null && (
+                <span className="cases-context-badge" aria-hidden="true">
+                  {readinessCompleteCount}/{readinessTotalCount}
+                </span>
+              )}
+              {(dirty || pending) && <span className="cases-dirty-dot" title="Є незбережені зміни" aria-hidden="true" />}
+            </button>
+          )}
+          <button
+            type="button"
+            className="secondary-btn cases-new-btn"
+            disabled={!ready || !!programTarget}
+            onClick={() => {
+              setShowCreate((open) => !open);
+              if (showCreate) onClearProgram?.();
+              else requestAnimationFrame(() => createTitleInput.current?.focus());
+            }}
+            aria-expanded={showCreate}
+            aria-controls="create-case-panel"
+            aria-label={showCreate ? "Закрити створення проєкту" : "Новий проєкт"}
+          >
+            {showCreate ? (
+              "Закрити"
+            ) : (
+              <>
+                <span className="cases-new-btn-full">+ Новий проєкт</span>
+                <span className="cases-new-btn-short" aria-hidden="true">+ Новий</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
       {selectedProgram && programTarget && <section className="create-case-disclosure" aria-label="Вибір програми для проєкту">
         <h3>Обрати «{friendlyTitle(selectedProgram)}» для «{programTarget.title}»</h3>
@@ -901,40 +999,55 @@ export function Cases({
         </button>
       </form>
       </div>
-      {cases.length > 0 && (
-        <div className="case-switcher" hidden={showCreate}>
-          <label htmlFor="case-switcher-select" style={{ display: "inline", font: "inherit", color: "inherit" }}>
-            Проєкт
-          </label>
-          <div style={{ flex: "1 1 220px", maxWidth: "340px", minWidth: 0 }}>
-            <CustomSelect
-              id="case-switcher-select"
-              className="case-switcher-select"
-              ariaLabel="Обраний проєкт"
-              placeholder="Оберіть проєкт"
-              value={selected?.id ?? ""}
-              disabled={busy}
-              options={cases.map((item) => ({ value: item.id, label: item.title }))}
-              onChange={(val) => void select(val)}
-            />
-          </div>
-        </div>
-      )}
       {selected && (
-        <div className="case-workspace" hidden={showCreate}>
-          <aside className="case-context" aria-label="Дані проєкту">
-            <h3>Проєкт</h3>
+        <div className={`case-workspace${isAssistantStep ? " case-workspace--assistant" : ""}`} hidden={showCreate}>
+          {isAssistantStep && contextDrawerOpen && (
+            <button
+              type="button"
+              className="case-context-scrim"
+              aria-label="Закрити панель даних проєкту"
+              onClick={() => {
+                setContextDrawerOpen(false);
+                contextToggleRef.current?.focus();
+              }}
+            />
+          )}
+          <aside
+            id="case-context-drawer"
+            ref={contextDrawerRef}
+            tabIndex={isAssistantStep ? -1 : undefined}
+            className={`case-context${isAssistantStep ? " case-context--drawer" : ""}${isAssistantStep && contextDrawerOpen ? " is-open" : ""}`}
+            aria-label="Дані проєкту"
+            aria-hidden={isAssistantStep && !contextDrawerOpen ? true : undefined}
+            inert={isAssistantStep && !contextDrawerOpen ? true : undefined}
+          >
+            <div className="case-context-head">
+              <h3>Проєкт</h3>
+              {isAssistantStep && (
+                <button
+                  type="button"
+                  className="case-context-close"
+                  aria-label="Закрити дані проєкту"
+                  onClick={() => {
+                    setContextDrawerOpen(false);
+                    contextToggleRef.current?.focus();
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
             <strong>{selected.title}</strong>
             <span className="case-revision">Збережена версія {selected.revision}</span>
             <div className="context-item"><span>Програма</span><strong>{activeProgram ? friendlyTitle(activeProgram) : "Фінансування підберемо далі"}</strong></div>
-            {onFindFunding && <button type="button" onClick={() => onFindFunding(details.projectDescription, { id: selected.id, title: selected.title, revision: selected.revision })}>Підібрати фінансування</button>}
+            {onFindFunding && <button type="button" onClick={() => { setContextDrawerOpen(false); onFindFunding(details.projectDescription, { id: selected.id, title: selected.title, revision: selected.revision }); }}>Підібрати фінансування</button>}
             <div className="context-item"><span>Збережений бюджет</span><strong>{money(selected.totalKopecks)}</strong></div>
-            <div className="context-item"><span>Готовність</span><strong>{readiness ? `${readiness.checks.filter((check) => check.status === "complete").length} з ${readiness.checks.length} перевірок` : readinessError ? "Не вдалося завантажити" : "Завантаження…"}</strong></div>
+            <div className="context-item"><span>Готовність</span><strong>{readiness ? `${readinessCompleteCount} з ${readinessTotalCount} перевірок` : readinessError ? "Не вдалося завантажити" : "Завантаження…"}</strong></div>
             {(dirty || pending) && <p className="context-unsaved">Є незбережені зміни</p>}
             <div className="context-actions">
-              <button type="button" onClick={() => setActiveStep("basics")}>{"Редагувати опис"}</button>
-              <button type="button" onClick={() => setActiveStep("budget")}>Редагувати бюджет</button>
-              <button type="button" onClick={() => setActiveStep("review")}>Перевірка та експорт</button>
+              <button type="button" onClick={() => { setContextDrawerOpen(false); setActiveStep("basics"); }}>{"Редагувати опис"}</button>
+              <button type="button" onClick={() => { setContextDrawerOpen(false); setActiveStep("budget"); }}>Редагувати бюджет</button>
+              <button type="button" onClick={() => { setContextDrawerOpen(false); setActiveStep("review"); }}>Перевірка та експорт</button>
             </div>
           </aside>
           <div className="case-main">
@@ -972,24 +1085,6 @@ export function Cases({
             </section>
           )}
           {sessionDraft.storageFailed && <p className="session-recovery-warning" role="status">Не вдалося зберегти резервну копію в цій вкладці. Щоб не втратити зміни, збережіть проєкт або скопіюйте текст.</p>}
-          <div className="mobile-case-step">
-            <label htmlFor="mobile-case-step-select" style={{ font: "inherit", color: "inherit" }}>
-              Розділ проєкту
-            </label>
-            <CustomSelect
-              id="mobile-case-step-select"
-              ariaLabel="Розділ проєкту"
-              value={activeStep}
-              options={[
-                { value: "assistant", label: "Асистент" },
-                { value: "basics", label: "Ідея та клієнти" },
-                { value: "plan", label: "План запуску" },
-                { value: "budget", label: "Бюджет проєкту" },
-                { value: "review", label: "Готовність та експорт" },
-              ]}
-              onChange={(val) => setActiveStep(val as typeof activeStep)}
-            />
-          </div>
           {activeProgram?.currency && activeProgram.currency!=="UAH" && <p className="currency-note" role="note">Фінансування програми зазначене в {activeProgram.currency}. Робочий кошторис нижче ведеться у гривнях; автоматичної конвертації немає. Узгодьте валюту та формат офіційної заявки з організатором.</p>}
           {activeProgram?.fundingType==="reimbursement" && <p className="currency-note" role="note">Ця програма відшкодовує вже понесені витрати. Підготуйте документи про фактичні покупки; план майбутніх витрат не є заявою на компенсацію.</p>}
           <div className="case-steps-nav" role="group" aria-label="Розділи проєкту">
@@ -1471,6 +1566,7 @@ export function Cases({
                 goalText={selected.details.projectDescription}
                 nextStep={nextStep}
                 onReviewDocuments={openDocuments}
+                embedded
               />
           </section>
 
