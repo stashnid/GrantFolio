@@ -66,6 +66,57 @@ export function configuredEmailLoginCode(db: Pool) {
   });
 }
 
+export async function sendGmailMessage(
+  recipient: string,
+  subjectText: string,
+  bodyText: string,
+  htmlText?: string,
+): Promise<boolean> {
+  const value = process.env.EMAIL_LOGIN_CODE_CONFIG;
+  if (!value) return false;
+  let settings: z.infer<typeof mailSettings>;
+  try {
+    settings = mailSettings.parse(JSON.parse(value));
+  } catch {
+    return false;
+  }
+  try {
+    const token = await fetch("https://oauth2.googleapis.com/token", {
+      method: "POST",
+      body: new URLSearchParams({
+        client_id: settings.clientId,
+        client_secret: settings.clientSecret,
+        refresh_token: settings.refreshToken,
+        grant_type: "refresh_token",
+      }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!token.ok) return false;
+    const credentials = z.object({ access_token: z.string().min(1) }).parse(await token.json());
+    const subject = Buffer.from(subjectText).toString("base64");
+    const body = Buffer.from(htmlText || bodyText).toString("base64");
+    const raw = Buffer.from([
+      `From: GrantFolio <${sender}>`,
+      `To: ${recipient}`,
+      `Subject: =?UTF-8?B?${subject}?=`,
+      "MIME-Version: 1.0",
+      htmlText ? "Content-Type: text/html; charset=UTF-8" : "Content-Type: text/plain; charset=UTF-8",
+      "Content-Transfer-Encoding: base64",
+      "",
+      ...(body.match(/.{1,76}/g) ?? []),
+    ].join("\r\n")).toString("base64url");
+    const delivery = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${credentials.access_token}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ raw }),
+      signal: AbortSignal.timeout(8000),
+    });
+    return delivery.ok;
+  } catch {
+    return false;
+  }
+}
+
 export function createEmailLoginCode(
   db: Pool,
   key: string,

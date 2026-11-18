@@ -12,6 +12,7 @@ test("profile formats normalize accepted values without corrupting them", () => 
   assert.equal(profileDetails.parse({ requestedAmount: "250 000,50" }).requestedAmount, "250000.50");
   assert.deepEqual(profileDetails.parse({ phone: "", kved: "", requestedAmount: "", ownContribution: "" }), { phone: "", kved: "", requestedAmount: "", ownContribution: "" });
   assert.equal(profileDetails.parse({ requestedAmount: "1000000000" }).requestedAmount, "1000000000");
+  assert.deepEqual(profileDetails.parse({ grantNewsletter: "yes", newsletterFrequency: "weekly", newsletterEmail: "test@example.com" }), { grantNewsletter: "yes", newsletterFrequency: "weekly", newsletterEmail: "test@example.com" });
 });
 
 test("profile formats reject malformed values rather than silently altering them", () => {

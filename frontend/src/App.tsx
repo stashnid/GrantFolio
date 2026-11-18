@@ -20,18 +20,16 @@ const Advisor = lazy(() => import("./Advisor").then(module => ({ default: module
 const Cases = lazy(() => import("./Cases").then(module => ({ default: module.Cases })));
 const GrantCatalog = lazy(() => import("./GrantCatalog").then(module => ({ default: module.GrantCatalog })));
 const BusinessProfile = lazy(() => import("./BusinessProfile").then(module => ({ default: module.BusinessProfile })));
-const Feedback = lazy(() => import("./Feedback").then(module => ({ default: module.Feedback })));
-type WorkspaceTab = "advisor" | "catalog" | "cases" | "profile" | "feedback";
+type WorkspaceTab = "advisor" | "catalog" | "cases" | "profile";
 function rememberedTab(uid: string | undefined): WorkspaceTab {
   if (!uid) return "advisor";
-  try { const value=sessionStorage.getItem(`grantfolio:last-tab:${uid}`); return ["advisor","catalog","cases","profile","feedback"].includes(value??"") ? value as WorkspaceTab : "advisor"; } catch { return "advisor"; }
+  try { const value=sessionStorage.getItem(`grantfolio:last-tab:${uid}`); return ["advisor","catalog","cases","profile"].includes(value??"") ? value as WorkspaceTab : "advisor"; } catch { return "advisor"; }
 }
 function NavIcon({kind}: {kind: WorkspaceTab | "logout"}) {
   const paths = {
     advisor: "M4 5h16v11H8l-4 4V5ZM8 9h8M8 12h5",
     catalog: "M21 21l-4.5-4.5M19 11a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z",
     cases: "M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v10H3V7Z",
-    feedback: "M4 4h16v13H9l-5 4V4ZM8 9h8M8 13h5",
     profile: "M20 21v-2a6 6 0 0 0-6-6h-4a6 6 0 0 0-6 6v2M16 6a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z",
     logout: "M9 4H4v16h5M14 8l4 4-4 4M8 12h10",
   };
@@ -65,7 +63,7 @@ export function App() {
     [profileConflict, setProfileConflict] = useState(false),
     [profileRevision, setProfileRevision] = useState(0),
     [retry, setRetry] = useState(0),
-    [tab, setTab] = useState<"advisor" | "catalog" | "cases" | "profile" | "feedback">("advisor"),
+    [tab, setTab] = useState<"advisor" | "catalog" | "cases" | "profile">("advisor"),
     [selectedProgram, setSelectedProgram] = useState<GrantProgram | null>(null),
     [fundingTarget, setFundingTarget] = useState<{id:string;title:string;revision:number}|null>(null);
   useEffect(
@@ -353,14 +351,6 @@ export function App() {
             <button
               type="button"
               className="link nav-tab"
-              aria-current={tab === "feedback" ? "page" : undefined}
-              onClick={() => openTab("feedback")}
-            >
-              <NavIcon kind="feedback" />Відгуки
-            </button>
-            <button
-              type="button"
-              className="link nav-tab"
               aria-current={tab === "profile" ? "page" : undefined}
               onClick={() => openTab("profile")}
             >
@@ -390,7 +380,7 @@ export function App() {
         />
       )}
       <main id="main-content" tabIndex={-1} className={user ? "workspace" : undefined}>
-        {user && <div className="workspace-topbar"><div><span>Робочий простір</span><span aria-hidden="true">/</span><strong>{({advisor:"Асистент",catalog:"Каталог грантів",cases:"Мої проєкти",profile:"Профіль бізнесу",feedback:"Відгуки"})[tab]}</strong></div><span className="workspace-mode">Прототип</span></div>}
+        {user && <div className="workspace-topbar"><div><span>Робочий простір</span><span aria-hidden="true">/</span><strong>{({advisor:"Асистент",catalog:"Каталог грантів",cases:"Мої проєкти",profile:"Профіль бізнесу"})[tab]}</strong></div><span className="workspace-mode">Прототип</span></div>}
         {!user && <section className="intro">
           <div className="eyebrow">
             <span className="small-dot" /> GrantFolio для бізнесу
@@ -535,9 +525,6 @@ export function App() {
             <div hidden={tab !== "profile"}>
               <BusinessProfile key={user.uid} loading={profileLoading} conflict={profileConflict} profile={profile} email={user.email ?? ""} displayName={user.displayName ?? ""} photoURL={user.photoURL ?? ""} ready={profileReady} busy={busy} dirty={profileDirty} error={error} message={message} onChange={(next) => { setProfile(next); setMessage(""); }} onSubmit={save} onRetry={() => { if (profileDirty && !window.confirm("Завантажити збережений профіль? Незбережені зміни у формі буде втрачено.")) return; setError(""); setRetry(retry + 1); }} />
               {profileReady && !profileDirty && savedProfile.businessName && <button type="button" className="link" onClick={() => openTab("catalog")}>Перейти до каталогу грантів →</button>}
-            </div>
-            <div hidden={tab !== "feedback"}>
-              <Feedback key={user.uid} user={user} />
             </div>
             </>
           )}

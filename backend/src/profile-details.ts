@@ -22,5 +22,6 @@ export const profileDetails = z.object({
   teamSize: text(7).refine((value) => value === "" || (/^\d+$/.test(value) && Number(value) <= 1_000_000)).optional(),
   teamExperience: text(1500).optional(), grantExperience: text(1500).optional(), fundingPurpose: text(2000).optional(),
   requestedAmount: amount.optional(), ownContribution: amount.optional(),
+  grantNewsletter: text(20).optional(), newsletterFrequency: text(20).optional(), newsletterEmail: text(254).optional(),
 }).strict();
 export type ProfileDetails = z.infer<typeof profileDetails>;

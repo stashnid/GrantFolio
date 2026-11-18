@@ -7,7 +7,7 @@ import { advisorRouter } from "./advisor.js";
 import { casesRouter } from "./cases.js";
 import { feedbackRouter } from "./feedback.js";
 import { donationsRouter } from "./donations.js";
-import { configuredEmailLoginCode } from "./email-login-code.js";
+import { configuredEmailLoginCode, sendGmailMessage } from "./email-login-code.js";
 import { profileDetails } from "./profile-details.js";
 
 const profile = z
@@ -122,6 +122,25 @@ export function createApp(
     } catch (error) {
       next(error);
     }
+  });
+  app.post("/api/me/newsletter/preview", async (req, res) => {
+    const token = res.locals.firebaseToken;
+    const targetEmail = (typeof req.body?.email === "string" && req.body.email.trim()) || token?.email;
+    if (!targetEmail || typeof targetEmail !== "string") {
+      res.status(400).json({ error: "missing_recipient" });
+      return;
+    }
+    const businessName = typeof req.body?.businessName === "string" ? req.body.businessName.trim() : "";
+    const industry = typeof req.body?.industry === "string" ? req.body.industry.trim() : "";
+    const subject = `[GrantFolio] Персональний дайджест грантів для «${businessName || "Вашого бізнесу"}»`;
+    const textContent = `Вітаємо!\n\nПідібрано актуальні грантові програми для вашого бізнесу (${industry || "загальний профіль"}):\n1. Власна справа (єРобота) — до 500 000 грн (дедлайн 27 листопада)\n2. BLOOM: Підтримка малого бізнесу — до 40 000 EUR\n\nДеталі та підготовка заявки: https://grantfolio.pp.ua/\n\nВи отримали це повідомлення згідно з вашою згодою у профілі бізнесу GrantFolio.`;
+    let delivered = false;
+    try {
+      delivered = await sendGmailMessage(targetEmail, subject, textContent);
+    } catch {
+      delivered = false;
+    }
+    res.json({ ok: true, delivered, recipient: targetEmail });
   });
   app.use("/api/advisor", advisorRouter(db));
   app.use("/api/cases", casesRouter(db));
