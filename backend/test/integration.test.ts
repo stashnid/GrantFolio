@@ -682,6 +682,12 @@ test("grant applications isolate owners, reject concurrent writes and invalidate
   const confirmed = await call(owner, path, "PUT", { ...command, expectedRevision: 1, answers: { ...command.answers, confirmAccuracy: true } });
   assert.equal(confirmed.status, 200);
   assert.equal((await confirmed.json()).answers.confirmAccuracy, true);
+  const exportPath = `/api/cases/${id}/draft-export`;
+  assert.equal((await call(stranger, exportPath)).status, 404);
+  const exported = await (await call(owner, exportPath)).text();
+  assert.match(exported, /Анкета програми · версія 2/);
+  assert.match(exported, /Напрям гранту:\nЗапочаткування/);
+  assert.match(exported, /Тип заявника:\nНе вказано/);
   assert.equal((await call(owner, `/api/cases/${id}/program`, "PUT", { programId: null, expectedRevision: 0 })).status, 200);
   assert.equal((await call(owner, path, "PUT", { ...command, expectedRevision: 2 })).status, 409);
   assert.equal((await (await call(owner, path)).json()).application, null);
@@ -691,4 +697,54 @@ test("grant applications isolate owners, reject concurrent writes and invalidate
   assert.equal(restored.caseRevision, 2);
   assert.equal((await call(owner, `/api/cases/${id}`, "DELETE")).status, 200);
   assert.equal((await db.query("SELECT 1 FROM grant_applications WHERE case_id=$1", [id])).rowCount, 0);
+});
+
+test("financial plans reconcile a private snapshot and block stale exports", async () => {
+  const [owner, stranger] = await Promise.all([signup(), signup()]);
+  const call = (token: string, path: string, method = "GET", body?: object) =>
+    fetch(`${base}${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${token}`, ...(body && { "Content-Type": "application/json" }) },
+      body: body && JSON.stringify(body),
+    });
+
+  const created = await call(owner, "/api/cases", "POST", { title: "Фінансовий план для тесту", programId: "vlasna-sprava" });
+  assert.equal(created.status, 201);
+  const id = (await created.json()).case.id;
+  const path = `/api/cases/${id}`;
+  const financialPath = `${path}/grant-financial-plan`;
+  const applicationPath = `${path}/grant-application`;
+  const answers = { track: "start", requestedGrantKopecks: 100_500, ownContributionKopecks: 50_000 };
+  assert.equal((await call(owner, applicationPath, "PUT", { answers, expectedRevision: 0, expectedCaseRevision: 0 })).status, 200);
+
+  const first = { salesKopecks: 20_000, grantKopecks: 100_500, ownKopecks: 50_000, operatingCostsKopecks: 0, payrollKopecks: 0, taxesKopecks: 500, capitalCostsKopecks: 171_000 };
+  const empty = { salesKopecks: 0, grantKopecks: 0, ownKopecks: 0, operatingCostsKopecks: 0, payrollKopecks: 0, taxesKopecks: 0, capitalCostsKopecks: 0 };
+  const plan = { openingBalanceKopecks: 0, months: [first, ...Array.from({ length: 23 }, () => empty)] };
+  const revisions = { expectedCaseRevision: 0, expectedApplicationRevision: 1, expectedPlanRevision: 0 };
+  assert.equal((await call(stranger, financialPath)).status, 404);
+  assert.equal((await call(stranger, financialPath, "PUT", { ...revisions, plan })).status, 404);
+  const saves = await Promise.all([call(owner, financialPath, "PUT", { ...revisions, plan }), call(owner, financialPath, "PUT", { ...revisions, plan })]);
+  assert.deepEqual(saves.map(result => result.status).sort(), [200, 409]);
+  const saved = await (await call(owner, financialPath)).json();
+  assert.equal(saved.reconciled, true);
+  assert.equal(saved.forecast.totals.closingBalanceKopecks, -1000);
+  assert.equal(saved.planRevision, 1);
+  const attempt = { ...revisions, expectedPlanRevision: 1 };
+  assert.equal((await call(stranger, `${financialPath}/export`, "POST", attempt)).status, 404);
+
+  if (process.env.LIBREOFFICE_TEST) {
+    const archive = await call(owner, `${financialPath}/export`, "POST", attempt);
+    assert.equal(archive.status, 200);
+    assert.equal(archive.headers.get("cache-control"), "no-store");
+    assert.match(archive.headers.get("content-disposition") ?? "", /grantfolio-financial-draft\.zip/);
+    assert.equal(Buffer.from(await archive.arrayBuffer()).subarray(0, 2).toString(), "PK");
+  }
+
+  assert.equal((await call(owner, applicationPath, "PUT", { answers: { ...answers, ownContributionKopecks: 49_999 }, expectedRevision: 1, expectedCaseRevision: 0 })).status, 200);
+  const updated = await (await call(owner, financialPath)).json();
+  assert.equal(updated.stale, true);
+  assert.equal(updated.reconciled, false);
+  assert.equal((await call(owner, `${financialPath}/export`, "POST", { ...attempt, expectedApplicationRevision: 2 })).status, 409);
+  assert.equal((await call(owner, path, "DELETE")).status, 200);
+  assert.equal((await db.query("SELECT 1 FROM grant_financial_plans WHERE case_id=$1", [id])).rowCount, 0);
 });

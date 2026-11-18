@@ -1,3 +1,5 @@
+import { GRANT_CATALOG } from "../src/grant-catalog-data.js";
+import { confirmedTestRound } from "./grant-availability-fixture.js";
 import { test, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
@@ -52,6 +54,7 @@ const call = (owner: string, path = "", body?: unknown) =>
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
 before(() => {
+  GRANT_CATALOG.find(p => p.id === "vlasna-sprava")!.availability = confirmedTestRound;
   mock.timers.enable({ apis: ["Date"], now: new Date("2026-11-16T15:00:00Z") });
 });
 after(async () => {
@@ -269,4 +272,12 @@ test("student questions stay focused on business and personal study is outside s
   } finally {
     listener.close();
   }
+});
+
+test("a question about applicant status does not write inferred business facts", async () => {
+  const before = await db.query("SELECT * FROM profiles WHERE owner_id=$1", [a]);
+  const response = await call(a, "", { id: crypto.randomUUID(), conversationId: crypto.randomUUID(), message: "Чи потрібен ФОП для гранту у Львові?" });
+  assert.equal(response.status, 200);
+  const after = await db.query("SELECT * FROM profiles WHERE owner_id=$1", [a]);
+  assert.deepEqual(after.rows, before.rows);
 });

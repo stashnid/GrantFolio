@@ -8,7 +8,29 @@ import { casesRouter } from "./cases.js";
 import { feedbackRouter } from "./feedback.js";
 import { donationsRouter } from "./donations.js";
 import { configuredEmailLoginCode, sendGmailMessage } from "./email-login-code.js";
+import { renderGrantDigestEmail, selectDigestPrograms } from "./email-templates.js";
+import {
+  buildUnsubscribeUrl,
+  getUnsubscribeSecret,
+  renderUnsubscribeConfirmationHtml,
+  verifyUnsubscribeToken,
+} from "./newsletter-unsubscribe.js";
 import { profileDetails } from "./profile-details.js";
+import { extractProfileFromHistory } from "./profile-extractor.js";
+
+const newsletterPreviewBody = z
+  .object({
+    email: z.email().max(254).optional(),
+    recipientName: z.string().trim().max(160).optional(),
+    businessName: z.string().trim().max(160).optional(),
+    industry: z.string().trim().max(160).optional(),
+    region: z.string().trim().max(120).optional(),
+    city: z.string().trim().max(120).optional(),
+    legalForm: z.enum(["", "idea", "fop", "company", "ngo"]).optional(),
+    requestedAmount: z.string().trim().max(30).optional(),
+    fundingPurpose: z.string().trim().max(500).optional(),
+  })
+  .strict();
 
 const profile = z
   .object({
@@ -38,6 +60,42 @@ export function createApp(
       res.json({ status: "ok" });
     } catch {
       res.status(503).json({ status: "db_unavailable" });
+    }
+  });
+  const handleUnsubscribe = async (tokenParam: unknown): Promise<boolean> => {
+    const secret = getUnsubscribeSecret();
+    if (!secret || typeof tokenParam !== "string" || !tokenParam) return false;
+    const uid = verifyUnsubscribeToken(tokenParam, secret);
+    if (!uid) return false;
+    await db.query(
+      `UPDATE profiles
+       SET details = jsonb_set(COALESCE(details, '{}'::jsonb), '{grantNewsletter}', '""'::jsonb, true),
+           updated_at = now(),
+           revision = revision + 1
+       WHERE owner_id = $1`,
+      [uid],
+    );
+    return true;
+  };
+  app.post("/api/newsletter/unsubscribe", async (req, res, next) => {
+    try {
+      const ok = await handleUnsubscribe(req.query.token);
+      res.set("Cache-Control", "no-store").status(ok ? 200 : 400).json({ ok });
+    } catch (error) {
+      next(error);
+    }
+  });
+  app.get("/api/newsletter/unsubscribe", async (req, res, next) => {
+    try {
+      const ok = await handleUnsubscribe(req.query.token);
+      res
+        .set("Cache-Control", "no-store")
+        .set("Referrer-Policy", "no-referrer")
+        .status(ok ? 200 : 400)
+        .type("text/html; charset=utf-8")
+        .send(renderUnsubscribeConfirmationHtml(ok));
+    } catch (error) {
+      next(error);
     }
   });
   app.use([...privateRoutes, "/api/auth/email-code"], async (req, res, next) => {
@@ -123,24 +181,175 @@ export function createApp(
       next(error);
     }
   });
-  app.post("/api/me/newsletter/preview", async (req, res) => {
-    const token = res.locals.firebaseToken;
-    const targetEmail = (typeof req.body?.email === "string" && req.body.email.trim()) || token?.email;
-    if (!targetEmail || typeof targetEmail !== "string") {
-      res.status(400).json({ error: "missing_recipient" });
-      return;
-    }
-    const businessName = typeof req.body?.businessName === "string" ? req.body.businessName.trim() : "";
-    const industry = typeof req.body?.industry === "string" ? req.body.industry.trim() : "";
-    const subject = `[GrantFolio] Персональний дайджест грантів для «${businessName || "Вашого бізнесу"}»`;
-    const textContent = `Вітаємо!\n\nПідібрано актуальні грантові програми для вашого бізнесу (${industry || "загальний профіль"}):\n1. Власна справа (єРобота) — до 500 000 грн (дедлайн 27 листопада)\n2. BLOOM: Підтримка малого бізнесу — до 40 000 EUR\n\nДеталі та підготовка заявки: https://grantfolio.pp.ua/\n\nВи отримали це повідомлення згідно з вашою згодою у профілі бізнесу GrantFolio.`;
-    let delivered = false;
+  app.post("/api/me/newsletter/preview", async (req, res, next) => {
     try {
-      delivered = await sendGmailMessage(targetEmail, subject, textContent);
-    } catch {
-      delivered = false;
+      const parsed = newsletterPreviewBody.safeParse(req.body ?? {});
+      if (!parsed.success) {
+        res.status(400).json({ error: "invalid_newsletter_preview" });
+        return;
+      }
+      const token = res.locals.firebaseToken;
+      const fallbackEmail = z.email().max(254).safeParse(token?.email);
+      const targetEmail = parsed.data.email || (fallbackEmail.success ? fallbackEmail.data : "");
+      if (!targetEmail) {
+        res.status(400).json({ error: "missing_recipient" });
+        return;
+      }
+      const saved = await db.query(
+        'SELECT business_name AS "businessName", region, details FROM profiles WHERE owner_id = $1',
+        [res.locals.uid],
+      );
+      const savedRow = saved.rows[0];
+      const savedDetails = (savedRow?.details && typeof savedRow.details === "object"
+        ? savedRow.details
+        : {}) as Record<string, string>;
+
+      const digestInput = {
+        recipientName: parsed.data.recipientName || savedDetails.contactName || (typeof token?.name === "string" ? token.name : ""),
+        businessName: parsed.data.businessName || savedRow?.businessName || "",
+        industry: parsed.data.industry || savedDetails.industry || "",
+        region: parsed.data.region || savedRow?.region || "",
+        city: parsed.data.city || savedDetails.city || "",
+        legalForm: parsed.data.legalForm || savedDetails.legalForm || "",
+        requestedAmount: parsed.data.requestedAmount || savedDetails.requestedAmount || "",
+        fundingPurpose: parsed.data.fundingPurpose || savedDetails.fundingPurpose || "",
+        unsubscribeUrl: buildUnsubscribeUrl(res.locals.uid),
+        replyToEmail: process.env.MAIL_REPLY_TO?.trim() || undefined,
+      };
+      const programs = selectDigestPrograms(digestInput);
+      const digest = renderGrantDigestEmail(digestInput, programs);
+
+      let delivered = false;
+      try {
+        delivered = await sendGmailMessage(
+          targetEmail,
+          digest.subject,
+          digest.text,
+          digest.html,
+          digest.headers,
+        );
+      } catch {
+        delivered = false;
+      }
+      res.json({ ok: true, delivered, recipient: targetEmail });
+    } catch (error) {
+      next(error);
     }
-    res.json({ ok: true, delivered, recipient: targetEmail });
+  });
+  app.get("/api/me/profile-suggestions", async (_req, res, next) => {
+    try {
+      const uid = res.locals.uid;
+      const history = await db.query(
+        "SELECT question, reply FROM advisor_messages WHERE owner_id=$1 ORDER BY created_at ASC LIMIT 100",
+        [uid]
+      );
+      if (!history.rowCount) {
+        res.json({ facts: [], suggestions: {} });
+        return;
+      }
+      const current = await db.query(
+        'SELECT business_name AS "businessName", description, region, details FROM profiles WHERE owner_id=$1',
+        [uid]
+      );
+      const row = current.rows[0];
+      const existing = row ? {
+        businessName: row.businessName || "",
+        description: row.description || "",
+        region: row.region || "",
+        details: (row.details && typeof row.details === "object" ? { ...row.details } : {}) as Record<string, string>,
+      } : undefined;
+      const { data, facts } = extractProfileFromHistory(history.rows, existing);
+      const unappliedCount = Object.keys(data).length;
+      res.json({ facts, suggestions: data, unappliedCount });
+    } catch (error) {
+      next(error);
+    }
+  });
+  app.post("/api/me/sync-from-conversations", async (_req, res, next) => {
+    try {
+      const uid = res.locals.uid;
+      const history = await db.query(
+        "SELECT question, reply FROM advisor_messages WHERE owner_id=$1 ORDER BY created_at ASC LIMIT 100",
+        [uid]
+      );
+      if (!history.rowCount) {
+        res.json({ ok: true, synced: false, facts: [], message: "Немає повідомлень для аналізу" });
+        return;
+      }
+      const current = await db.query(
+        'SELECT business_name AS "businessName", description, region, details, revision FROM profiles WHERE owner_id=$1',
+        [uid]
+      );
+      const currentRow = current.rows[0];
+      const existing = {
+        businessName: currentRow?.businessName || "",
+        description: currentRow?.description || "",
+        region: currentRow?.region || "",
+        details: (currentRow?.details && typeof currentRow.details === "object" ? { ...currentRow.details } : {}) as Record<string, string>,
+      };
+      const currentRevision = currentRow?.revision ?? 0;
+      const { data: extracted, facts } = extractProfileFromHistory(history.rows, existing);
+      if (!facts.length || !Object.keys(extracted).length) {
+        res.json({ ok: true, synced: false, facts: [], profile: existing, revision: currentRevision });
+        return;
+      }
+
+      let mergedCount = 0;
+      let newBusinessName = existing.businessName;
+      if (!newBusinessName && extracted.businessName) {
+        newBusinessName = extracted.businessName;
+        mergedCount++;
+      }
+      let newRegion = existing.region;
+      if (!newRegion && extracted.region) {
+        newRegion = extracted.region;
+        mergedCount++;
+      }
+      let newDescription = existing.description;
+      if (!newDescription && extracted.description) {
+        newDescription = extracted.description;
+        mergedCount++;
+      }
+      const details = { ...existing.details };
+
+      for (const key of ["city", "legalForm", "industry", "requestedAmount", "fundingPurpose", "teamSize", "grantExperience"] as const) {
+        if (!details[key] && extracted[key]) {
+          details[key] = extracted[key]!;
+          mergedCount++;
+        }
+      }
+
+      let saved;
+      if (current.rowCount) {
+        saved = await db.query(
+          `UPDATE profiles SET business_name=$2, description=$3, region=$4,
+            details=$5::jsonb, updated_at=now(), revision=revision+1
+           WHERE owner_id=$1 AND revision=$6
+           RETURNING business_name AS "businessName", description, region, details, revision`,
+          [uid, newBusinessName, newDescription, newRegion, JSON.stringify(details), currentRevision]
+        );
+      } else {
+        saved = await db.query(
+          `INSERT INTO profiles(owner_id, business_name, description, region, details, revision)
+           VALUES ($1,$2,$3,$4,$5::jsonb,1)
+           ON CONFLICT (owner_id) DO NOTHING
+           RETURNING business_name AS "businessName", description, region, details, revision`,
+          [uid, newBusinessName, newDescription, newRegion, JSON.stringify(details)]
+        );
+      }
+      if (!saved.rowCount) { res.status(409).json({ error: "profile_conflict" }); return; }
+      const row = saved.rows[0];
+      res.json({
+        ok: true,
+        synced: true,
+        mergedCount,
+        facts,
+        profile: presentProfile(row),
+        revision: row.revision,
+      });
+    } catch (error) {
+      next(error);
+    }
   });
   app.use("/api/advisor", advisorRouter(db));
   app.use("/api/cases", casesRouter(db));

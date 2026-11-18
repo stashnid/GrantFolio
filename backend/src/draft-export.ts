@@ -1,3 +1,4 @@
+import { getGrantApplication, grantApplicationAnswersSchema } from "./grant-application.js";
 import type { Item } from "./budget.js";
 import { assessBudget, detailsSchema, readiness } from "./project-details.js";
 import { getProgramDetails } from "./grant-sources.js";
@@ -10,6 +11,8 @@ type Draft = {
   revision: number;
   details: z.infer<typeof detailsSchema>;
   items: Item[];
+  application_answers?: unknown;
+  application_revision?: number | null;
   total_kopecks: string;
 };
 
@@ -27,6 +30,17 @@ export function draftExport(row: Draft): string {
     ["План реалізації", row.details.implementationPlan],
     ["Очікувані результати", row.details.expectedResults],
   ];
+  const answers = grantApplicationAnswersSchema.safeParse(row.application_answers ?? {});
+  const application = answers.success ? getGrantApplication(row.program_id, answers.data) : null;
+  const applicationSections = application ? [
+    `Анкета програми · версія ${row.application_revision ?? 0} · правила ${application.version}`,
+    ...application.questions.filter(question => question.kind !== "confirmation").map(question => {
+      const { label, value, kind, options } = question;
+      const printed = typeof value === "number" && kind === "money" ? money(value)
+        : options?.find(option => option.value === value)?.label ?? value ?? "Не вказано";
+      return `${label}:\n${printed}`;
+    }),
+  ] : [];
   const checks = readiness(row);
   const missing = checks.checks.filter((check) => check.status === "missing");
   const { validItems, totalMatches } = assessBudget(row.items, row.total_kopecks);
@@ -49,6 +63,7 @@ export function draftExport(row: Draft): string {
       ([label, value]) => `${label}:\n${typeof value === "string" && value.trim() || "Не вказано"}`,
     ),
     `Бюджет:\n${budget}\n${totalMatches ? `Загалом: ${money(row.total_kopecks)}` : "Підсумок потребує перевірки: збережена сума не збігається з позиціями або бюджет пошкоджений."}`,
+    ...applicationSections,
     ...(program ? [
       "Документи та наступні кроки:\n" + [...program.documents, ...program.steps].map((item) => `- ${item}`).join("\n"),
       `Офіційні джерела програми:\n${(GRANT_CATALOG.find((p) => p.id === program.id)?.details.sources ?? []).map((source) => `- ${source.title}: ${source.url} (перевірено ${source.checkedAt})`).join("\n") || program.officialUrl}`,

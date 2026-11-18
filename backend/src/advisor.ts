@@ -5,6 +5,7 @@ import { searchGrants } from "./grant-discovery.js";
 import { GRANT_CATALOG } from "./grant-catalog-data.js";
 import { configuredGeminiResponder } from "./gemini.js";
 import type { AssistantResponder } from "./assistant.js";
+import { extractProfileFromText } from "./profile-extractor.js";
 const input = z
   .object({
     id: z.string().uuid(),
@@ -216,9 +217,12 @@ export function advisorRouter(
         let businessProfile;
         if (profile.rowCount) {
           const { details, ...base } = profile.rows[0];
-          const { contactName: _n, phone: _p, website: _w, ...safe } = details;
+          const rawDetails = details && typeof details === "object" ? details : {};
+          const { contactName: _n, phone: _p, website: _w, newsletterEmail: _e, ...safe } = rawDetails;
           businessProfile = { ...base, details: safe };
         }
+
+        const { facts: extractedFacts } = extractProfileFromText(p.message);
         const greeting = /^(привіт|вітаю|добрий день|доброго дня)[!. ]*$/i.test(
           p.message,
         );
@@ -288,7 +292,12 @@ export function advisorRouter(
             if (timer) clearTimeout(timer);
           }
         }
-        const payload = { mode, search, seed: query.slice(-2000) };
+        const payload = {
+          mode,
+          search,
+          seed: query.slice(-2000),
+          extractedFacts: extractedFacts.length ? extractedFacts : undefined,
+        };
         const saved = await db.query(
           `INSERT INTO advisor_messages(id,conversation_id,owner_id,question,reply,payload) VALUES($1,$2,$3,$4,$5,$6::jsonb) ON CONFLICT(id) DO NOTHING RETURNING *`,
           [

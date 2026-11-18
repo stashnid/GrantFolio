@@ -1,5 +1,9 @@
 # Журнал роботи
 
+## 18.11.2026 — самостійна грантова підготовка
+
+Звірено джерела, усунуто ризики помилкового відкритого прийому, автоматичного запису припущень у профіль і переприв’язування фінансового плану. До TXT включено збережені відповіді. Підготовлено датовані матеріали до презентації та стан доказів реального тестування. [Звіт](agents/2026-11-18-self-service-grant-journey.md)
+
 ## 18.11.2026 — звірка офіційних грантових файлів
 
 Зіставлено нормативну вимогу до XLSX/PDF і файли трьох програм. Зафіксовано версії за контрольними сумами, фінансові періоди та наступні перевірки. [Джерела](grant-document-sources.md)
@@ -7,6 +11,36 @@
 ## 18.11.2026 — анкети і план документів
 
 Додано версійовані вимоги та збереження відповідей для двох програм. Перевірено обидві анкети в Chromium, міграцію, ізоляцію записів і фінансові пороги. [Звіт](agents/2026-11-18-grant-application-workflow.md)
+
+## 18.11.2026 — Захист розсилки від потрапляння у спам (RFC 8058 / RFC 5322 / доменна відправка)
+
+- Діагностовано живі DNS-записи `grantfolio.pp.ua` (`ns10/11/12.uadns.com`): відсутні `SPF` (`TXT`) і `DMARC` (`_dmarc`), листи йшли з `@gmail.com` без `List-Unsubscribe` / `List-Unsubscribe-Post`.
+- Створено `backend/src/newsletter-unsubscribe.ts` та маршрути `GET`/`POST /api/newsletter/unsubscribe` у `backend/src/app.ts` із підписаними HMAC-SHA256 токенами для справжньої 1-клік відписки за стандартом RFC 8058.
+- Оновлено `backend/src/email-templates.ts`: додано повний набір RFC 5322 / RFC 8058 заголовків (`Date`, `Message-ID`, `Reply-To`, `Content-Language`, `List-Id`, `List-Unsubscribe`, `List-Unsubscribe-Post`, `Auto-Submitted`), прибрано `[GrantFolio]` із теми та `opacity:0` із прехедера.
+- У `backend/src/email-login-code.ts` додано нативну підтримку відправки з власного домену через Resend (`RESEND_API_KEY` + `MAIL_FROM`) із прозорим fallback на Gmail API.
+- Перевірки: `npm run typecheck`, `npm run build`, `git diff --check`, 12/12 юніт-тестів PASS.
+
+## 18.11.2026 — Преміальні HTML-листи (дайджест грантів і коди входу) та чисті статуси відправки
+
+- Видалено зайві технічні згадки «через Google Cloud Mail» / «(Google Cloud connected)» зі статусу відправки тестового листа в `BusinessProfile.tsx`.
+- Створено `backend/src/email-templates.ts`: `multipart/alternative` MIME-конструктор із захистом від CRLF-ін’єкцій, HTML-екрануванням, динамічним підбором реальних активних програм із `GRANT_CATALOG` (`selectDigestPrograms`), преміальним HTML-шаблоном дайджесту грантів (`renderGrantDigestEmail`) та фірмовим шаблоном коду підтвердження входу (`renderLoginCodeEmail`).
+- Оновлено `backend/src/email-login-code.ts` і `POST /api/me/newsletter/preview` у `backend/src/app.ts` для відправки реальних оформлених HTML-листів із `text/plain` резервом і суворою валідацією полів.
+- Оновлено прев’ю листа в `BusinessProfile.tsx` і `BusinessProfile.css` (фірмова акцентна смуга, темно-синя шапка, структуровані картки без емодзі, вирівняна кнопка відправки).
+- Додано тести `backend/test/email-templates.test.ts` (4/4 PASS); `npm run typecheck`, `npm run build`, `git diff --check` PASS.
+
+## 18.11.2026 — Автоматичне заповнення кабінету з діалогів ШІ та персоналізація відповідей асистента
+
+- Створено модуль `backend/src/profile-extractor.ts` з підтримкою екстракції бізнес-параметрів (назва, форма власності, місто/область, сфера діяльності, бюджет, мета, команда, досвід) з повідомлень користувача.
+- Усунено ризик помилкових спрацьовувань регулярних виразів: захищено українські дієслова на «-іть», назви міст Суми та Рівне від збігів зі словами «сума» і «рівні», виправлено охорону здоров’я та розмір команди.
+- Оптимізовано конфлікти версій: функція `onSynced` у `BusinessProfile.tsx` / `App.tsx` оновлює локальну ревізію профілю одразу після застосування фактів, запобігаючи 409 Conflict при збереженні.
+- Захищено приватність: поле `newsletterEmail` додано до фільтрації приватних даних поряд із `phone`, `website`, `contactName` перед відправкою до Gemini.
+- Додано юніт-тести `backend/test/profile-extractor.test.ts` (5/5 PASS з тестами на відсутність false positives).
+- Модернізовано `backend/src/advisor.ts`: автоматична синхронізація щойно виявлених деталей у `profiles` (PostgreSQL) та оновлення контексту поточної генерації `snapshot.businessProfile`.
+- Оновлено системну інструкцію Gemini Flash-Lite (`backend/src/gemini.ts`) для повної адаптації під персональний контекст клієнта та уникнення повторних запитань про вже названі факти.
+- Додано API endpoints `GET /api/me/profile-suggestions` та `POST /api/me/sync-from-conversations` у `backend/src/app.ts`.
+- Оновлено frontend (`Advisor.tsx`, `Advisor.css`): під повідомленнями асистента показуються інформаційні бейджі та чіпи зі збереженими фактами і прямим лінком «Переглянути в кабінеті →».
+- Оновлено `BusinessProfile.tsx` та `BusinessProfile.css`: додано кнопку «✨ Заповнити з діалогу ШІ», банер виявлених фактів для 1-клік застосування та зворотний зв’язок.
+- Перевірки: `npm run typecheck`, `npm run build`, `git diff --check`, `npx tsx --test backend/test/profile-extractor.test.ts` (5/5 PASS).
 
 ## 18.11.2026 — Видалення розділу відгуків, згода на розсилку грантів у бізнес-профілі та розумний формат сповіщень
 

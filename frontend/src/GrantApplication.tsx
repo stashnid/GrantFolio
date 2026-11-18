@@ -5,6 +5,7 @@ import type {
   GrantApplicationAnswers, GrantApplicationQuestion, GrantApplicationReview,
 } from "../../backend/src/grant-application";
 import { authenticatedRequest, readableApiError } from "./api";
+import { GrantFinancialPlan } from "./GrantFinancialPlan";
 
 type ReviewResponse = {
   application: GrantApplicationReview | null;
@@ -127,7 +128,7 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
     {stale && <p>За потреби повторно відкрийте проєкт, щоб завантажити його актуальну версію.</p>}
     {(stale || (!response && !!error)) && <button type="button" className="link" onClick={() => setReload(value => value + 1)}>Оновити анкету</button>}
     {application && !loading && <>
-      <p>{application.readyForReview ? "Відповіді зібрано для предметної перевірки." : "Асистент пропонує наступне питання за умовами програми."}</p>
+      <p>{application.readyForReview ? "Відповіді зібрано для предметної перевірки." : "Заповніть робочу анкету. Вона допоможе зібрати факти й пройти базові перевірки за умовами програми."}</p>
       {disabled && <p>Спочатку збережіть або відновіть правки проєкту.</p>}
       {question && <form key={`${question.id}:${response?.revision}`} onSubmit={save} className="grant-application-form">
         <label htmlFor="grant-application-answer"><strong>{question.prompt}</strong></label>
@@ -159,8 +160,11 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
       {application.financials.uncoveredKopecks !== null && <p>
         Кошторис {money(application.financials.budgetTotalKopecks!)} · Запит на грант {money(application.financials.requestedGrantKopecks!)} · Власні кошти {money(application.financials.ownContributionKopecks!)}
       </p>}
+      {application.programId === "vlasna-sprava" && response && response.revision > 0 &&
+        <GrantFinancialPlan key={`${user.uid}:${caseId}`} user={user} caseId={caseId} caseRevision={caseRevision}
+          applicationRevision={response.revision} disabled={blocked} />}
       <p>{application.submission}</p>
-      <p><a href={application.officialUrl} target="_blank" rel="noopener noreferrer">Перейти до форми та подання в Дії</a></p>
+      <p><a href={application.officialUrl} target="_blank" rel="noopener noreferrer">Перевірити прийом та офіційну форму в Дії</a></p>
     </>}
   </section>;
 }

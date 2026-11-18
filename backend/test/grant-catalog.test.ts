@@ -19,6 +19,6 @@ test("catalog and assistant use the same program-specific facts and sources", ()
   }
   assert.equal(getGrantSourceContext("veteran-grant").currentRoundOpen, false);
   assert.equal(getGrantSourceContext("processing-business").currentRoundOpen, false);
-  assert.equal(getGrantSourceContext("vlasna-sprava",new Date("2026-11-16T15:00:00Z")).currentRoundOpen, true);
+  assert.equal(getGrantSourceContext("vlasna-sprava",new Date("2026-11-16T15:00:00Z")).currentRoundOpen, false);
   assert.ok(!JSON.stringify(getGrantSourceContext("processing-business")).includes("2,5 млн"));
 });

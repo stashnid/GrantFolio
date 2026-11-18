@@ -149,9 +149,9 @@ test("expanded deep-tech program requires a technology purpose or explicit looku
   }
   const candidates = search("Хочу кав’ярню у Львові, 400 тисяч на обладнання, ще не ФОП");
   const bloom = candidates.find(m => m.programId === "bloom-sme");
-  assert.ok(bloom);
-  assert.notEqual(candidates[0]?.programId, "bloom-sme");
-  assert.match(bloom.reason, /зареєстрованих.*ще не маєте ФОП/i);
+  assert.equal(bloom, undefined);
+  const namedBloom = search("Програма BLOOM для МСБ, ще не ФОП").find(m => m.programId === "bloom-sme");
+  assert.match(namedBloom?.reason ?? "", /зареєстрованих.*ще не маєте ФОП/i);
 });
 
 test("empty catalog search retains available deep-tech programs and negated purchases are not past expenses", () => {
