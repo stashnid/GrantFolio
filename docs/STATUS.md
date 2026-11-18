@@ -1,5 +1,18 @@
 # Поточний стан GrantFolio
 
+## Розумний щоденний моніторинг грантів і розширення глобального каталогу (97 програм) — 18.11.2026
+
+1. **Глобальний та український каталог розширено до 97 програм (`backend/src/global-funding-additions.ts`)**:
+   - Додано **29 верифікованих програм** від ключових світових та українських організацій: глобальні акселератори (Y Combinator, Techstars, 500 Global, Startup Wise Guys, MassChallenge, MIT Solve), хмарні/AI-програми (Google for Startups Ukraine Support Fund, Google Cloud for Startups, AWS Activate, Microsoft Founders Hub, NVIDIA Inception), інструменти ЄС та ІВ (Seeds of Bravery / UASEEDs, Eureka Eurostars, EUIPO SME Fund, EU Single Market Programme, EEN-Ukraine, EIT Community Hub Ukraine, EYE/EYE4UA, Ukraine Investment Framework), МФО і страхування воєнних ризиків (EBRD ASB & Women in Business, UMAEF, World Bank MIGA SURE, U.S. DFC), ООН та українські програми (UNIDO Green Industrial Recovery, USF Pre-seed/Seed, IOM Ukraine, DRC, Mercy Corps UASP).
+   - Усі 29 нових записів чесно марковані як `programKind: "program"`, `intakeStatus: "unconfirmed"`, `reviewStatus: "curated"` без вигаданих дедлайнів.
+2. **Індивідуальний щоденний моніторинг із ШІ-екстракцією та верифікацією доказів**:
+   - Міграція `backend/migrations/017_smart_grant_monitoring.sql`: таблиці `grant_program_snapshots` (SHA-256 хеші, статус верифікації) та `grant_change_proposals` (черга `pending_review` для змін умов і аудит автопромоцій).
+   - `backend/src/program-monitor-profiles.ts`: **22 індивідуальні профілі** з власними URL, частотою (12–24 год), перевіркою призупинень (Дія) та інструкціями витягу під формат кожного донора.
+   - `backend/src/smart-monitor-verifier.ts` + `backend/src/smart-grant-monitor.ts` + `backend/src/smart-monitor-cli.ts` (`npm run grants:smart-sync`): SHA-256 content-hash гейт (0 викликів ШІ, якщо сторінка не змінилась, із продовженням `validUntil` на 36 год), SSRF-захист (включно з IPv4-compatible IPv6/NAT64), захист від prompt-injection, детермінована перевірка дослівних цитат (`evidenceQuote` ≥ 8 символів) та жорсткий opt-in гейт `SMART_MONITOR_AI_ENABLED=true` (живі виклики Gemini не запускаються без окремого дозволу).
+3. **Незалежне рев’ю й верифікація**:
+   - Проведено аудит через ECC `architect`, `code-reviewer` і `security-reviewer`; усі 10 виявлених зауважень виправлено.
+   - `npm run typecheck`, `npm run build`, `git diff --check`, `74/74` юніт-тестів (у т.ч. `24/24` у `smart-grant-monitor.test.ts` та тести каталогу) — **PASS**. [Детальний звіт](agents/2026-11-18-smart-monitoring-global-catalog.md).
+
 ## Захист розсилки від спаму (RFC 8058 One-Click Unsubscribe, RFC 5322, підтримка доменної пошти) — 18.11.2026
 
 1. **Реальна 1-клік відписка (RFC 8058)**:

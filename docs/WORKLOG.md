@@ -1,5 +1,13 @@
 # Журнал роботи
 
+## 18.11.2026 — Розумний індивідуальний моніторинг грантів (per-program + ШІ-екстрактор) і розширення каталогу до 97 програм
+
+- Делеговано проєктування, реалізацію та аудит команді ECC-агентів (`architect`, `ECC Global Grants Catalog Engineer`, `ECC Smart Monitor Engineer`, `code-reviewer`, `security-reviewer`).
+- Створено `backend/src/global-funding-additions.ts` із 29 верифікованими світовими та українськими програмами фінансування (акселератори, хмарні кредити, ЄС/EIT/Eurostars/EUIPO/UIF, МФО, MIGA/DFC, ООН, USF, IOM, DRC, Mercy Corps) і підключено до `GRANT_CATALOG` (разом 97 програм).
+- Реалізовано конвеєр щоденного індивідуального моніторингу: `backend/migrations/017_smart_grant_monitoring.sql`, `backend/src/program-monitor-profiles.ts` (22 індивідуальні профілі), `backend/src/smart-monitor-verifier.ts`, `backend/src/smart-grant-monitor.ts`, `backend/src/smart-monitor-cli.ts` та CLI `npm run grants:smart-sync` із SHA-256 гейтом, детермінованою перевіркою цитат-доказів та opt-in гейтом `SMART_MONITOR_AI_ENABLED=true`.
+- Усунуто всі 10 зауважень за результатами `code-reviewer` і `security-reviewer` (оновлення `validUntil` на незмінених прогонах, IPv4-compatible IPv6/NAT64 SSRF, нормалізація українських лапок/апострофів, короткі write-транзакції поза мережевим I/O, модульний поділ <800 рядків).
+- Перевірки: `npm run typecheck`, `npm run build`, `git diff --check`, `74/74` юніт-тестів PASS. Звіт: `docs/agents/2026-11-18-smart-monitoring-global-catalog.md`.
+
 ## 18.11.2026 — Захист розсилки від потрапляння у спам (RFC 8058 / RFC 5322 / доменна відправка)
 
 - Діагностовано живі DNS-записи `grantfolio.pp.ua` (`ns10/11/12.uadns.com`): відсутні `SPF` (`TXT`) і `DMARC` (`_dmarc`), листи йшли з `@gmail.com` без `List-Unsubscribe` / `List-Unsubscribe-Post`.

@@ -1,4 +1,5 @@
 import { EXPANDED_FUNDING_CATALOG } from "./expanded-funding-catalog.js";
+import { GLOBAL_FUNDING_ADDITIONS } from "./global-funding-additions.js";
 /** Shared, curated program information. Not an automated eligibility decision. */
 export type GrantCatalogEntry = {
   id: string;
@@ -713,6 +714,7 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
     },
   },
   ...EXPANDED_FUNDING_CATALOG,
+  ...GLOBAL_FUNDING_ADDITIONS,
 ];
 
 // Preserve one set of sourced facts for catalog filters, project planning and assistant.
