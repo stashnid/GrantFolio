@@ -1,7 +1,7 @@
 # Звіт: очищений зразок Дії та робоча чернетка бізнес-плану
 
 - Автор/координатор: Codex Sol. Додаткові ролі: агент з мапи полів, агент з аналізу експорту, агент з реалізації OOXML. Точні моделі підлеглих агентів не підтверджені.
-- Дата, branch, base commit і результат fresh remote check: 18.11.2026, `codex/diia-business-plan`, база `429a504`. Свіжий `git ls-remote` підтвердив `origin/main=6ecd1dc`; `git fetch --no-write-fetch-head origin main codex/self-service-grant-journey` завантажив коміти. Перед публікацією інтегрується свіжий `origin/main`.
+- Дата, branch, base commit і результат fresh remote check: 18.11.2026, `codex/diia-business-plan`, база `429a504`. Свіжі heads підтверджено, `origin/main=6ecd1dc`; його влито в гілку без втрати змін. Конфлікти `STATUS.md` і `WORKLOG.md` розв’язано збереженням записів обох гілок.
 - Статус: in_progress.
 - Задача й межі дозволеного: використати наданий приклад Дії 2026, відкинути його заповнені відповіді, зберегти книгу та почати зіставлення анкети й фінансового плану. Не вигадувати відповіді заявника й не надсилати заявку.
 - Файли у власності; погоджені контракти: `backend/assets/vlasna-sprava-2026-diia-example-sanitized.xlsx`, `backend/src/diia-business-plan-export.ts`, `backend/src/grant-application-router.ts`, `backend/src/grant-application.ts`, `backend/test/diia-business-plan-export.test.ts`, `backend/test/grant-application.test.ts`, `backend/test/integration.test.ts`, `frontend/src/GrantApplication.tsx`, `Dockerfile`, документація статусу.

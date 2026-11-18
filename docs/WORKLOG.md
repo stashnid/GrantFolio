@@ -6,7 +6,7 @@
 - Додано захищене завантаження очищеного зразка, поповнення відповідей анкети, точне зіставлення восьми наявних відповідей та чернетковий XLSX/PDF експорт із тієї самої книги.
 - Експорт працює після поточних відповідей і підтвердження. Невідповідні наявні дані не переносяться. У UI вказано, що інші поля лишаються на перевірку заявнику.
 - PDF формується з двох аркушів заявки. XLSX зберігає шість вихідних аркушів; для PDF допоміжні довідкові аркуші приховуються у копії книги.
-- Перевірки: 135/135 тестів, 12/12 цільових тестів із реальною PDF-конвертацією, `npm run typecheck`, `npm run build -- --configLoader runner`, `git diff --check`.
+- Перевірки: 172/172 тестів, 12/12 цільових тестів із реальною PDF-конвертацією, `npm run typecheck`, `npm run build -- --configLoader runner`, `git diff --check`.
 - Обмеження: зразок не є окремо підтвердженою чистою редакцією форми; частина офіційних полів не має відповідних відповідей у застосунку. Подання до порталу Дії не перевірене.
 
 ## 18.11.2026 — помісячний фінансовий план та експорт
@@ -20,6 +20,16 @@
 ## 18.11.2026 — анкети і план документів
 
 Додано версійовані вимоги та збереження відповідей для двох програм. Перевірено обидві анкети в Chromium, міграцію, ізоляцію записів і фінансові пороги. [Звіт](agents/2026-11-18-grant-application-workflow.md)
+
+## 18.11.2026 — Розумний індивідуальний моніторинг грантів (per-program + ШІ-екстрактор) і розширення каталогу до 97 програм
+
+- Делеговано проєктування, реалізацію та аудит команді ECC-агентів (`architect`, `ECC Global Grants Catalog Engineer`, `ECC Smart Monitor Engineer`, `code-reviewer`, `security-reviewer`).
+- Створено `backend/src/global-funding-additions.ts` із 29 верифікованими світовими та українськими програмами фінансування (акселератори, хмарні кредити, ЄС/EIT/Eurostars/EUIPO/UIF, МФО, MIGA/DFC, ООН, USF, IOM, DRC, Mercy Corps) і підключено до `GRANT_CATALOG` (разом 97 програм).
+- Реалізовано конвеєр щоденного індивідуального моніторингу: `backend/migrations/017_smart_grant_monitoring.sql`, `backend/src/program-monitor-profiles.ts` (22 індивідуальні профілі), `backend/src/smart-monitor-verifier.ts`, `backend/src/smart-grant-monitor.ts`, `backend/src/smart-monitor-cli.ts` та CLI `npm run grants:smart-sync` із SHA-256 гейтом, детермінованою перевіркою цитат-доказів та opt-in гейтом `SMART_MONITOR_AI_ENABLED=true`.
+- Усунуто всі 10 зауважень за результатами `code-reviewer` і `security-reviewer` (оновлення `validUntil` на незмінених прогонах, IPv4-compatible IPv6/NAT64 SSRF, нормалізація українських лапок/апострофів, короткі write-транзакції поза мережевим I/O, модульний поділ <800 рядків).
+- Додано захищений API `/api/admin/monitor/*` (`backend/src/monitor-admin.ts`), інтегровану панель перегляду/підтвердження черги `grant_change_proposals` у каталозі (`frontend/src/MonitorAdminDrawer.tsx`, `GrantCatalog.tsx`), гідратацію записів смарт-монітора в `grant-sync.ts`, безпечні 301/302-редиректи, retry для Gemini 503 і скрипт `infra/setup-smart-monitor-job.sh` для щоденного Cloud Run Job + Cloud Scheduler (`04:00 Europe/Kyiv`).
+- Застосовано міграцію `017` локально та проведено повний живий прогін усіх 22 джерел із `SMART_MONITOR_AI_ENABLED=true`: 16/22 верифіковано, 46 пропозицій змін (`6 auto_applied` + `40 pending_review`), SHA-256 кешування підтверджено.
+- Перевірки: фінальний аудит `security-reviewer` = **APPROVE**, `npm run typecheck`, `npm run build`, `git diff --check`, `86/86` юніт-тестів PASS. Звіт: `docs/agents/2026-11-18-smart-monitoring-global-catalog.md`.
 
 ## 18.11.2026 — Захист розсилки від потрапляння у спам (RFC 8058 / RFC 5322 / доменна відправка)
 
