@@ -18,6 +18,11 @@
 4. **Незалежне рев’ю й верифікація**:
    - Делеговано ECC-агентам `security-reviewer` (**APPROVE**), `code-reviewer` (**APPROVE**) та `react-reviewer` (**APPROVE** після усунення всіх 8 зауважень, включаючи `React.lazy()` code-splitting на `-103,5 кБ` у бандлі).
    - `npm run migrate`, `npm run typecheck`, `npm run build`, `git diff --check`, `19/19` тестів `feedback*.test.ts` і повний юніт-набір — **PASS**. [Детальний звіт](agents/2026-11-18-smart-feedback-system.md).
+5. **Злиття в `main` та реліз на Google Cloud Run (`grantfolio-web`) — 18.11.2026**:
+   - Гілку `feat/smart-feedback-system` та PR #28 (`codex/pay-for-export`) успішно об’єднано в `main` (коміт `1068af6`).
+   - Узгоджено нумерацію міграцій: `022_grant_preparation_pilot_fixed_price.sql` (фіксована ціна 5 грн з безпечною нормалізацією попередніх рядків) та `023_smart_feedback_system.sql` (система відгуків).
+   - Повний CI-пайплайн GitHub Actions (`verify` з 206 тестами, LibreOffice та PostgreSQL + `Deploy to Cloud Run`) успішно пройдено (**conclusion: success**).
+   - Продакшн оновлено та перевірено на живому середовищі: `https://grantfolio.pp.ua` та `GET /api/health` повертають `HTTP/2 200 {"status":"ok"}`.
 
 ## Комфортний макет чату асистента в проєктах і на мобільних екранах — 18.11.2026
 

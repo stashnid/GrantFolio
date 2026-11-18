@@ -8,6 +8,8 @@
 - Реалізовано асинхронну неблокуючу доставку відповідей розробникам (`feedback-notifier.ts`, `renderFeedbackNotificationEmail`) через Resend API / Gmail OAuth2 fallback, з опційною підтримкою HTTPS Webhook (SSRF-захист) та Telegram Bot (безпека токена).
 - Створено адмін-панель тріажу та аналітики (`FeedbackAdminDrawer.tsx`), детермінований Шар 1 метрик (`feedback-report.ts`), заземлений ШІ-синтез Gemini 3.5 Flash-Lite з перевіркою дослівних цитат (`feedback-ai.ts`, 0 галюцинацій) та 1-клік експорт Markdown/CSV/JSON під критерій 3 та бонус завдання до 19.11.2026.
 - Проведено рев’ю та верифікацію: `security-reviewer` (**APPROVE**), `code-reviewer` (**APPROVE**), `react-reviewer` (**APPROVE** після усунення зауважень, `React.lazy()` оптимізації та виправлення focus-stealing), `npm run typecheck`, `npm run build`, `git diff --check`, 19/19 тестів `feedback*.test.ts` — PASS. Звіт: `docs/agents/2026-11-18-smart-feedback-system.md`.
+- Змерджено всі гілки в `main`: об’єднано `feat/smart-feedback-system` та PR #28 (`codex/pay-for-export`). Узгоджено міграції (022 для фіксованої ціни пілота 5 грн та 023 для системи відгуків), виправлено тестові фікстури під нові обов’язкові поля.
+- Задеплоєно на Google Cloud Run (`grantfolio-web`) через CI/CD GitHub Actions (успішно пройдено повний `verify` з 206 тестами та `deploy`). Продакшн `https://grantfolio.pp.ua` перевірено наживо: `HTTP/2 200 {"status":"ok"}`.
 
 ## 18.11.2026 — Комфортний макет чату асистента в проєктах і на мобільних екранах
 
