@@ -361,6 +361,14 @@ test("isMonitorAdmin enforces production fail-closed, verified emails, UIDs, and
         isMonitorAdmin({ uid: "regular", email: "user@example.com", email_verified: true }),
         false,
       );
+      assert.equal(
+        isMonitorAdmin({ uid: "m1", email: "grantfoliomanager@gmail.com", email_verified: true }),
+        true,
+      );
+      assert.equal(
+        isMonitorAdmin({ uid: "m1", email: "grantfoliomanager@gmail.com", email_verified: false }),
+        false,
+      );
     },
   );
 });
