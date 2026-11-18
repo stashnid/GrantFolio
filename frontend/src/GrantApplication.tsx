@@ -5,6 +5,7 @@ import type {
   GrantApplicationAnswers, GrantApplicationQuestion, GrantApplicationReview,
 } from "../../backend/src/grant-application";
 import { authenticatedRequest, readableApiError } from "./api";
+import { GrantFinancialPlan } from "./GrantFinancialPlan";
 
 type ReviewResponse = {
   application: GrantApplicationReview | null;
@@ -159,6 +160,9 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
       {application.financials.uncoveredKopecks !== null && <p>
         Кошторис {money(application.financials.budgetTotalKopecks!)} · Запит на грант {money(application.financials.requestedGrantKopecks!)} · Власні кошти {money(application.financials.ownContributionKopecks!)}
       </p>}
+      {application.programId === "vlasna-sprava" && response && response.revision > 0 &&
+        <GrantFinancialPlan user={user} caseId={caseId} caseRevision={caseRevision}
+          applicationRevision={response.revision} disabled={blocked} />}
       <p>{application.submission}</p>
       <p><a href={application.officialUrl} target="_blank" rel="noopener noreferrer">Перейти до форми та подання в Дії</a></p>
     </>}
