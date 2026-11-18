@@ -3,6 +3,7 @@ import { GRANT_PROGRAMS, type GrantProgram } from "./grants";
 import "./GrantCatalog.css";
 import { CustomSelect, type SelectOption } from "./CustomSelect";
 import { useGrantPrograms } from "./GrantPrograms";
+import { MonitorAdminDrawer } from "./MonitorAdminDrawer";
 import { isGrantAvailable } from "../../backend/src/grant-availability";
 import {
   searchGrants,
@@ -762,7 +763,10 @@ export function GrantCatalog({
   return (
     <div className="grant-catalog">
       <header className="grant-list-header">
-        <p className="catalog-eyebrow">Каталог грантів</p>
+        <div className="catalog-header-top">
+          <p className="catalog-eyebrow">Каталог грантів</p>
+          <MonitorAdminDrawer active={active} onCatalogMutated={reload} />
+        </div>
         <h2>Знайдіть фінансування для своєї ідеї</h2>
         <p className="catalog-subtitle">
           Гранти, премії, кредити й інші інструменти для українського бізнесу.

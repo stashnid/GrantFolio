@@ -43,8 +43,17 @@ const MAX_BODY_BYTES = 4 * 1024 * 1024;
 const FETCH_TIMEOUT_MS = 15_000;
 const LLM_TIMEOUT_MS = 15_000;
 const MAX_LLM_RESPONSE_BYTES = 65_536;
+const MAX_REDIRECTS = 3;
 const ALLOWED_GEMINI_MODEL = "gemini-3.5-flash-lite";
-const MONITOR_USER_AGENT = "GrantFolio-Monitor/1.0";
+const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+const TRANSIENT_LLM_STATUSES = new Set([429, 500, 502, 503, 504]);
+const DEFAULT_LLM_RETRY_DELAYS_MS: readonly number[] = [1000, 2500];
+const FETCH_HEADERS: Record<string, string> = {
+  "user-agent":
+    "Mozilla/5.0 (compatible; GrantFolio-Monitor/1.0; +https://grantfolio.pp.ua)",
+  accept: "text/html,application/xhtml+xml,application/json;q=0.9,*/*;q=0.8",
+  "accept-language": "uk,en;q=0.9",
+};
 const EMPTY_SHA256 =
   "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855";
 
@@ -54,6 +63,26 @@ export type ProgramFactsExtractor = (
   now: Date,
   signal?: AbortSignal,
 ) => Promise<unknown>;
+
+export type GeminiExtractorOptions = {
+  retryDelayMs?: readonly number[];
+};
+
+function sleepWithSignal(ms: number, signal?: AbortSignal): Promise<void> {
+  if (signal?.aborted) return Promise.reject(new Error("llm_aborted"));
+  if (ms <= 0) return Promise.resolve();
+  return new Promise((resolve, reject) => {
+    const onAbort = () => {
+      clearTimeout(timer);
+      reject(new Error("llm_aborted"));
+    };
+    const timer = setTimeout(() => {
+      signal?.removeEventListener("abort", onAbort);
+      resolve();
+    }, ms);
+    signal?.addEventListener("abort", onAbort, { once: true });
+  });
+}
 
 async function readBoundedBody(response: Response, maxBytes: number): Promise<string> {
   const declared = Number(response.headers.get("content-length"));
@@ -88,6 +117,7 @@ async function readBoundedBody(response: Response, maxBytes: number): Promise<st
 export function configuredGeminiExtractor(
   fetchImpl: typeof fetch = fetch,
   accessTokenProvider?: () => Promise<{ access_token: string }>,
+  options: GeminiExtractorOptions = {},
 ): ProgramFactsExtractor | undefined {
   if (process.env.SMART_MONITOR_AI_ENABLED !== "true") return undefined;
   const vertexProject = process.env.GEMINI_VERTEX_PROJECT?.trim();
@@ -99,6 +129,7 @@ export function configuredGeminiExtractor(
   const model = process.env.GEMINI_MODEL ?? ALLOWED_GEMINI_MODEL;
   if (model !== ALLOWED_GEMINI_MODEL) return undefined;
 
+  const retryDelays = options.retryDelayMs ?? DEFAULT_LLM_RETRY_DELAYS_MS;
   const getAccessToken = vertexProject
     ? accessTokenProvider ?? (() => applicationDefault().getAccessToken())
     : undefined;
@@ -108,7 +139,7 @@ export function configuredGeminiExtractor(
 
   return async (profile, normalizedText, now, externalSignal) => {
     const prompt = buildExtractionPrompt(profile, normalizedText, now);
-    const payload = {
+    const body = JSON.stringify({
       systemInstruction: { parts: [{ text: prompt.systemInstruction }] },
       contents: [{ role: "user", parts: [{ text: prompt.userPrompt }] }],
       generationConfig: {
@@ -116,84 +147,119 @@ export function configuredGeminiExtractor(
         maxOutputTokens: 2048,
         responseMimeType: "application/json",
       },
-    };
-    const controller = new AbortController();
-    const onAbort = () => controller.abort();
-    externalSignal?.addEventListener("abort", onAbort, { once: true });
-    let timer: ReturnType<typeof setTimeout> | undefined;
-
-    try {
-      const headers = new Headers({ "content-type": "application/json" });
-      if (getAccessToken) {
-        const token = await getAccessToken();
-        headers.set("authorization", `Bearer ${token.access_token}`);
-      } else {
-        headers.set("x-goog-api-key", apiKey!);
-      }
-
-      const rawResponse = await Promise.race([
-        (async () => {
-          const response = await fetchImpl(endpoint, {
-            method: "POST",
-            headers: Object.fromEntries(headers),
-            body: JSON.stringify(payload),
-            signal: controller.signal,
-            redirect: "error",
-          });
-          if (!response.ok) throw new Error(`llm_http_${response.status}`);
-          return readBoundedBody(response, MAX_LLM_RESPONSE_BYTES);
-        })(),
-        new Promise<never>((_, reject) => {
-          timer = setTimeout(() => {
-            controller.abort();
-            reject(new Error("llm_timeout"));
-          }, LLM_TIMEOUT_MS);
-        }),
-      ]);
-
-      const data = JSON.parse(rawResponse) as {
-        promptFeedback?: { blockReason?: string };
-        candidates?: Array<{
-          finishReason?: string;
-          content?: { parts?: Array<{ text?: string; thought?: boolean }> };
-        }>;
-      };
-      if (data.promptFeedback?.blockReason) throw new Error("llm_blocked");
-      const candidate = data.candidates?.[0];
-      if (!candidate || candidate.finishReason !== "STOP") {
-        throw new Error("llm_incomplete");
-      }
-      const parts = candidate.content?.parts;
-      if (!Array.isArray(parts) || parts.length === 0) throw new Error("llm_empty");
-      const text = parts
-        .filter((p) => p && p.thought !== true && typeof p.text === "string")
-        .map((p) => p.text)
-        .join("")
-        .trim();
-      if (!text) throw new Error("llm_empty");
-      return JSON.parse(text);
-    } finally {
-      if (timer) clearTimeout(timer);
-      externalSignal?.removeEventListener("abort", onAbort);
+    });
+    const headers = new Headers({ "content-type": "application/json" });
+    if (getAccessToken) {
+      const token = await getAccessToken();
+      headers.set("authorization", `Bearer ${token.access_token}`);
+    } else {
+      headers.set("x-goog-api-key", apiKey!);
     }
+    const requestHeaders = Object.fromEntries(headers);
+
+    let rawResponse = "";
+    for (let attempt = 0; attempt <= retryDelays.length; attempt += 1) {
+      if (externalSignal?.aborted) throw new Error("llm_aborted");
+      const controller = new AbortController();
+      const onAbort = () => controller.abort();
+      externalSignal?.addEventListener("abort", onAbort, { once: true });
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        const result = await Promise.race([
+          (async () => {
+            const response = await fetchImpl(endpoint, {
+              method: "POST",
+              headers: requestHeaders,
+              body,
+              signal: controller.signal,
+              redirect: "error",
+            });
+            if (response.ok) {
+              return {
+                retry: false,
+                body: await readBoundedBody(response, MAX_LLM_RESPONSE_BYTES),
+              };
+            }
+            if (
+              TRANSIENT_LLM_STATUSES.has(response.status) &&
+              attempt < retryDelays.length
+            ) {
+              await response.body?.cancel().catch(() => {});
+              return { retry: true, body: "" };
+            }
+            throw new Error(`llm_http_${response.status}`);
+          })(),
+          new Promise<never>((_, reject) => {
+            timer = setTimeout(() => {
+              controller.abort();
+              reject(new Error("llm_timeout"));
+            }, LLM_TIMEOUT_MS);
+          }),
+        ]);
+        if (!result.retry) {
+          rawResponse = result.body;
+          break;
+        }
+      } finally {
+        if (timer) clearTimeout(timer);
+        externalSignal?.removeEventListener("abort", onAbort);
+      }
+      await sleepWithSignal(retryDelays[attempt], externalSignal);
+    }
+
+    const data = JSON.parse(rawResponse) as {
+      promptFeedback?: { blockReason?: string };
+      candidates?: Array<{
+        finishReason?: string;
+        content?: { parts?: Array<{ text?: string; thought?: boolean }> };
+      }>;
+    };
+    if (data.promptFeedback?.blockReason) throw new Error("llm_blocked");
+    const candidate = data.candidates?.[0];
+    if (!candidate || candidate.finishReason !== "STOP") throw new Error("llm_incomplete");
+    const parts = candidate.content?.parts;
+    if (!Array.isArray(parts) || parts.length === 0) throw new Error("llm_empty");
+    const text = parts
+      .filter((p) => p && p.thought !== true && typeof p.text === "string")
+      .map((p) => p.text)
+      .join("")
+      .trim();
+    if (!text) throw new Error("llm_empty");
+    return JSON.parse(text);
   };
 }
 
 async function fetchSafePage(urlText: string, fetchImpl: typeof fetch): Promise<string> {
-  assertSafeMonitorUrl(urlText);
+  let currentUrl = assertSafeMonitorUrl(urlText).href;
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       (async () => {
-        const response = await fetchImpl(urlText, {
-          method: "GET",
-          headers: { "user-agent": MONITOR_USER_AGENT },
-          signal: controller.signal,
-          redirect: "error",
-        });
-        if (!response.ok) throw new Error(`http_${response.status}`);
-        return readBoundedBody(response, MAX_BODY_BYTES);
+        for (let hop = 0; ; hop += 1) {
+          const response = await fetchImpl(currentUrl, {
+            method: "GET",
+            headers: FETCH_HEADERS,
+            signal: controller.signal,
+            redirect: "manual",
+          });
+          if (REDIRECT_STATUSES.has(response.status)) {
+            await response.body?.cancel().catch(() => {});
+            if (hop >= MAX_REDIRECTS) throw new Error("too_many_redirects");
+            const location = response.headers.get("location")?.trim();
+            if (!location) throw new Error("invalid_redirect");
+            let nextUrl: URL;
+            try {
+              nextUrl = new URL(location, currentUrl);
+            } catch {
+              throw new Error("invalid_redirect");
+            }
+            currentUrl = assertSafeMonitorUrl(nextUrl.href).href;
+            continue;
+          }
+          if (!response.ok) throw new Error(`http_${response.status}`);
+          return readBoundedBody(response, MAX_BODY_BYTES);
+        }
       })(),
       new Promise<never>((_, reject) => {
         timer = setTimeout(() => {
@@ -345,16 +411,8 @@ type SnapshotRow = {
   last_extracted_json: Record<string, unknown> | null;
 };
 
-type ProgramRunOutcome = {
-  status:
-    | "unmodified"
-    | "verified"
-    | "verifier_failed"
-    | "ai_disabled"
-    | "failed"
-    | "skipped";
-  proposalsCreated: number;
-};
+type RunStatus = "unmodified" | "verified" | "verifier_failed" | "ai_disabled" | "failed" | "skipped";
+type ProgramRunOutcome = { status: RunStatus; proposalsCreated: number };
 
 export type SmartMonitorSummary = {
   total: number;
@@ -375,58 +433,47 @@ export type SmartGrantMonitorOptions = {
   concurrency?: number;
 };
 
+type SnapshotStatus = "fetch_error" | "ai_disabled" | "llm_error" | "verifier_failed" | "verified";
+
 async function upsertSnapshot(
   client: PoolClient,
-  params: {
+  p: {
     programId: string;
     sourceUrl: string;
     contentHash: string;
     at: Date;
-    status:
-      | "fetch_error"
-      | "ai_disabled"
-      | "llm_error"
-      | "verifier_failed"
-      | "verified";
+    status: SnapshotStatus;
     extractedJson?: ExtractedProgramFacts | null;
     verifierErrors?: string[];
     lastError?: string | null;
     updateHashAndChangedAt: boolean;
   },
 ): Promise<void> {
-  const hashClause = params.updateHashAndChangedAt
+  const hashClause = p.updateHashAndChangedAt
     ? "content_hash = EXCLUDED.content_hash, last_changed_at = EXCLUDED.last_changed_at,"
     : "";
   const jsonClause =
-    params.extractedJson !== undefined
-      ? "last_extracted_json = EXCLUDED.last_extracted_json,"
-      : "";
+    p.extractedJson !== undefined ? "last_extracted_json = EXCLUDED.last_extracted_json," : "";
   const errorsClause =
-    params.verifierErrors !== undefined
-      ? "verifier_errors = EXCLUDED.verifier_errors,"
-      : "";
+    p.verifierErrors !== undefined ? "verifier_errors = EXCLUDED.verifier_errors," : "";
 
   await client.query(
     `INSERT INTO grant_program_snapshots
        (program_id, source_url, content_hash, fetched_at, last_changed_at, last_extracted_json, extraction_status, verifier_errors, last_error)
      VALUES ($1, $2, $3, $4, $4, $5::jsonb, $6, $7::text[], $8)
      ON CONFLICT (program_id) DO UPDATE SET
-       source_url = EXCLUDED.source_url,
-       ${hashClause}
-       fetched_at = EXCLUDED.fetched_at,
-       ${jsonClause}
-       extraction_status = EXCLUDED.extraction_status,
-       ${errorsClause}
-       last_error = EXCLUDED.last_error`,
+       source_url = EXCLUDED.source_url, ${hashClause} fetched_at = EXCLUDED.fetched_at,
+       ${jsonClause} extraction_status = EXCLUDED.extraction_status,
+       ${errorsClause} last_error = EXCLUDED.last_error`,
     [
-      params.programId,
-      params.sourceUrl,
-      params.contentHash,
-      params.at,
-      params.extractedJson ? JSON.stringify(params.extractedJson) : null,
-      params.status,
-      params.verifierErrors ?? [],
-      params.lastError ? params.lastError.slice(0, 300) : null,
+      p.programId,
+      p.sourceUrl,
+      p.contentHash,
+      p.at,
+      p.extractedJson ? JSON.stringify(p.extractedJson) : null,
+      p.status,
+      p.verifierErrors ?? [],
+      p.lastError ? p.lastError.slice(0, 300) : null,
     ],
   );
 }
@@ -585,21 +632,31 @@ export function createSmartGrantMonitor(
       lockAcquired = true;
 
       const at = now();
+      const saveStatus = (
+        status: "fetch_error" | "ai_disabled" | "llm_error" | "verifier_failed",
+        contentHash: string,
+        updateHashAndChangedAt: boolean,
+        extra: { verifierErrors?: string[]; lastError?: string | null } = {},
+      ) =>
+        withTransaction(client, () =>
+          upsertSnapshot(client, {
+            programId: profile.programId,
+            sourceUrl: profile.sourceUrl,
+            contentHash,
+            at,
+            status,
+            updateHashAndChangedAt,
+            ...extra,
+          }),
+        );
+
       let rawBody: string;
       try {
         rawBody = await fetchSafePage(profile.sourceUrl, fetchImpl);
       } catch (err) {
-        await withTransaction(client, () =>
-          upsertSnapshot(client, {
-            programId: profile.programId,
-            sourceUrl: profile.sourceUrl,
-            contentHash: EMPTY_SHA256,
-            at,
-            status: "fetch_error",
-            lastError: err instanceof Error ? err.message : "fetch_failed",
-            updateHashAndChangedAt: false,
-          }),
-        );
+        await saveStatus("fetch_error", EMPTY_SHA256, false, {
+          lastError: err instanceof Error ? err.message : "fetch_failed",
+        });
         return { status: "failed", proposalsCreated: 0 };
       }
 
@@ -624,24 +681,16 @@ export function createSmartGrantMonitor(
           suspension = await checkSuspensionBanner(profile, normalizedText, fetchImpl);
         } catch (err) {
           const msg = err instanceof Error ? err.message : "suspension_failed";
-          await withTransaction(client, async () => {
-            if (isUnmodified) {
-              await client.query(
+          if (isUnmodified) {
+            await withTransaction(client, () =>
+              client.query(
                 "UPDATE grant_program_snapshots SET fetched_at = $2, last_error = $3 WHERE program_id = $1",
                 [profile.programId, at, msg.slice(0, 300)],
-              );
-            } else {
-              await upsertSnapshot(client, {
-                programId: profile.programId,
-                sourceUrl: profile.sourceUrl,
-                contentHash: EMPTY_SHA256,
-                at,
-                status: "fetch_error",
-                lastError: msg,
-                updateHashAndChangedAt: false,
-              });
-            }
-          });
+              ),
+            );
+          } else {
+            await saveStatus("fetch_error", EMPTY_SHA256, false, { lastError: msg });
+          }
           return { status: "failed", proposalsCreated: 0 };
         }
       }
@@ -649,18 +698,10 @@ export function createSmartGrantMonitor(
       if (isUnmodified) return persistUnmodified(client, profile, suspension, at);
 
       if (!extractor) {
-        await withTransaction(client, () =>
-          upsertSnapshot(client, {
-            programId: profile.programId,
-            sourceUrl: profile.sourceUrl,
-            contentHash,
-            at,
-            status: "ai_disabled",
-            verifierErrors: [],
-            lastError: null,
-            updateHashAndChangedAt: true,
-          }),
-        );
+        await saveStatus("ai_disabled", contentHash, true, {
+          verifierErrors: [],
+          lastError: null,
+        });
         return { status: "ai_disabled", proposalsCreated: 0 };
       }
 
@@ -668,34 +709,18 @@ export function createSmartGrantMonitor(
       try {
         rawExtracted = await extractor(profile, normalizedText, at);
       } catch (err) {
-        await withTransaction(client, () =>
-          upsertSnapshot(client, {
-            programId: profile.programId,
-            sourceUrl: profile.sourceUrl,
-            contentHash,
-            at,
-            status: "llm_error",
-            lastError: err instanceof Error ? err.message : "llm_failed",
-            updateHashAndChangedAt: false,
-          }),
-        );
+        await saveStatus("llm_error", contentHash, false, {
+          lastError: err instanceof Error ? err.message : "llm_failed",
+        });
         return { status: "failed", proposalsCreated: 0 };
       }
 
       const verification = verifyExtraction(rawExtracted, normalizedText, at);
       if (!verification.ok) {
-        await withTransaction(client, () =>
-          upsertSnapshot(client, {
-            programId: profile.programId,
-            sourceUrl: profile.sourceUrl,
-            contentHash,
-            at,
-            status: "verifier_failed",
-            verifierErrors: verification.errors,
-            lastError: null,
-            updateHashAndChangedAt: true,
-          }),
-        );
+        await saveStatus("verifier_failed", contentHash, true, {
+          verifierErrors: verification.errors,
+          lastError: null,
+        });
         return { status: "verifier_failed", proposalsCreated: 0 };
       }
 

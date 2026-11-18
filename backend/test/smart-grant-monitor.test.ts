@@ -6,6 +6,8 @@ import {
   PROGRAM_MONITOR_PROFILES,
   type ProgramMonitorProfile,
 } from "../src/program-monitor-profiles.js";
+import { createGrantSync } from "../src/grant-sync.js";
+import { GRANT_CATALOG } from "../src/grant-catalog-data.js";
 import {
   assertSafeMonitorUrl,
   buildExtractionPrompt,
@@ -1213,4 +1215,240 @@ test("date-only ISO strings (YYYY-MM-DD) pass verification and normalize to star
   assert.equal(invalidCalendar.ok, false);
 });
 
+test("fetchSafePage follows safe 301/302 HTTPS redirects and sends browser-friendly headers", async () => {
+  const { pool, snapshots } = createFakeDb();
+  const visited: string[] = [];
+  let sawHeaders: Record<string, string> | undefined;
+
+  const fakeFetch = async (
+    input: string | URL | Request,
+    init?: RequestInit,
+  ) => {
+    const url = String(input);
+    visited.push(url);
+    sawHeaders = init?.headers as Record<string, string> | undefined;
+    assert.equal(init?.redirect, "manual");
+    if (url === SAMPLE_PROFILE.sourceUrl) {
+      return new Response("", {
+        status: 301,
+        headers: { location: "/redirected-step" },
+      });
+    }
+    if (url === "https://grants.example.org/redirected-step") {
+      return new Response("", {
+        status: 302,
+        headers: { location: "https://portal.example.org/final-call" },
+      });
+    }
+    return new Response(SAMPLE_HTML, { status: 200 });
+  };
+
+  const monitor = createSmartGrantMonitor(pool, {
+    profiles: [SAMPLE_PROFILE],
+    fetchImpl: fakeFetch as typeof fetch,
+    extractor: async () => VALID_FACTS,
+    now: () => new Date("2026-11-18T12:00:00.000Z"),
+  });
+
+  const summary = await monitor.runAll();
+  assert.equal(summary.verified, 1);
+  assert.deepEqual(visited, [
+    "https://grants.example.org/call-2027",
+    "https://grants.example.org/redirected-step",
+    "https://portal.example.org/final-call",
+  ]);
+  assert.match(String(sawHeaders?.["user-agent"]), /GrantFolio-Monitor\/1\.0/);
+  assert.ok(sawHeaders?.accept?.includes("text/html"));
+  assert.equal(sawHeaders?.["accept-language"], "uk,en;q=0.9");
+  assert.equal(
+    snapshots.get(SAMPLE_PROFILE.programId)?.extraction_status,
+    "verified",
+  );
+});
+
+test("fetchSafePage blocks SSRF redirect targets (127.0.0.1, http://) and >3 redirect hops", async () => {
+  const testRedirectBlock = async (
+    location: string,
+    expectedError: string,
+  ) => {
+    const { pool, snapshots } = createFakeDb();
+    const visited: string[] = [];
+    const fakeFetch = async (input: string | URL | Request) => {
+      visited.push(String(input));
+      return new Response("", { status: 302, headers: { location } });
+    };
+    const monitor = createSmartGrantMonitor(pool, {
+      profiles: [SAMPLE_PROFILE],
+      fetchImpl: fakeFetch as typeof fetch,
+      extractor: async () => VALID_FACTS,
+    });
+    const summary = await monitor.runAll();
+    assert.equal(summary.failed, 1);
+    assert.equal(visited.length, 1);
+    assert.equal(
+      snapshots.get(SAMPLE_PROFILE.programId)?.last_error,
+      expectedError,
+    );
+  };
+
+  await testRedirectBlock(
+    "https://127.0.0.1/internal",
+    "unsafe_url_private_ip",
+  );
+  await testRedirectBlock(
+    "http://grants.example.org/insecure",
+    "unsafe_url_protocol",
+  );
+
+  // > 3 redirect hops throws too_many_redirects
+  const { pool, snapshots } = createFakeDb();
+  let hops = 0;
+  const loopFetch = async () => {
+    hops += 1;
+    return new Response("", {
+      status: 302,
+      headers: { location: `https://grants.example.org/hop-${hops}` },
+    });
+  };
+  const monitor = createSmartGrantMonitor(pool, {
+    profiles: [SAMPLE_PROFILE],
+    fetchImpl: loopFetch as typeof fetch,
+    extractor: async () => VALID_FACTS,
+  });
+  const summary = await monitor.runAll();
+  assert.equal(summary.failed, 1);
+  assert.equal(hops, 4);
+  assert.equal(
+    snapshots.get(SAMPLE_PROFILE.programId)?.last_error,
+    "too_many_redirects",
+  );
+});
+
+test("configuredGeminiExtractor retries transient 503 and succeeds on attempt 2, never retries 400", async () => {
+  const prevEnabled = process.env.SMART_MONITOR_AI_ENABLED;
+  const prevKey = process.env.GEMINI_API_KEY;
+  const prevVertex = process.env.GEMINI_VERTEX_PROJECT;
+  const prevModel = process.env.GEMINI_MODEL;
+  try {
+    process.env.SMART_MONITOR_AI_ENABLED = "true";
+    process.env.GEMINI_API_KEY = "unit-test-key";
+    delete process.env.GEMINI_VERTEX_PROJECT;
+    delete process.env.GEMINI_MODEL;
+
+    let attempts = 0;
+    const flakyFetch = async () => {
+      attempts += 1;
+      if (attempts === 1) {
+        return new Response('{"error":"overloaded"}', { status: 503 });
+      }
+      return new Response(
+        JSON.stringify({
+          candidates: [
+            {
+              finishReason: "STOP",
+              content: { parts: [{ text: JSON.stringify(VALID_FACTS) }] },
+            },
+          ],
+        }),
+        { status: 200, headers: { "content-type": "application/json" } },
+      );
+    };
+
+    const extractor = configuredGeminiExtractor(
+      flakyFetch as typeof fetch,
+      undefined,
+      { retryDelayMs: [0, 0] },
+    );
+    assert.ok(extractor);
+    const extracted = await extractor(
+      SAMPLE_PROFILE,
+      normalizeSourceText(SAMPLE_HTML),
+      new Date("2026-11-18T12:00:00.000Z"),
+    );
+    assert.equal(attempts, 2);
+    assert.deepEqual(extracted, VALID_FACTS);
+
+    // Non-transient 400 must fail immediately on attempt 1 without retry
+    let badReqAttempts = 0;
+    const badReqFetch = async () => {
+      badReqAttempts += 1;
+      return new Response('{"error":"bad request"}', { status: 400 });
+    };
+    const strictExtractor = configuredGeminiExtractor(
+      badReqFetch as typeof fetch,
+      undefined,
+      { retryDelayMs: [0, 0] },
+    );
+    assert.ok(strictExtractor);
+    await assert.rejects(
+      () =>
+        strictExtractor(
+          SAMPLE_PROFILE,
+          normalizeSourceText(SAMPLE_HTML),
+          new Date("2026-11-18T12:00:00.000Z"),
+        ),
+      /llm_http_400/,
+    );
+    assert.equal(badReqAttempts, 1);
+  } finally {
+    if (prevEnabled === undefined) delete process.env.SMART_MONITOR_AI_ENABLED;
+    else process.env.SMART_MONITOR_AI_ENABLED = prevEnabled;
+    if (prevKey === undefined) delete process.env.GEMINI_API_KEY;
+    else process.env.GEMINI_API_KEY = prevKey;
+    if (prevVertex === undefined) delete process.env.GEMINI_VERTEX_PROJECT;
+    else process.env.GEMINI_VERTEX_PROJECT = prevVertex;
+    if (prevModel === undefined) delete process.env.GEMINI_MODEL;
+    else process.env.GEMINI_MODEL = prevModel;
+  }
+});
+
+test("grant-sync hydrate() accepts grant_source_checks rows matching PROGRAM_MONITOR_PROFILES", async () => {
+  const profile = getMonitorProfile("seeds-of-bravery-uaseeds");
+  assert.ok(profile);
+  const catalogEntry = GRANT_CATALOG.find((p) => p.id === profile.programId);
+  const priorAvailability = catalogEntry?.availability;
+  const mockAvailability = {
+    state: "open" as const,
+    basis: "announcement" as const,
+    checkedAt: "2026-11-18T12:00:00.000Z",
+    validUntil: "2026-11-20T00:00:00.000Z",
+    sourceUrl: profile.sourceUrl,
+    evidence: "Seeds of Bravery open call",
+    deadlineAt: "2027-01-31T23:59:59.000Z",
+  };
+  const mockPool = {
+    async query() {
+      return {
+        rows: [
+          {
+            program_id: profile.programId,
+            source_url: profile.sourceUrl,
+            availability: mockAvailability,
+            last_attempt_at: new Date("2026-11-18T12:00:00.000Z"),
+            last_error: null,
+          },
+          {
+            program_id: profile.programId,
+            source_url: "https://untrusted.example.org/spoof",
+            availability: mockAvailability,
+            last_attempt_at: new Date("2026-11-18T12:00:00.000Z"),
+            last_error: null,
+          },
+        ],
+      };
+    },
+  } as unknown as Pool;
+
+  try {
+    const sync = createGrantSync(mockPool);
+    await sync.hydrate();
+    const statuses = sync.status();
+    assert.equal(statuses.length, 1);
+    assert.equal(statuses[0].programId, profile.programId);
+    assert.equal(statuses[0].sourceUrl, profile.sourceUrl);
+    assert.deepEqual(statuses[0].availability, mockAvailability);
+  } finally {
+    if (catalogEntry) catalogEntry.availability = priorAvailability;
+  }
+});
 

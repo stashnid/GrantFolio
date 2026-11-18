@@ -8,6 +8,7 @@ export type ProgramMonitorProfile = {
   cadenceHours: number;
   suspensionUrl?: string;
   suspensionPattern?: string;
+  focusAnchor?: string;
   extractionHints: string[];
   currency?: "UAH" | "EUR" | "USD";
   autoPromoteAvailability: boolean;
@@ -24,6 +25,7 @@ export const PROGRAM_MONITOR_PROFILES: readonly ProgramMonitorProfile[] = [
       "https://diia.gov.ua/services/zapochatkuvannia-ta-masshtabuvannia-vlasnoi-spravy",
     suspensionPattern:
       "Прийом заяв(?:ок)?\\s+(?:тимчасово\\s+)?призупинено",
+    focusAnchor: "Кінцеві строки подання заяв",
     extractionHints: [
       "Look for the annual calendar table titled 'Кінцеві строки подання заяв на отримання гранту на започаткування або масштабування власної справи в межах календарного року' with month-by-month start and end day columns.",
       "Distinguish base vs maximum grant caps for startup ('започаткування') and scaling ('масштабування'), plus youth (18-25 years, +5%), veteran (+20%), and frontline oblast limits.",
@@ -133,6 +135,7 @@ export const PROGRAM_MONITOR_PROFILES: readonly ProgramMonitorProfile[] = [
     sourceType: "html",
     language: "en",
     cadenceHours: 24,
+    focusAnchor: "Submission deadline",
     extractionHints: [
       "Locate 'What are the Full Proposal submission dates?' and the numbered submission cut-off deadlines with CET/CEST timestamps.",
       "Verify EUR 75,000 non-dilutive grant size, women-led deep-tech eligibility criteria (founder/C-level equity share), and Horizon Europe associated country eligibility for Ukraine.",
@@ -187,7 +190,7 @@ export const PROGRAM_MONITOR_PROFILES: readonly ProgramMonitorProfile[] = [
   },
   {
     programId: "google-for-startups-ukraine-fund",
-    sourceUrl: "https://campus.co/intl/uk/ukraine-support-fund/",
+    sourceUrl: "https://startup.google.com/programs/ukraine-support-fund/",
     sourceType: "html",
     language: "uk-en",
     cadenceHours: 24,
@@ -201,8 +204,7 @@ export const PROGRAM_MONITOR_PROFILES: readonly ProgramMonitorProfile[] = [
   },
   {
     programId: "eureka-eurostars-ukraine",
-    sourceUrl:
-      "https://www.eurekanetwork.org/programmes-and-calls/eurostars/",
+    sourceUrl: "https://www.eurekanetwork.org/programmes/eurostars/",
     sourceType: "html",
     language: "en",
     cadenceHours: 24,
@@ -216,7 +218,7 @@ export const PROGRAM_MONITOR_PROFILES: readonly ProgramMonitorProfile[] = [
   },
   {
     programId: "euipo-sme-fund-ukraine",
-    sourceUrl: "https://www.euipo.europa.eu/en/discover-ip/sme-fund",
+    sourceUrl: "https://www.euipo.europa.eu/en/sme-corner/sme-fund",
     sourceType: "html",
     language: "en",
     cadenceHours: 24,
@@ -244,7 +246,7 @@ export const PROGRAM_MONITOR_PROFILES: readonly ProgramMonitorProfile[] = [
   },
   {
     programId: "mercy-corps-uasp-agro",
-    sourceUrl: "https://uasp.mercycorps.org/",
+    sourceUrl: "https://uasp.prosperglobal.org/",
     sourceType: "html",
     language: "uk-en",
     cadenceHours: 24,
@@ -258,8 +260,7 @@ export const PROGRAM_MONITOR_PROFILES: readonly ProgramMonitorProfile[] = [
   },
   {
     programId: "iom-ukraine-msme-grants",
-    sourceUrl:
-      "https://ukraine.iom.int/uk/hranty-dlya-mikro-ta-malykh-pidpryyemstv",
+    sourceUrl: "https://ukraine.iom.int/",
     sourceType: "html",
     language: "uk",
     cadenceHours: 24,
@@ -273,7 +274,7 @@ export const PROGRAM_MONITOR_PROFILES: readonly ProgramMonitorProfile[] = [
   },
   {
     programId: "drc-ukraine-business-grants",
-    sourceUrl: "https://lap.drc.ngo/",
+    sourceUrl: "https://drc.ngo/en/locations/ukraine/",
     sourceType: "html",
     language: "uk-en",
     cadenceHours: 24,
@@ -315,7 +316,7 @@ export const PROGRAM_MONITOR_PROFILES: readonly ProgramMonitorProfile[] = [
   },
   {
     programId: "startup-wise-guys",
-    sourceUrl: "https://startupwiseguys.com/programs/",
+    sourceUrl: "https://startupwiseguys.com/",
     sourceType: "html",
     language: "en",
     cadenceHours: 24,
@@ -329,8 +330,7 @@ export const PROGRAM_MONITOR_PROFILES: readonly ProgramMonitorProfile[] = [
   },
   {
     programId: "ukraine-investment-framework-uif",
-    sourceUrl:
-      "https://enlargement.ec.europa.eu/european-neighbourhood-policy/countries-region/ukraine/ukraine-facility_en",
+    sourceUrl: "https://ua.uif.eu/",
     sourceType: "html",
     language: "en",
     cadenceHours: 24,

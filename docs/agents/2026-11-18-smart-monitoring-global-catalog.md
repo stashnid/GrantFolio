@@ -42,14 +42,16 @@
 
 - `npm run typecheck` — **PASS** (0 помилок, backend + frontend).
 - `npm run build` — **PASS** (`tsc` + `vite build`).
-- `git diff --check -- backend package.json docs` — **PASS**.
-- `npx tsx --test` (11 наборів юніт-тестів включно з `smart-grant-monitor.test.ts`, `grant-catalog.test.ts`, `grant-discovery.test.ts`, `grant-availability.test.ts`, `business-scope.test.ts`, `funding-feed.test.ts`, `email-templates.test.ts`, `profile-extractor.test.ts`, `profile-details.test.ts`, `advice-quality.test.ts`, `document-quality.test.ts`) — **74/74 PASS** (`0` помилок).
+- `git diff --check -- backend frontend infra package.json docs` — **PASS**.
+- `npx tsx --test` (12 наборів юніт-тестів включно з `smart-grant-monitor.test.ts` `28/28`, `monitor-admin.test.ts` `8/8`, `grant-catalog.test.ts`, `grant-discovery.test.ts`, `grant-availability.test.ts`, `business-scope.test.ts`, `funding-feed.test.ts`, `email-templates.test.ts`, `profile-extractor.test.ts`, `profile-details.test.ts`, `advice-quality.test.ts`, `document-quality.test.ts`) — **86/86 PASS** (`0` помилок).
+- `bash -n infra/setup-smart-monitor-job.sh` — **PASS**.
+- Локальна міграція `npm run migrate` застосувала `017_smart_grant_monitoring.sql`; повний живий прогін `SMART_MONITOR_AI_ENABLED=true npm run grants:smart-sync` проти 22 реальних офіційних сайтів + Gemini 3.5 Flash-Lite: **16/22 верифіковано** (`15 verified` + `1 unmodified` SHA-256 кеш), створено **46 цитатно-підтверджених пропозицій** (`6 auto_applied`, `40 pending_review`), 4 відхилено антигалюцинаційним верифікатором, 2 (`eureka-eurostars-ukraine` HTTP 403, `women-techeu-2-eic` timeout) зафіксовано як `fetch_error` без пошкодження наявного каталогу.
+- Фінальний аудит ECC `security-reviewer` для `monitor-admin.ts`, `MonitorAdminDrawer.tsx`, SSRF-редиректів, retry та `infra/setup-smart-monitor-job.sh`: **APPROVE**.
 - Перевірка узгодженості: `97` програм у `GRANT_CATALOG`, `22/22` `PROGRAM_MONITOR_PROFILES` мають відповідний `programId` у каталозі, `0` дублікатів ID, `0` ID із префіксом `erasmus-`.
-- Не виконано в цій задачі: живий запуск `grants:smart-sync` із `SMART_MONITOR_AI_ENABLED=true`, застосування міграції `017` у Cloud SQL, створення/оновлення щоденного Cloud Scheduler завдання (потребують явного погодження користувача щодо витрат/деплою).
+- Обмеження локального середовища: на цьому Mac не встановлено `gcloud` CLI, тому для активації Cloud Run Job + щоденного Cloud Scheduler (`04:00 Europe/Kyiv`) у Google Cloud підготовлено готовий ідемпотентний скрипт `infra/setup-smart-monitor-job.sh` (одноразовий запуск від адміністратора GCP після злиття PR і автодеплою `main` через GitHub Actions).
 
 ## Передача
 
 - Оновлено `docs/STATUS.md` і `docs/WORKLOG.md`.
-- Наступний крок після погодження користувача:
-  1. Застосувати міграцію `017_smart_grant_monitoring.sql` і прогнати `npm run grants:smart-sync` у dry-run (`SMART_MONITOR_AI_ENABLED=false`) та на 2–3 пілотних програмах із `SMART_MONITOR_AI_ENABLED=true`.
-  2. Налаштувати щоденний Cloud Run Job + Cloud Scheduler (`0 2 * * *` UTC = 04:00 за Києвом) і додати простий UI/ендпоінт перегляду черги `grant_change_proposals` (`pending_review`).
+- Додані файли етапу 2: `backend/src/monitor-admin.ts`, `backend/test/monitor-admin.test.ts`, `frontend/src/MonitorAdminDrawer.tsx`, `frontend/src/MonitorAdminDrawer.css`, `infra/setup-smart-monitor-job.sh`, оновлено `backend/src/app.ts`, `backend/src/server.ts`, `backend/src/grant-sync.ts`, `frontend/src/GrantCatalog.tsx`.
+- Після злиття PR у `main` GitHub Actions автоматично застосує міграцію `017` у Cloud SQL та розгорне оновлений `grantfolio-web`; для увімкнення щоденного хмарного завдання виконайте `bash infra/setup-smart-monitor-job.sh` у середовищі з авторизованим `gcloud` (Cloud Shell або робоча станція адміністратора) і задайте `MONITOR_ADMIN_EMAILS=<ваш-email>` на `grantfolio-web`.
