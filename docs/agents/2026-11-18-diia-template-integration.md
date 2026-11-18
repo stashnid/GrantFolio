@@ -1,7 +1,7 @@
 # Звіт: очищений зразок Дії та робоча чернетка бізнес-плану
 
 - Автор/координатор: Codex Sol. Додаткові ролі: агент з мапи полів, агент з аналізу експорту, агент з реалізації OOXML. Точні моделі підлеглих агентів не підтверджені.
-- Дата, branch, base commit і результат fresh remote check: 18.11.2026, `codex/diia-business-plan`, база `429a504`. Свіжі heads підтверджено, `origin/main=6ecd1dc`; його влито в гілку без втрати змін. Конфлікти `STATUS.md` і `WORKLOG.md` розв’язано збереженням записів обох гілок.
+- Дата, branch, base commit і результат fresh remote check: 18.11.2026, `codex/diia-vlasna-business-plan`, база `429a504`. Свіжі heads підтверджено, `origin/main=6ecd1dc`; його влито в гілку без втрати змін. Конфлікти `STATUS.md` і `WORKLOG.md` розв’язано збереженням записів обох гілок.
 - Статус: in_progress.
 - Задача й межі дозволеного: використати наданий приклад Дії 2026, відкинути його заповнені відповіді, зберегти книгу та почати зіставлення анкети й фінансового плану. Не вигадувати відповіді заявника й не надсилати заявку.
 - Файли у власності; погоджені контракти: `backend/assets/vlasna-sprava-2026-diia-example-sanitized.xlsx`, `backend/src/diia-business-plan-export.ts`, `backend/src/grant-application-router.ts`, `backend/src/grant-application.ts`, `backend/test/diia-business-plan-export.test.ts`, `backend/test/grant-application.test.ts`, `backend/test/integration.test.ts`, `frontend/src/GrantApplication.tsx`, `Dockerfile`, документація статусу.
@@ -22,11 +22,13 @@
 ## Змінені файли й перевірки
 
 - Додано очищену книгу, OOXML writer, мапу відповідей, приватні маршрути, UI-кнопки, Docker копіювання asset, анкети, тести й звітність.
-- `npm test`: 135/135 PASS з локальними PostgreSQL і Firebase Emulator. `npm run typecheck` PASS. `npm run build -- --configLoader runner` PASS. `git diff --check` PASS. Цільові тести мапи/книги/PDF — 12/12 PASS з LibreOffice.
+- `npm test`: 172/172 PASS з локальними PostgreSQL і Firebase Emulator. `npm run typecheck` PASS. `npm run build -- --configLoader runner` PASS. `git diff --check` PASS. Цільові тести мапи/книги/PDF — 12/12 PASS з LibreOffice.
+- Docker image зібрано; усередині контейнера під штатним користувачем `node`, із `--network=none`, створено XLSX і файл з `%PDF-` сигнатурою.
 - Початковий запуск повного набору в обмеженому sandbox не міг відкрити localhost listener/DB, код завершення був ненульовим. Повторний прогін із погодженим локальним доступом пройшов повністю.
 
 ## Передача
 
 - Запитання анкети ще не покривають детальні відомості про заявника/податки/підстави надбавок, усі витратні рядки, помісячний розподіл кошторису та фінансові показники за офіційною формою. Чернетка заповнює тільки вісім зіставлених полів.
+- Гілку опубліковано: `codex/diia-vlasna-business-plan`, commit `ea2ee46`. GitHub запропонував створити PR: `https://github.com/stashnid/GrantFolio/pull/new/codex/diia-vlasna-business-plan`. PR не створено.
 - Наступний крок — структуровано дозбирати відсутні поля, зіставити помісячний фінплан з рядками офіційної книги, перевірити PDF/XLSX на синтетичних сценаріях і лише потім прибирати позначку чернетки. Відсутній доступ до перевірки форми всередині авторизованої Дії.
 - Оновлено `STATUS.md` і `WORKLOG.md`. `DECISIONS.md` і `BACKLOG.md` не змінено.
