@@ -9,6 +9,7 @@ import { GrantFinancialPlan } from "./GrantFinancialPlan";
 
 type ReviewResponse = {
   application: GrantApplicationReview | null;
+  documentCoverage: { mappedAnswers: string[]; remainingAnswers: string[]; missingOfficialInputs: string[] } | null;
   answers: GrantApplicationAnswers;
   revision: number;
   caseRevision: number;
@@ -49,6 +50,8 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
   const [editing, setEditing] = useState<GrantApplicationQuestion["id"] | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [downloadingTemplate, setDownloadingTemplate] = useState(false);
+  const [exportingDiiaDraft, setExportingDiiaDraft] = useState(false);
   const [stale, setStale] = useState(false);
   const [error, setError] = useState("");
   const [reload, setReload] = useState(0);
@@ -121,6 +124,50 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
     }
   }
 
+  async function downloadOfficialTemplate() {
+    setDownloadingTemplate(true);
+    setError("");
+    try {
+      const result = await authenticatedRequest(user, `${path}/working-example`);
+      if (!result.ok) throw new Error("official_template_download_failed");
+      const url = URL.createObjectURL(await result.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "biznes-plan-vlasna-sprava-2026-ochyshchenyi-zrazok.xlsx";
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      setError(readableApiError(error, "Не вдалося завантажити чисту форму."));
+    } finally {
+      setDownloadingTemplate(false);
+    }
+  }
+
+  async function exportDiiaDraft() {
+    if (!response) return;
+    setExportingDiiaDraft(true);
+    setError("");
+    try {
+      const result = await authenticatedRequest(user, `${path}/diia-draft/export`, {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ expectedRevision: response.revision, expectedCaseRevision: caseRevision }),
+      });
+      if (result.status === 409) { setStale(true); throw new Error("Анкета змінилася. Оновіть відповіді та повторіть експорт."); }
+      if (result.status === 422) throw new Error("Спочатку заповніть усі поточні запитання анкети та підтвердіть відповіді.");
+      if (!result.ok) throw new Error("Не вдалося створити чернетку XLSX і PDF.");
+      const url = URL.createObjectURL(await result.blob());
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = "grantfolio-vlasna-sprava-draft.zip";
+      link.click();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (error) {
+      setError(readableApiError(error, "Не вдалося створити чернетку."));
+    } finally {
+      setExportingDiiaDraft(false);
+    }
+  }
+
   return <section id="grant-application" className="readiness" aria-labelledby="grant-application-title">
     <h4 id="grant-application-title">Анкета заявки{application && ` — ${application.title}`}</h4>
     {loading && <p role="status">Завантажуємо анкету…</p>}
@@ -157,12 +204,27 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
           {issue.field && <button type="button" className="link" disabled={blocked} onClick={() => setEditing(issue.field ?? null)}>Відкрити поле</button>}
         </li>
       ))}</ul>}
+      {application.programId === "vlasna-sprava" && response.documentCoverage && <details>
+        <summary>Що ще потрібно для повної форми Дії</summary>
+        <ul>{response.documentCoverage.missingOfficialInputs.map(item => <li key={item}>{item}</li>)}</ul>
+      </details>}
       {application.financials.uncoveredKopecks !== null && <p>
         Кошторис {money(application.financials.budgetTotalKopecks!)} · Запит на грант {money(application.financials.requestedGrantKopecks!)} · Власні кошти {money(application.financials.ownContributionKopecks!)}
       </p>}
       {application.programId === "vlasna-sprava" && response && response.revision > 0 &&
         <GrantFinancialPlan user={user} caseId={caseId} caseRevision={caseRevision}
           applicationRevision={response.revision} disabled={blocked} />}
+      {application.programId === "vlasna-sprava" && <button type="button" className="secondary-btn"
+        disabled={blocked || downloadingTemplate} onClick={() => void downloadOfficialTemplate()}>
+        {downloadingTemplate ? "Завантажуємо зразок…" : "Завантажити очищений зразок XLSX 2026"}
+      </button>}
+      {application.programId === "vlasna-sprava" && application.readyForReview && <>
+        <p>Чернетка заповнює лише поля з підтвердженими відповідями. Решту полів форми потрібно перевірити й доповнити.</p>
+        <button type="button" className="secondary-btn" disabled={blocked || exportingDiiaDraft}
+          onClick={() => void exportDiiaDraft()}>
+          {exportingDiiaDraft ? "Формуємо XLSX і PDF…" : "Завантажити чернетку бізнес-плану XLSX і PDF"}
+        </button>
+      </>}
       <p>{application.submission}</p>
       <p><a href={application.officialUrl} target="_blank" rel="noopener noreferrer">Перейти до форми та подання в Дії</a></p>
     </>}
