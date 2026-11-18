@@ -132,7 +132,7 @@ function createMockDb(seed?: {
     query: execute,
     connect: async () => ({
       query: execute,
-      release: () => {},
+      release: () => { },
     }),
   } as unknown as Pool;
 
@@ -152,7 +152,7 @@ type Requester = (
 
 function createMemorySocket(): Duplex & { remoteAddress: string } {
   const socket = new Duplex({
-    read() {},
+    read() { },
     write(_chunk, _encoding, callback) {
       callback();
     },
@@ -181,9 +181,9 @@ function invokeApp(
       host: "127.0.0.1",
       ...(payload
         ? {
-            "content-type": "application/json",
-            "content-length": String(payload.length),
-          }
+          "content-type": "application/json",
+          "content-length": String(payload.length),
+        }
         : {}),
     };
 
