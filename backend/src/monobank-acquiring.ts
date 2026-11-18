@@ -1,4 +1,4 @@
-import { verify } from "node:crypto";
+import { createPublicKey, verify } from "node:crypto";
 import { z } from "zod";
 
 const api = "https://api.monobank.ua/api/merchant";
@@ -12,8 +12,8 @@ const createdInvoice = z.object({
 });
 const invoiceStatus = z.object({
   invoiceId,
-  status: z.string(),
-  reference: z.string().optional(),
+  status: z.enum(["created", "processing", "hold", "success", "failure", "reversed", "expired"]),
+  reference: z.uuid().optional(),
   amount: z.number().int().nonnegative(),
   finalAmount: z.number().int().nonnegative().optional(),
   ccy: z.number().int(),
@@ -28,8 +28,20 @@ const checkoutRequest = z.object({
   webHookUrl: z.url({ protocol: /^https$/ }),
 });
 
+export class DefinitiveInvoiceRejection extends Error {}
+
+export function validMonobankSignature(signature: string): boolean {
+  if (signature.length > 256 || !z.base64().safeParse(signature).success) return false;
+  const bytes = Buffer.from(signature, "base64");
+  return bytes.length >= 8 && bytes.length <= 80 && bytes[0] === 0x30 && bytes.toString("base64") === signature;
+}
+
 export function monobankAcquiring(token: string, request = fetch) {
   if (!token.trim() || /^\d{16}$/.test(token.trim())) throw new Error("Merchant token required");
+
+  let keyCache: { value: string; until: number } | undefined;
+  let keyRequest: Promise<string> | undefined;
+  let lastForcedRefresh = 0;
 
   async function call<T>(path: string, schema: z.ZodType<T>, body?: object): Promise<T> {
     const response = await request(api + path, {
@@ -39,7 +51,10 @@ export function monobankAcquiring(token: string, request = fetch) {
       redirect: "error",
       signal: AbortSignal.timeout(10_000),
     });
-    if (!response.ok) throw new Error(`Monobank HTTP ${response.status}`);
+    if (!response.ok) {
+      if (path === "/invoice/create" && [400, 401, 403, 404, 422].includes(response.status)) throw new DefinitiveInvoiceRejection();
+      throw new Error(`Monobank HTTP ${response.status}`);
+    }
     return schema.parse(await response.json());
   }
 
@@ -56,16 +71,29 @@ export function monobankAcquiring(token: string, request = fetch) {
     getStatus(id: string) {
       return call(`/invoice/status?invoiceId=${encodeURIComponent(invoiceId.parse(id))}`, invoiceStatus);
     },
-    async getPublicKey() {
-      const result = await call("/pubkey", z.object({ key: z.base64() }));
-      return Buffer.from(result.key, "base64").toString("utf8");
+    async getPublicKey(force = false) {
+      if (keyRequest) return keyRequest;
+      if (force && lastForcedRefresh && Date.now() - lastForcedRefresh < 60_000) {
+        throw new Error("Monobank public key refresh is cooling down");
+      }
+      if (keyCache && keyCache.until > Date.now() && !force) return keyCache.value;
+      if (force) lastForcedRefresh = Date.now();
+      keyRequest = (async () => {
+        const result = await call("/pubkey", z.object({ key: z.base64() }));
+        const value = Buffer.from(result.key, "base64").toString("utf8");
+        if (createPublicKey(value).asymmetricKeyType !== "ec") throw new Error("Invalid public key");
+        keyCache = { value, until: Date.now() + 60 * 60 * 1000 };
+        return value;
+      })().finally(() => { keyRequest = undefined; });
+      return keyRequest;
     },
   };
 }
 
 export function parseSignedMonobankEvent(body: Buffer, signature: string, publicKey: string): InvoiceStatus {
-  if (!z.base64().safeParse(signature).success ||
-      !verify("sha256", body, publicKey, Buffer.from(signature, "base64"))) {
+  const key = createPublicKey(publicKey);
+  if (key.asymmetricKeyType !== "ec" || !validMonobankSignature(signature) ||
+      !verify("sha256", body, key, Buffer.from(signature, "base64"))) {
     throw new Error("Invalid monobank signature");
   }
   return invoiceStatus.parse(JSON.parse(body.toString("utf8")));

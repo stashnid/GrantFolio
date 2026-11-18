@@ -1,0 +1,5 @@
+.project-payment { max-width: 640px; margin: 2rem auto; padding: 2rem; border: 1px solid var(--border, #ddd); border-radius: 16px; background: var(--surface, #fff); }
+.project-payment h2 { margin-top: 0; }
+.project-payment-code { display: flex; flex-wrap: wrap; align-items: center; gap: 1rem; margin: 1.25rem 0; }
+.project-payment-code strong { font-size: 1.75rem; letter-spacing: .08em; overflow-wrap: anywhere; }
+.project-payment-link { display: inline-block; text-decoration: none; }

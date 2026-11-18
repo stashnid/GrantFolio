@@ -5,7 +5,7 @@ import { initializeApp } from "firebase-admin/app";
 import pg from "pg";
 import express from "express";
 import { createApp } from "./app.js";
-import { configuration } from "./config.js";
+import { configuration, configuredPayment } from "./config.js";
 const config = configuration();
 initializeApp({ projectId: config.projectId });
 const db = new pg.Pool({ connectionString: config.databaseUrl, max: 5 });
@@ -37,6 +37,7 @@ const app = createApp(
   async () => {
     await grantSync.hydrate();
   },
+  configuredPayment(),
 );
 app.use(express.static("frontend/dist"));
 app.get("/{*path}", (_req, res) =>

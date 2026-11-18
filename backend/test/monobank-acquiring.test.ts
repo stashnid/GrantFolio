@@ -24,7 +24,7 @@ test("500 kopecks creates a one-time invoice through the acquiring API", async (
 test("authenticates exact webhook bytes and checks full payment identity", () => {
   const { privateKey, publicKey } = generateKeyPairSync("ec", { namedCurve: "prime256v1" });
   const order = { invoiceId: "fixture", reference: crypto.randomUUID(), amount: 500 };
-  const event = { ...order, ccy: 980, status: "success", modifiedDate: "2026-11-18T12:00:00Z" };
+  const event = { ...order, ccy: 980, finalAmount: 500, status: "success", modifiedDate: "2026-11-18T12:00:00Z" };
   const body = Buffer.from(JSON.stringify(event));
   const signature = sign("sha256", body, privateKey).toString("base64");
   const pem = publicKey.export({ format: "pem", type: "spki" }).toString();

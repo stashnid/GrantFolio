@@ -1,4 +1,5 @@
-import { grantPreparationPilotRouter } from "./grant-preparation-pilot.js";
+import { jarAccessRouter } from "./monobank-jar.js";
+import { grantPreparationPilotRouter, type PaymentConfig } from "./grant-preparation-pilot.js";
 import {GRANT_CATALOG} from "./grant-catalog-data.js";
 import { Router } from "express";
 import type { Pool } from "pg";
@@ -51,13 +52,30 @@ function view(row: CaseRow) {
     totalKopecks: Number(row.total_kopecks),
   };
 }
-export function casesRouter(db: Pool) {
+export function casesRouter(db: Pool, payment?: PaymentConfig) {
   const router = Router();
   router.use((_req, res, next) => {
     res.set("Cache-Control", "no-store");
     next();
   });
-  router.use(grantPreparationPilotRouter(db));
+  router.use(jarAccessRouter(db));
+  // Listing and reserving a project are free. Every project operation is checked server-side.
+  router.use(async (req, res, next) => {
+    const parts = req.path.split("/").filter(Boolean);
+    if (!parts.length || (parts.length === 1 && (req.method === "GET" || req.method === "DELETE"))) { next(); return; }
+    const id = parts[0];
+    if (!idSchema.safeParse(id).success) { res.sendStatus(404); return; }
+    try {
+      const result = await db.query(`SELECT EXISTS (SELECT 1 FROM jar_orders j WHERE j.case_id=c.id
+        AND (j.confirmed_at IS NOT NULL OR j.manual_unlocked_at IS NOT NULL)) OR EXISTS
+        (SELECT 1 FROM grant_preparation_pilot p WHERE p.case_id=c.id AND p.confirmed_at IS NOT NULL) AS paid
+        FROM cases c WHERE c.id=$1 AND c.owner_id=$2`, [id, res.locals.uid]);
+      if (!result.rowCount) { res.sendStatus(404); return; }
+      if (!result.rows[0].paid) { res.status(402).json({error:"project_payment_required"}); return; }
+      next();
+    } catch (error) { next(error); }
+  });
+  router.use(grantPreparationPilotRouter(db, payment));
   router.use(assistantRouter(db, configuredGeminiResponder()));
   router.use(grantApplicationRouter(db));
   router.use(grantFinancialPlanRouter(db));
@@ -174,6 +192,10 @@ export function casesRouter(db: Pool) {
       }
       res.json({ deleted: true });
     } catch (e) {
+      if ((e as { code?: string }).code === "P0001") {
+        res.status(409).json({ error: "payment_pending" });
+        return;
+      }
       next(e);
     }
   });

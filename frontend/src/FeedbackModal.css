@@ -132,6 +132,7 @@
   touch-action: pan-y;
   overscroll-behavior-y: contain;
   padding: 18px 22px 20px;
+
 }
 
 .fb-modal-form {
@@ -139,6 +140,13 @@
   flex-direction: column;
   gap: 18px;
   min-height: min-content;
+}
+
+.fb-modal-dialog > .fb-modal-form {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  gap: 0;
 }
 
 .fb-modal-field {

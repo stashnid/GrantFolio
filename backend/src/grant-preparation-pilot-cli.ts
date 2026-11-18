@@ -17,6 +17,7 @@ try {
     : await db.query(`UPDATE grant_preparation_pilot p
         SET bank_operation_id=$2, amount_kopecks=$3, confirmed_at=COALESCE(p.confirmed_at, now())
         FROM cases c WHERE p.case_id=c.id AND p.reference=$1 AND c.program_id=p.program_id
+          AND (p.acquiring_creation_started_at IS NULL OR p.acquiring_status IN ('expired', 'reversed', 'success'))
           AND (p.confirmed_at IS NULL OR (p.bank_operation_id=$2 AND p.amount_kopecks=$3))
         RETURNING p.reference`, [id, key, amount]);
   if (!result.rowCount) throw new Error("No eligible pilot application or conflicting confirmation");
