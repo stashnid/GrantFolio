@@ -1,4 +1,4 @@
-import { test, after } from "node:test";
+import { test, before, after, mock } from "node:test";
 import assert from "node:assert/strict";
 import express from "express";
 import { once } from "node:events";
@@ -51,7 +51,11 @@ const call = (owner: string, path = "", body?: unknown) =>
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
+before(() => {
+  mock.timers.enable({ apis: ["Date"], now: new Date("2026-11-16T15:00:00Z") });
+});
 after(async () => {
+  mock.timers.reset();
   await db.query(
     "DELETE FROM advisor_messages WHERE owner_id=ANY($1::text[])",
     [[a, b]],

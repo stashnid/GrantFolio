@@ -8,6 +8,7 @@ import { detailsCommandSchema, readiness } from "./project-details.js";
 import { draftExport } from "./draft-export.js";
 import { assistantRouter } from "./assistant.js";
 import { configuredGeminiResponder } from "./gemini.js";
+import { grantApplicationRouter } from "./grant-application-router.js";
 const idSchema = z.string().uuid();
 const ALLOWED_PROGRAMS = GRANT_CATALOG.map(p=>p.id) as [string,...string[]];
 
@@ -54,6 +55,7 @@ export function casesRouter(db: Pool) {
     res.set("Cache-Control", "no-store");
     next();
   });
+  router.use(grantApplicationRouter(db));
   router.get("/", async (_req, res, next) => {
     try {
       const result = await db.query(

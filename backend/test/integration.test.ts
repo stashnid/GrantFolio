@@ -658,3 +658,37 @@ test("case creation reuses its request identity safely under concurrent retries"
   assert.equal((await call(owner,{...body,title:"Changed request"})).status,409);
   assert.equal((await call(foreign)).status,409);
 });
+
+test("grant applications isolate owners, reject concurrent writes and invalidate confirmation on case edits", async () => {
+  const [owner, stranger] = await Promise.all([signup(), signup()]);
+  const call = (token: string, path: string, method = "GET", body?: object) =>
+    fetch(`${base}${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${token}`, ...(body && { "Content-Type": "application/json" }) },
+      body: body && JSON.stringify(body),
+    });
+  const created = await call(owner, "/api/cases", "POST", { title: "Тестова пекарня", programId: "vlasna-sprava" });
+  assert.equal(created.status, 201);
+  const id = (await created.json()).case.id;
+  const path = `/api/cases/${id}/grant-application`;
+  const initial = await call(owner, path);
+  assert.equal(initial.headers.get("cache-control"), "no-store");
+  assert.equal((await initial.json()).application.nextQuestion.id, "track");
+  assert.equal((await call(stranger, path)).status, 404);
+  const command = { expectedRevision: 0, expectedCaseRevision: 0, answers: { track: "start" } };
+  assert.equal((await call(stranger, path, "PUT", command)).status, 404);
+  const saves = await Promise.all([call(owner, path, "PUT", command), call(owner, path, "PUT", command)]);
+  assert.deepEqual(saves.map(response => response.status).sort(), [200, 409]);
+  const confirmed = await call(owner, path, "PUT", { ...command, expectedRevision: 1, answers: { ...command.answers, confirmAccuracy: true } });
+  assert.equal(confirmed.status, 200);
+  assert.equal((await confirmed.json()).answers.confirmAccuracy, true);
+  assert.equal((await call(owner, `/api/cases/${id}/program`, "PUT", { programId: null, expectedRevision: 0 })).status, 200);
+  assert.equal((await call(owner, path, "PUT", { ...command, expectedRevision: 2 })).status, 409);
+  assert.equal((await (await call(owner, path)).json()).application, null);
+  assert.equal((await call(owner, `/api/cases/${id}/program`, "PUT", { programId: "vlasna-sprava", expectedRevision: 1 })).status, 200);
+  const restored = await (await call(owner, path)).json();
+  assert.deepEqual(restored.answers, { track: "start" });
+  assert.equal(restored.caseRevision, 2);
+  assert.equal((await call(owner, `/api/cases/${id}`, "DELETE")).status, 200);
+  assert.equal((await db.query("SELECT 1 FROM grant_applications WHERE case_id=$1", [id])).rowCount, 0);
+});

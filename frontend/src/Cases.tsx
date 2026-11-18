@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { User } from "firebase/auth";
 import { Assistant } from "./Assistant";
+import { GrantApplication } from "./GrantApplication";
 import { useSessionDraft } from "./useSessionDraft";
 import "./SessionRecovery.css";
 import { authenticatedRequest, readableApiError } from "./api";
@@ -709,7 +710,13 @@ export function Cases({
     setActiveStep(["implementationPlan", "expectedResults"].includes(key) ? "plan" : "basics");
     requestAnimationFrame(() => document.getElementById(`preparation-${key}`)?.focus());
   }
-  function openDocuments() { setActiveStep("review"); requestAnimationFrame(() => document.getElementById("preparation-documents")?.scrollIntoView({block:"start"})); }
+  function openDocuments() {
+    setActiveStep("review");
+    requestAnimationFrame(() => {
+      const section = document.getElementById("grant-application") ?? document.getElementById("preparation-documents");
+      section?.scrollIntoView({ block: "start" });
+    });
+  }
   const missingField = [...basicsFields, ...planFields].find(field => !details[field.key]?.trim());
   const nextStep = missingField ? { label: `Заповнити: ${missingField.label.toLocaleLowerCase("uk")}`, description: "Перенесіть підтверджені факти в матеріали заявки. Асистент допоможе сформулювати текст; збережіть його після перевірки.", onOpen: () => openField(missingField.key) }
     : !draft.length ? { label: "Скласти кошторис", description: "Додайте потрібні витрати й підтвердьте суми перед переходом до документів.", onOpen: () => setActiveStep("budget") }
@@ -1267,6 +1274,9 @@ export function Cases({
                   Доповніть позначені блоки, перевірте факти та узгодженість і збережіть зміни. Потім завантажте чернетку та звірте її з актуальною офіційною формою.
                 </p>
               </div>
+
+              {selected.programId && <GrantApplication key={selected.id} user={user} caseId={selected.id}
+                caseRevision={selected.revision} disabled={dirty || !!pending || conflict || !!sessionDraft.recovery} />}
 
               <section className="readiness" aria-labelledby="readiness-heading">
                 <h4 id="readiness-heading">Заповненість чернетки проєкту</h4>
