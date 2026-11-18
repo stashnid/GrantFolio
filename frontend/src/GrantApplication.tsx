@@ -98,6 +98,8 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
     return <section id="grant-application" className="readiness"><h4>Анкета заявки</h4><p>Для цієї програми доступний загальний план підготовки. Окрему анкету ще не додано.</p></section>;
   }
   const question = application?.questions.find(item => item.id === editing) ?? application?.nextQuestion;
+  const unanswered = application?.questions.filter(item => item.value === undefined && item.id !== "confirmAccuracy") ?? [];
+  const answeredCount = (application?.questions.length ?? 0) - unanswered.length - (application?.questions.some(item => item.id === "confirmAccuracy") ? 1 : 0);
   const explanation = question && questionExplanations[question.id];
   const answerDescription = explanation ? "grant-application-answer-note" : undefined;
   const blocked = disabled || stale || loading || saving || response?.caseRevision !== caseRevision;
@@ -224,7 +226,15 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
     </section>}
     {application && !loading && <>
       <p>{application.readyForReview ? "Відповіді зібрано для предметної перевірки." : "Заповніть робочу анкету. Вона допоможе зібрати факти й пройти базові перевірки за умовами програми."}</p>
+      <p aria-live="polite">Заповнено обов’язкових полів: {answeredCount} із {(application.questions.length ?? 1) - (application.questions.some(item => item.id === "confirmAccuracy") ? 1 : 0)}.</p>
       {disabled && <p>Спочатку збережіть або відновіть правки проєкту.</p>}
+      {unanswered.length > 0 && <details className="grant-application-missing-fields" open>
+        <summary>Заповнити ще ({unanswered.length})</summary>
+        <ul>{unanswered.map(item => <li key={item.id}>
+          <span>{item.label}</span>
+          <button type="button" className="link" disabled={blocked} onClick={() => setEditing(item.id)}>Відповісти</button>
+        </li>)}</ul>
+      </details>}
       {question && <form key={`${question.id}:${response?.revision}`} onSubmit={save} className="grant-application-form">
         <label htmlFor="grant-application-answer"><strong>{question.prompt}</strong></label>
         {explanation && <p id="grant-application-answer-note">{explanation}</p>}
@@ -255,6 +265,13 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
       ))}</ul>}
       {application.programId === "vlasna-sprava" && response.documentCoverage && <details>
         <summary>Що ще потрібно для повної форми Дії</summary>
+        {response.documentCoverage.remainingAnswers.length > 0 && <>
+          <p>Ці збережені відповіді поки не переносяться автоматично у відповідні таблиці офіційного шаблону — перенесіть і перевірте їх вручну:</p>
+          <ul>{response.documentCoverage.remainingAnswers.map(field => {
+            const item = application.questions.find(question => question.id === field);
+            return item ? <li key={field}><strong>{item.label}</strong></li> : null;
+          })}</ul>
+        </>}
         <ul>{response.documentCoverage.missingOfficialInputs.map(item => <li key={item}>{item}</li>)}</ul>
       </details>}
       {application.financials.uncoveredKopecks !== null && <p>

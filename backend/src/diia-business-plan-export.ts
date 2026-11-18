@@ -25,37 +25,70 @@ export type DiiaBusinessPlanAnswerMapping = {
 
 const mappedAnswerFields = new Set<keyof GrantApplicationAnswers>([
   "track", "requestedGrantKopecks", "newJobs", "permits", "projectObjective", "pricingStrategy", "staffingPlan", "projectRisks",
+  "applicantType", "applicantTaxId", "legalForm", "taxSystem", "vatStatus", "applicantIdentity", "applicantExperience",
+  "location", "activity", "projectDurationMonths", "projectSchedule", "productDescription", "targetCustomers", "grantUsePlan",
+  "expectedImpact", "salesForecast", "profitabilityForecast", "financialResultForecast", "cashFlowForecast", "roiForecast", "irrForecast",
+  "paybackAssumptions", "breakEvenMonths", "environmentalImpact", "otherResults", "taxEstimate", "regionalImpact", "projectRiskMitigation",
 ]);
 
 const missingOfficialInputs = [
-  "Ім’я/назва заявника окремо від коду ЄДРПОУ або РНОКПП та контактів",
-  "Правова форма, місце діяльності з територіальною громадою та код основного КВЕД",
-  "Досвід діяльності із датою початку та досвід команди",
-  "Опис бізнес-ідеї, очікуваного впливу та потреби у державній підтримці",
-  "Підстави для збільшення граничного гранту, включно з ПДВ, віком, ветеранським статусом, патентом, ВПО/релокацією, визначеною територією та пріоритетним сектором",
-  "Період реалізації, система оподаткування та статус ПДВ",
-  "Опис продукту/послуги, цільова аудиторія, адреса діяльності та етапи з датами",
-  "Загальний бюджет і окремі рядки грантових та власних витрат з обґрунтуванням",
-  "Прогноз продажів у кількості й гривнях, рентабельність, прибуток, грошовий потік, окупність, ROI та IRR",
-  "Екологічний і додатковий вплив, місяць беззбитковості, версія плану й дата оновлення",
-  "Заходи з пом’якшення кожного ризику, прогноз податків і регіональний економічний ефект",
+  "Індивідуальні рядки витрат гранту та власного внеску з підтвердженими сумами й обґрунтуванням — загального опису або суми внеску недостатньо для заповнення цієї таблиці.",
+  "Помісячні надходження, витрати й податки на 24/36/60 місяців мають бути звірені у фінансовому плані; прогнози не можна вважати підтвердженими фактами.",
+  "Розрахункові рентабельність, прибуток, грошовий потік, окупність, ROI та IRR потрібно перевірити за узгодженим фінансовим планом.",
+  "Підстави для підвищення граничної суми гранту (ПДВ, вік, ветеранський статус, патент, ВПО/релокація та інші критерії) потребують окремого підтвердження й позначення у формі.",
 ];
 
 export function mapGrantApplicationAnswersToDiiaCells(answers: GrantApplicationAnswers): DiiaBusinessPlanAnswerMapping {
   const cells: Record<string, string | number> = {};
+  if (answers.applicantType !== undefined) cells.B6 = answers.applicantType === "individual" ? "Фізична особа" : answers.applicantType === "entrepreneur" ? "ФОП" : "Юридична особа";
+  if (answers.applicantTaxId !== undefined) cells.B7 = answers.applicantTaxId;
+  if (answers.legalForm !== undefined) cells.B8 = answers.legalForm;
+  if (answers.location !== undefined) cells.B9 = answers.location;
+  if (answers.activity !== undefined) cells.B10 = answers.activity;
+  if (answers.applicantExperience !== undefined) cells.B11 = answers.applicantExperience;
+  if (answers.location !== undefined) cells.B12 = answers.location;
+  if (answers.projectObjective !== undefined) cells.B14 = answers.projectObjective;
+  if (answers.expectedImpact !== undefined) cells.B15 = answers.expectedImpact;
+  if (answers.permits !== undefined) cells.B16 = answers.permits;
+  if (answers.grantUsePlan !== undefined) cells.B17 = answers.grantUsePlan;
+  if (answers.projectDurationMonths !== undefined) cells.B22 = `${answers.projectDurationMonths} місяців`;
   if (answers.track !== undefined) {
     cells.B24 = answers.track === "start" ? "Започаткування власної справи" : "Масштабування власної справи";
   }
   if (answers.requestedGrantKopecks !== undefined) cells.C26 = answers.requestedGrantKopecks / 100;
-  if (answers.newJobs !== undefined) cells.B99 = answers.newJobs;
-  if (answers.permits !== undefined) cells.B16 = answers.permits;
+  if (answers.taxSystem !== undefined) cells.B41 = answers.taxSystem;
+  if (answers.vatStatus !== undefined) cells.C43 = answers.vatStatus;
   if (answers.projectObjective !== undefined) cells.B45 = answers.projectObjective;
-  if (answers.pricingStrategy !== undefined) cells.B59 = answers.pricingStrategy;
+  if (answers.productDescription !== undefined) cells.B47 = answers.productDescription;
+  if (answers.targetCustomers !== undefined) cells.B49 = answers.targetCustomers;
+  if (answers.location !== undefined) cells.B51 = answers.location;
+  if (answers.projectSchedule !== undefined) cells.B52 = answers.projectSchedule;
+  if (answers.salesForecast !== undefined) cells.B62 = answers.salesForecast;
+  if (answers.profitabilityForecast !== undefined) cells.B63 = answers.profitabilityForecast;
+  if (answers.financialResultForecast !== undefined) cells.B64 = answers.financialResultForecast;
+  if (answers.cashFlowForecast !== undefined) cells.B65 = answers.cashFlowForecast;
+  if (answers.paybackAssumptions !== undefined) cells.B67 = answers.paybackAssumptions;
+  if (answers.roiForecast !== undefined) cells.B68 = answers.roiForecast;
+  if (answers.irrForecast !== undefined) cells.B69 = answers.irrForecast;
+  if (answers.expectedImpact !== undefined) cells.B70 = answers.expectedImpact;
+  if (answers.environmentalImpact !== undefined) cells.B71 = answers.environmentalImpact;
+  if (answers.otherResults !== undefined) cells.B72 = answers.otherResults;
+  if (answers.breakEvenMonths !== undefined) cells.B74 = answers.breakEvenMonths;
+  cells.B76 = "Версія 1";
+  cells.B78 = new Date().toLocaleDateString("uk-UA");
+  if (answers.pricingStrategy !== undefined) cells.B60 = answers.pricingStrategy;
+  if (answers.newJobs !== undefined) cells.B99 = answers.newJobs;
   if (answers.staffingPlan !== undefined) cells.B101 = answers.staffingPlan;
   if (answers.projectRisks !== undefined) cells.B104 = answers.projectRisks;
+  if (answers.projectRiskMitigation !== undefined) cells.B105 = answers.projectRiskMitigation;
+  if (answers.newJobs !== undefined) cells.B109 = answers.newJobs;
+  if (answers.taxEstimate !== undefined) cells.B111 = answers.taxEstimate;
+  if (answers.regionalImpact !== undefined) cells.B113 = answers.regionalImpact;
+  const profitAndLoss: Record<string, string | number> = {};
+  if (answers.applicantIdentity !== undefined) profitAndLoss.B4 = answers.applicantIdentity;
   const answerKeys = Object.keys(answers) as (keyof GrantApplicationAnswers)[];
   return {
-    cells: { "Бізнес план": cells },
+    cells: { "Бізнес план": cells, "Прибутки та збитки": profitAndLoss },
     mappedAnswers: answerKeys.filter(field => mappedAnswerFields.has(field)),
     remainingAnswers: answerKeys.filter(field => !mappedAnswerFields.has(field) && field !== "confirmAccuracy"),
     missingOfficialInputs,
