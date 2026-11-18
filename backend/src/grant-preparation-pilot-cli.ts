@@ -6,7 +6,7 @@ const command = z.enum(["enroll", "confirm"]).parse(action);
 const id = z.uuid().parse(target);
 const url = z.string().min(1).parse(process.env.DATABASE_URL);
 const key = command === "confirm" ? z.string().trim().min(1).max(160).parse(bankOperationId) : null;
-const amount = command === "confirm" ? z.number().int().positive().max(2147483647).parse(Number(amountText)) : null;
+const amount = command === "confirm" ? z.literal(500).parse(Number(amountText)) : null;
 const db = new pg.Pool({ connectionString: url });
 try {
   const result = command === "enroll"

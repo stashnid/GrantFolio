@@ -207,14 +207,14 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
     {application?.programId === "vlasna-sprava" && access && <section id="export-payment" className="export-section" aria-labelledby="export-payment-title">
       <h5 id="export-payment-title">Завантаження PDF і таблиці Excel</h5>
       {access.state === "standard" && <>
-        <p>Один підтверджений переказ відкриває PDF і XLSX для цієї заявки. Для тесту виберіть суму самостійно.</p>
+        <p>Вартість комплекту PDF і XLSX для цієї заявки — 5 грн. Після підтвердження переказу відкриється завантаження заповнених файлів.</p>
         <button type="button" className="primary" disabled={loading || startingPayment} onClick={() => void startPayment()}>
           {startingPayment ? "Готуємо оплату…" : "Оплатити PDF і XLSX"}
         </button>
       </>}
       {access.state === "pending" && <>
         <p role="status">Очікуємо підтвердження оплати.</p>
-        <p>Поповніть банку на обрану суму через monobank або Apple Pay, якщо він доступний на вашому пристрої. Надішліть <a href="mailto:grantfoliomanager@gmail.com?subject=GrantFolio%20PDF%20XLSX">підтримці GrantFolio</a> код заявки, суму й час переказу, щоб оператор міг знайти його у виписці.</p>
+        <p>Поповніть банку рівно на 5 грн через monobank або Apple Pay, якщо він доступний на вашому пристрої. Надішліть <a href="mailto:grantfoliomanager@gmail.com?subject=GrantFolio%20PDF%20XLSX">підтримці GrantFolio</a> код заявки, суму й час переказу, щоб оператор міг знайти його у виписці.</p>
         <p>Код заявки <code>{access.reference}</code></p>
         <a className="primary" href="https://send.monobank.ua/jar/9GcNmEBdxD" target="_blank" rel="noopener noreferrer">Відкрити банку monobank ↗</a>
         {" "}

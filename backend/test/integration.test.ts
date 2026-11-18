@@ -746,7 +746,7 @@ test("financial plans reconcile a private snapshot and block stale exports", asy
 
   assert.equal((await call(owner, `${financialPath}/export`, "POST", attempt)).status, 402);
   assert.equal((await call(owner, `${path}/preparation-access`, "POST")).status, 200);
-  await db.query("UPDATE grant_preparation_pilot SET bank_operation_id=$2, amount_kopecks=137, confirmed_at=now() WHERE case_id=$1", [id, crypto.randomUUID()]);
+  await db.query("UPDATE grant_preparation_pilot SET bank_operation_id=$2, amount_kopecks=500, confirmed_at=now() WHERE case_id=$1", [id, crypto.randomUUID()]);
 
   if (process.env.LIBREOFFICE_TEST) {
     const archive = await call(owner, `${financialPath}/export`, "POST", attempt);
@@ -805,9 +805,9 @@ test("a Jar payment unlocks both exports for only one application after confirma
   assert.equal((await call(owner, financialExport, "POST")).status, 402);
   const operation = crypto.randomUUID();
   await assert.rejects(operator("confirm", reference, operation, "0"));
-  await operator("confirm", reference, operation, "137");
-  assert.equal((await operator("confirm", reference, operation, "137")).stdout.trim(), reference);
-  await assert.rejects(operator("confirm", otherReference, operation, "137"), /Operation already assigned/);
+  await operator("confirm", reference, operation, "500");
+  assert.equal((await operator("confirm", reference, operation, "500")).stdout.trim(), reference);
+  await assert.rejects(operator("confirm", otherReference, operation, "500"), /Operation already assigned/);
   assert.deepEqual(await (await call(owner, statusPath, "POST")).json(), { state: "active", reference });
   assert.equal((await call(owner, diiaExport, "POST")).status, 400);
   assert.equal((await call(owner, financialExport, "POST")).status, 400);
