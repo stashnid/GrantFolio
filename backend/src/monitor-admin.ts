@@ -20,7 +20,7 @@ export type MonitorAdminToken = {
 export type MonitorAdminOptions = {
   onAvailabilityApproved?: () => Promise<void>;
   runMonitor?: (programId?: string) => Promise<unknown>;
-  isAdmin?: (token: unknown) => boolean;
+  isAdmin?: (token: unknown, emailVerifiedByOtp?: boolean) => boolean;
 };
 
 const PROPOSAL_STATUSES = [
@@ -109,13 +109,16 @@ function parseCsvSet(raw: string | undefined, lowercase: boolean): Set<string> {
   if (!raw) return new Set();
   const entries = raw
     .split(",")
-    .map((entry) => entry.trim())
+    .map((entry) => entry.trim().replace(/^["']+|["']+$/g, "").trim())
     .filter((entry) => entry.length > 0)
     .map((entry) => (lowercase ? entry.toLowerCase() : entry));
   return new Set(entries);
 }
 
-export function isMonitorAdmin(token: MonitorAdminToken | undefined): boolean {
+export function isMonitorAdmin(
+  token: MonitorAdminToken | undefined,
+  options?: { emailVerifiedByOtp?: boolean },
+): boolean {
   if (!token || typeof token !== "object") return false;
 
   const allowedEmails = parseCsvSet(process.env.MONITOR_ADMIN_EMAILS, true);
@@ -133,8 +136,9 @@ export function isMonitorAdmin(token: MonitorAdminToken | undefined): boolean {
     return true;
   }
 
+  const emailVerified = token.email_verified === true || options?.emailVerifiedByOtp === true;
   if (
-    token.email_verified === true &&
+    emailVerified &&
     typeof token.email === "string" &&
     allowedEmails.has(token.email.trim().toLowerCase())
   ) {
@@ -169,7 +173,10 @@ function presentProposal(row: ProposalDbRow) {
 
 export function monitorAdminRouter(db: Pool, options: MonitorAdminOptions = {}) {
   const router = Router();
-  const checkAdmin = options.isAdmin ?? ((token: unknown) => isMonitorAdmin(token as MonitorAdminToken | undefined));
+  const checkAdmin =
+    options.isAdmin ??
+    ((token: unknown, emailVerifiedByOtp?: boolean) =>
+      isMonitorAdmin(token as MonitorAdminToken | undefined, { emailVerifiedByOtp }));
   const runMonitor =
     options.runMonitor ??
     ((programId?: string) => createSmartGrantMonitor(db).runAll(programId));
@@ -178,7 +185,7 @@ export function monitorAdminRouter(db: Pool, options: MonitorAdminOptions = {}) 
 
   router.use((_req, res, next) => {
     res.set("Cache-Control", "no-store");
-    if (!checkAdmin(res.locals.firebaseToken)) {
+    if (!checkAdmin(res.locals.firebaseToken, Boolean(res.locals.emailVerifiedByOtp))) {
       res.status(403).json({ error: "forbidden" });
       return;
     }

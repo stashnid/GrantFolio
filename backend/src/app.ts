@@ -125,6 +125,9 @@ export function createApp(
         res.status(403).json({ error: "email_code_required" });
         return;
       }
+      if (res.locals.firebaseToken?.firebase?.sign_in_provider === "password") {
+        res.locals.emailVerifiedByOtp = true;
+      }
       next();
     });
   } else {
