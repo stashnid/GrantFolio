@@ -1,5 +1,11 @@
 import { hasGuidedApplication } from "./grants";
-import { useEffect, useMemo, useRef, useState } from "react";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 import { GRANT_PROGRAMS, type GrantProgram } from "./grants";
 import "./GrantCatalog.css";
 import { CustomSelect, type SelectOption } from "./CustomSelect";
@@ -375,6 +381,21 @@ export function GrantCatalog({
   };
   const back = () => {
     window.location.hash = "grants";
+  };
+  const handleCardClick = (event: MouseEvent<HTMLElement>, id: string) => {
+    if (event.defaultPrevented) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const target =
+      event.target instanceof Element
+        ? event.target
+        : event.target instanceof Node
+          ? event.target.parentElement
+          : null;
+    if (target?.closest("a, button, input, select, textarea, [role='button']")) {
+      return;
+    }
+    if (window.getSelection()?.toString().trim()) return;
+    open(id);
   };
   const selected = useMemo(
     () => programs.find((p) => p.id === selectedId),
@@ -999,7 +1020,11 @@ export function GrantCatalog({
       )}
       <div className="grant-list">
         {filtered.map(({ program: p, match }) => (
-          <article className="grant-list-item" key={p.id}>
+          <article
+            className="grant-list-item grant-list-item-clickable"
+            key={p.id}
+            onClick={(event) => handleCardClick(event, p.id)}
+          >
             <div>
               <p className="grant-category">
                 {p.categoryLabel} · {p.provider}

@@ -37,6 +37,14 @@
 
 Додано версійовані вимоги та збереження відповідей для двох програм. Перевірено обидві анкети в Chromium, міграцію, ізоляцію записів і фінансові пороги. [Звіт](agents/2026-11-18-grant-application-workflow.md)
 
+## 18.11.2026 — Керування списком чатів асистента (видалення/перейменування) та клікабельні картки каталогу грантів
+
+- Делеговано дослідження, паралельну реалізацію та незалежний аудит команді субагентів (`code-explorer` ×2, `implementer` ×5, `code-reviewer`, `react-reviewer` ×2, `security-reviewer`) у гілці `feat/chat-management-clickable-catalog` від `origin/main` (`6ecd1dc`).
+- Бекенд: додано міграцію `backend/migrations/018_advisor_conversation_meta.sql`, маршрути `PATCH` і `DELETE /api/advisor/conversations/:conversationId` у `backend/src/advisor.ts` із суворою перевіркою власника, транзакційним очищенням, захистом `429 advisor_busy` та розширено інтеграційні тести в `backend/test/advisor.test.ts` (9/9 PASS).
+- Фронтенд (чат): у `frontend/src/Advisor.tsx` та `frontend/src/Advisor.css` реалізовано inline-перейменування збережених чатів і видалення збережених розмов/чернеток у десктопному сайдбарі й мобільному drawer, очищення `sessionStorage`, захист від витоку чернеток/гонки при зміні акаунта, окремий `historyError` і відновлення фокуса (WCAG AA).
+- Фронтенд (каталог): у `frontend/src/GrantCatalog.tsx` та `frontend/src/GrantCatalog.css` зроблено клікабельною всю картку гранту (`.grant-list-item-clickable`) для переходу до деталей програми без порушення зовнішніх посилань, виділення тексту та клавіатурної доступності.
+- Перевірки: фінальні `code-reviewer`, `react-reviewer`, `security-reviewer` = **APPROVE**; `npm run migrate`, `npm run typecheck`, `npm run build`, `git diff --check -- backend frontend docs`, **156/156** тестів (`npm test`) PASS. Звіт: `docs/agents/2026-11-18-chat-management-clickable-catalog.md`.
+
 ## 18.11.2026 — Розумний індивідуальний моніторинг грантів (per-program + ШІ-екстрактор) і розширення каталогу до 97 програм
 
 - Делеговано проєктування, реалізацію та аудит команді ECC-агентів (`architect`, `ECC Global Grants Catalog Engineer`, `ECC Smart Monitor Engineer`, `code-reviewer`, `security-reviewer`).
