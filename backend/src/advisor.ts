@@ -13,6 +13,16 @@ const input = z
     message: z.string().trim().min(1).max(2000),
   })
   .strict();
+const renameInput = z
+  .object({
+    title: z
+      .string()
+      .trim()
+      .min(1)
+      .max(70)
+      .refine((value) => !/[\u0000-\u001F\u007F]/.test(value)),
+  })
+  .strict();
 const uuid = z.string().uuid();
 const view = (r: any) => ({
   id: r.id,
@@ -77,15 +87,99 @@ export function advisorRouter(
   router.get("/conversations", async (_req, res, next) => {
     try {
       const r = await db.query(
-        `SELECT conversation_id AS id, (array_agg(question ORDER BY created_at,id))[1] AS title, MAX(created_at) AS "updatedAt" FROM advisor_messages WHERE owner_id=$1 GROUP BY conversation_id ORDER BY MAX(created_at) DESC LIMIT 30`,
+        `SELECT m.conversation_id AS id, COALESCE(meta.title, (array_agg(m.question ORDER BY m.created_at, m.id))[1]) AS title, MAX(m.created_at) AS "updatedAt"
+         FROM advisor_messages m
+         LEFT JOIN advisor_conversation_meta meta
+           ON meta.owner_id = m.owner_id AND meta.conversation_id = m.conversation_id
+         WHERE m.owner_id=$1
+         GROUP BY m.conversation_id, meta.title
+         ORDER BY MAX(m.created_at) DESC
+         LIMIT 30`,
         [res.locals.uid],
       );
       res.json({
-        conversations: r.rows.map((r) => ({
-          ...r,
-          title: r.title.slice(0, 70),
+        conversations: r.rows.map((row) => ({
+          ...row,
+          title: row.title.slice(0, 70),
         })),
       });
+    } catch (e) {
+      next(e);
+    }
+  });
+  router.patch("/conversations/:conversationId", async (req, res, next) => {
+    const idParsed = uuid.safeParse(req.params.conversationId);
+    if (!idParsed.success) {
+      res.status(400).json({ error: "invalid_conversation" });
+      return;
+    }
+    const parsed = renameInput.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "invalid_title" });
+      return;
+    }
+    const conversationId = idParsed.data;
+    const uid: string = res.locals.uid;
+    try {
+      const owned = await db.query(
+        "SELECT 1 FROM advisor_messages WHERE owner_id=$1 AND conversation_id=$2 LIMIT 1",
+        [uid, conversationId],
+      );
+      if (!owned.rowCount) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      await db.query(
+        `INSERT INTO advisor_conversation_meta (owner_id, conversation_id, title, updated_at)
+         VALUES ($1, $2, $3, now())
+         ON CONFLICT (owner_id, conversation_id)
+         DO UPDATE SET title = EXCLUDED.title, updated_at = now()`,
+        [uid, conversationId, parsed.data.title],
+      );
+      res.json({
+        conversation: { id: conversationId, title: parsed.data.title },
+      });
+    } catch (e) {
+      next(e);
+    }
+  });
+  router.delete("/conversations/:conversationId", async (req, res, next) => {
+    const idParsed = uuid.safeParse(req.params.conversationId);
+    if (!idParsed.success) {
+      res.status(400).json({ error: "invalid_conversation" });
+      return;
+    }
+    const uid: string = res.locals.uid;
+    if (active.has(uid)) {
+      res.status(429).json({ error: "advisor_busy" });
+      return;
+    }
+    const conversationId = idParsed.data;
+    try {
+      const client = await db.connect();
+      try {
+        await client.query("BEGIN");
+        const deletedMessages = await client.query(
+          "DELETE FROM advisor_messages WHERE owner_id=$1 AND conversation_id=$2",
+          [uid, conversationId],
+        );
+        if (!deletedMessages.rowCount) {
+          await client.query("ROLLBACK");
+          res.status(404).json({ error: "not_found" });
+          return;
+        }
+        await client.query(
+          "DELETE FROM advisor_conversation_meta WHERE owner_id=$1 AND conversation_id=$2",
+          [uid, conversationId],
+        );
+        await client.query("COMMIT");
+        res.json({ deleted: true, id: conversationId });
+      } catch (e) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw e;
+      } finally {
+        client.release();
+      }
     } catch (e) {
       next(e);
     }
