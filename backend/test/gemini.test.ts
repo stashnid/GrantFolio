@@ -92,7 +92,7 @@ test("configuredGeminiResponder sends exact POST header/body and includes budget
       profileRevision: 0,
       details: { sector: "IT" },
       items: [{ name: "Ноутбук", amount: 30000 }],
-      total_kopecks: "3000000",
+      total_kopecks: "3000037",
       conversation: [{ question: "Попереднє", reply: "Попередня відповідь", revision: 2, stale: false, truncated: false }],
     };
 
@@ -115,6 +115,7 @@ test("configuredGeminiResponder sends exact POST header/body and includes budget
     const userText = parsedBody.contents[0].parts[0].text;
     const parsedUserJson = JSON.parse(userText);
     assert.deepEqual(parsedUserJson.savedCase, snapshot);
+    assert.equal(parsedUserJson.savedBudgetTotalUah, "30000,37 грн");
     assert.equal(parsedUserJson.question, "Як покращити заявку?");
     assert.deepEqual(parsedUserJson.grantSourceContext, grantSourceContext);
   } finally {
