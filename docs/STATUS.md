@@ -9,6 +9,10 @@
    - `react-reviewer`: після усунення всіх 6 зауважень фінальний вердикт **APPROVE**.
    - `npm run typecheck`, `npm run build`, `git diff --check -- frontend docs`, перевірка на 0 залишкових `window.confirm/alert/prompt` — **PASS**. [Детальний звіт](agents/2026-11-18-styled-confirm-dialog.md).
 
+## Консультація щодо грантової заявки · 18.11.2026
+
+Чат продовжує консультацію щодо обраної програми, пояснює витрати, вимоги й підготовку заявки та дає перейти до чернетки. За наявної конфігурації Gemini додає коротку ідею для чернетки на основі розмови. [Звіт](agents/2026-11-18-advisor-consultation.md)
+
 ## Стабільність прокручування у Safari/WebKit, skip-link та мобільна ширина «Розсилки грантів» — 18.11.2026
 
 1. **Усунення вертикальних стрибків і смуги overscroll у Safari/WebKit (`frontend/src/style.css`, `frontend/src/workspace.css`)**:

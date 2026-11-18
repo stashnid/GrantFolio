@@ -28,6 +28,7 @@ type Message = {
   mode: string;
   search: SearchResult;
   seed: string;
+  selectedProgramId?: string;
   extractedFacts?: ExtractedProfileFact[];
 };
 type Conversation = { id: string; title: string };
@@ -1042,6 +1043,7 @@ export function Advisor({
             )}
             {messages.map((m) => {
               const isCopied = copiedId === m.id;
+              const selectedProgram = GRANT_PROGRAMS.find(program => program.id === m.selectedProgramId);
               return (
                 <div className="chat-turn" key={m.id}>
                   <div className="chat-bubble user-bubble">
@@ -1053,7 +1055,7 @@ export function Advisor({
                       <AiEmblem />
                       <strong className="author-name">GrantFolio Асистент</strong>
                       <span className="revision-badge">
-                        {m.mode === "guided" ? "Підбір за умовами каталогу" : "Раніше збережена відповідь ШІ"}
+                        {m.mode === "guided" ? "Консультація за каталогом" : "Раніше збережена відповідь ШІ"}
                       </span>
                     </div>
                     <div className="bubble-text assistant-text">
@@ -1105,7 +1107,7 @@ export function Advisor({
                         )}
                       </div>
                     )}
-                    {revealingId !== m.id && m.search.matches.length > 0 && (
+                    {revealingId !== m.id && !selectedProgram && m.search.matches.length > 0 && (
                       <div className="advisor-recommendations" aria-label="Можливі програми">
                         {m.search.matches.slice(0, 3).map((match) => {
                           const p = GRANT_PROGRAMS.find((program) => program.id === match.programId);
@@ -1142,7 +1144,13 @@ export function Advisor({
                         })}
                       </div>
                     )}
-                    {revealingId !== m.id && preparablePilot &&
+                    {revealingId !== m.id && selectedProgram && hasGuidedApplication(selectedProgram.id) &&
+                      <div className="advisor-grant-actions">
+                        <button type="button" className="advisor-grant-primary" onClick={() => onPrepare(selectedProgram, m.seed)}>
+                          Почати чернетку для «{selectedProgram.title}»
+                        </button>
+                      </div>}
+                    {revealingId !== m.id && !selectedProgram && preparablePilot &&
                       m.search.intents.includes("business") &&
                       !m.search.intents.includes("study") && (
                         <aside className="advisor-grant" aria-label="Підготовка до майбутнього прийому">

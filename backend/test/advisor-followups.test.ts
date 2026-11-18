@@ -15,3 +15,11 @@ test("follow-ups do not contradict known business status or repeat a stated vehi
     assert.ok(advisorFollowups(seed, false).includes("Уже працюю як ФОП"));
   }
 });
+
+test("farm suggestions let the user ask for spending, requirements, and application steps", () => {
+  assert.deepEqual(advisorFollowups("Хочу відкрити ферму", false), [
+    "На що можна витратити кошти?",
+    "Які вимоги до заявника?",
+    "Як підготувати й подати заявку?",
+  ]);
+});
