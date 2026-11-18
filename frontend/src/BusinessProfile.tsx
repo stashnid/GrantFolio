@@ -6,7 +6,7 @@ import { CustomSelect } from "./CustomSelect";
 import { auth } from "./firebase";
 import { authenticatedRequest } from "./api";
 
-import { type Profile, type DetailKey } from "./profile";
+import { type Profile, type DetailKey, normalizeProfile } from "./profile";
 export { emptyProfile, normalizeProfile, type Profile } from "./profile";
 const legalFormLabels: Record<string, string> = {
   idea: "Ідея",
@@ -55,7 +55,39 @@ function fieldError(key: FieldKey, value: string): string {
   if (key === "newsletterEmail" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Вкажіть дійсну адресу електронної пошти.";
   return "";
 }
-export function BusinessProfile({ profile, email, displayName = "", photoURL = "", ready, busy, dirty, error, message, loading = false, conflict = false, onChange, onSubmit, onRetry }: { profile: Profile; email: string; displayName?: string; photoURL?: string; ready: boolean; busy: boolean; loading?: boolean; conflict?: boolean; dirty: boolean; error: string; message: string; onChange: (profile: Profile) => void; onSubmit: (e: React.FormEvent) => void; onRetry: () => void }) {
+export function BusinessProfile({
+  profile,
+  email,
+  displayName = "",
+  photoURL = "",
+  ready,
+  busy,
+  dirty,
+  error,
+  message,
+  loading = false,
+  conflict = false,
+  onChange,
+  onSynced,
+  onSubmit,
+  onRetry,
+}: {
+  profile: Profile;
+  email: string;
+  displayName?: string;
+  photoURL?: string;
+  ready: boolean;
+  busy: boolean;
+  loading?: boolean;
+  conflict?: boolean;
+  dirty: boolean;
+  error: string;
+  message: string;
+  onChange: (profile: Profile) => void;
+  onSynced?: (profile: Profile, revision: number) => void;
+  onSubmit: (e: React.FormEvent) => void;
+  onRetry: () => void;
+}) {
   const [section, setSection] = useState(0);
   const [attempted, setAttempted] = useState(false);
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({});
@@ -63,15 +95,82 @@ export function BusinessProfile({ profile, email, displayName = "", photoURL = "
   const [emailCopied, setEmailCopied] = useState(false);
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [aiSyncing, setAiSyncing] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<{
+    suggestions: Partial<Record<FieldKey, string>>;
+    facts: Array<{ field: string; label: string; value: string; source: string }>;
+    unappliedCount: number;
+  } | null>(null);
+  const [aiFeedback, setAiFeedback] = useState<{ type: "success" | "info" | "error"; message: string } | null>(null);
   const isNewsletterOn = profile.details.grantNewsletter === "yes";
   const copyTimer = useRef<number | null>(null);
   useEffect(() => () => { if (copyTimer.current) window.clearTimeout(copyTimer.current); }, []);
   useEffect(() => { setPhotoFailed(false); }, [photoURL]);
+
+  useEffect(() => {
+    if (!auth.currentUser || !ready) return;
+    let active = true;
+    (async () => {
+      try {
+        const res = await authenticatedRequest(auth.currentUser!, "/api/me/profile-suggestions");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (active && data && typeof data.unappliedCount === "number") {
+          setAiSuggestions(data);
+        }
+      } catch {}
+    })();
+    return () => { active = false; };
+  }, [ready, profile]);
+
+  async function handleAiSync() {
+    if (!auth.currentUser || aiSyncing) return;
+    setAiSyncing(true);
+    setAiFeedback(null);
+    try {
+      const res = await authenticatedRequest(auth.currentUser, "/api/me/sync-from-conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error("HTTP error " + res.status);
+      const data = await res.json();
+      if (data?.profile) {
+        if (onSynced && typeof data.revision === "number") {
+          onSynced(data.profile, data.revision);
+        } else {
+          onChange(normalizeProfile(data.profile));
+        }
+        if (data.mergedCount > 0) {
+          setAiFeedback({
+            type: "success",
+            message: `✓ Оновлено ${data.mergedCount} полів з ваших розмов із ШІ!`,
+          });
+        } else {
+          setAiFeedback({
+            type: "info",
+            message: "Дані з розмов з асистентом вже синхронізовано з профілем.",
+          });
+        }
+        setAiSuggestions(null);
+      }
+    } catch {
+      setAiFeedback({
+        type: "error",
+        message: "Не вдалося синхронізувати дані з розмов. Спробуйте пізніше.",
+      });
+    } finally {
+      setAiSyncing(false);
+    }
+  }
   async function handleSendTestEmail() {
     if (!auth.currentUser) return;
     const targetEmail = (profile.details.newsletterEmail || email || "").trim();
     if (!targetEmail) {
       setTestResult({ success: false, message: "Вкажіть адресу електронної пошти." });
+      return;
+    }
+    if (fieldError("newsletterEmail", targetEmail)) {
+      setTestResult({ success: false, message: "Вкажіть дійсну адресу електронної пошти." });
       return;
     }
     setTestSending(true);
@@ -82,18 +181,23 @@ export function BusinessProfile({ profile, email, displayName = "", photoURL = "
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: targetEmail,
-          businessName: profile.businessName,
-          industry: profile.details.industry,
+          recipientName: resolvedName || undefined,
+          businessName: profile.businessName.trim() || undefined,
+          industry: profile.details.industry.trim() || undefined,
+          region: profile.region.trim() || undefined,
+          city: profile.details.city.trim() || undefined,
+          legalForm: profile.details.legalForm || undefined,
+          requestedAmount: profile.details.requestedAmount.trim() || undefined,
+          fundingPurpose: profile.details.fundingPurpose.trim().slice(0, 500) || undefined,
         }),
       });
       if (!res.ok) throw new Error("HTTP error " + res.status);
       const data = await res.json();
-      setTestResult({
-        success: true,
-        message: data.delivered
-          ? `✓ Зразок листа успішно надіслано на ${targetEmail} через Google Cloud Mail!`
-          : `✓ Зразок листа згенеровано для ${targetEmail} (Google Cloud connected).`,
-      });
+      setTestResult(
+        data.delivered
+          ? { success: true, message: `Тестовий лист надіслано на ${targetEmail}` }
+          : { success: false, message: "Не вдалося надіслати лист. Спробуйте пізніше." },
+      );
     } catch {
       setTestResult({
         success: false,
@@ -132,9 +236,66 @@ export function BusinessProfile({ profile, email, displayName = "", photoURL = "
   const change = (key: FieldKey, value: string) => onChange(key === "businessName" || key === "region" || key === "description" ? { ...profile, [key]: value } : { ...profile, details: { ...profile.details, [key]: value } });
   function submit(e: React.FormEvent) { if (errors.length) { e.preventDefault(); setAttempted(true); setSection(sections.findIndex(s => s.fields.some(f => f.key === errors[0].key))); requestAnimationFrame(() => document.getElementById(`profile-${errors[0].key}`)?.focus()); return; } onSubmit(e); }
   return <div className="business-profile">
-    <div className="bp-header"><div><p className="bp-eyebrow">Ваш простір</p><h2>Профіль бізнесу</h2><p>Інформація вашого бізнес-акаунта</p></div><span className={dirty ? "bp-status changed" : "bp-status"}>{!ready ? (error ? "Не завантажено" : "Завантаження…") : dirty ? "Є незбережені зміни" : "Збережено"}</span></div>
+    <div className="bp-header">
+      <div>
+        <p className="bp-eyebrow">Ваш простір</p>
+        <h2>Профіль бізнесу</h2>
+        <p>Інформація вашого бізнес-акаунта</p>
+      </div>
+      <div className="bp-header-actions">
+        <button
+          type="button"
+          className="bp-ai-sync-btn"
+          disabled={aiSyncing || !ready}
+          onClick={handleAiSync}
+          title="Оновити профіль на основі фактів, озвучених у розмовах із ШІ-асистентом"
+        >
+          <span className="bp-ai-icon" aria-hidden="true">✨</span>
+          <span>{aiSyncing ? "Синхронізація…" : "Заповнити з діалогу ШІ"}</span>
+        </button>
+        <span className={dirty ? "bp-status changed" : "bp-status"}>
+          {!ready ? (error ? "Не завантажено" : "Завантаження…") : dirty ? "Є незбережені зміни" : "Збережено"}
+        </span>
+      </div>
+    </div>
     <div className="bp-layout"><div className="bp-main">
       <nav className="bp-nav" aria-label="Розділи профілю">{sections.map((s, i) => <button key={s.title} type="button" aria-pressed={section === i} onClick={() => setSection(i)}>{s.title}</button>)}</nav>
+
+      {aiFeedback && (
+        <div className={`bp-ai-feedback ${aiFeedback.type}`} role="status">
+          <span>{aiFeedback.message}</span>
+          <button type="button" className="bp-ai-feedback-close" onClick={() => setAiFeedback(null)} aria-label="Закрити сповіщення">×</button>
+        </div>
+      )}
+
+      {aiSuggestions && aiSuggestions.unappliedCount > 0 && (
+        <div className="bp-ai-banner" role="status">
+          <div className="bp-ai-banner-content">
+            <span className="bp-ai-banner-icon" aria-hidden="true">✨</span>
+            <div>
+              <h4>Знайдено {aiSuggestions.unappliedCount} нових фактів у ваших діалогах з асистентом</h4>
+              <p>Асистент запам’ятав деталі вашої справи під час спілкування. Можете додати їх до кабінету в один клік.</p>
+              <div className="bp-ai-banner-chips">
+                {aiSuggestions.facts.slice(0, 5).map((f) => (
+                  <span key={f.field} className="bp-ai-chip">
+                    <strong>{f.label}:</strong> {f.value}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="bp-ai-banner-actions">
+            <button
+              type="button"
+              className="bp-ai-apply-btn"
+              disabled={aiSyncing}
+              onClick={handleAiSync}
+            >
+              {aiSyncing ? "Застосовуємо…" : "Застосувати все"}
+            </button>
+          </div>
+        </div>
+      )}
       <form onSubmit={submit} noValidate><div className="bp-section"><p className="bp-section-number">Розділ {section + 1} з {sections.length}</p><h3>{sections[section].title}</h3><p>{sections[section].intro} Усі поля необов’язкові — заповніть ті, що стосуються вас.</p>
         {(!ready || conflict) && <button type="button" className="bp-retry" disabled={loading || busy} onClick={onRetry}>{loading ? "Завантажуємо…" : conflict ? "Завантажити актуальний профіль" : "Повторити завантаження"}</button>}
         {section === 5 ? (
@@ -227,7 +388,7 @@ export function BusinessProfile({ profile, email, displayName = "", photoURL = "
                     </div>
                   </div>
                   <small className="bp-criteria-note">
-                    💡 Щоб зробити підбір точнішим, перевірте заповненість розділів «Бізнес» та «Фінансування».
+                    Щоб зробити підбір точнішим, перевірте заповненість розділів «Бізнес» та «Фінансування».
                   </small>
                 </div>
 
@@ -237,11 +398,12 @@ export function BusinessProfile({ profile, email, displayName = "", photoURL = "
                     <span className="bp-preview-dot bp-dot-yellow" />
                     <span className="bp-preview-dot bp-dot-green" />
                     <span className="bp-preview-subject">
-                      Зразок смарт-повідомлення: [GrantFolio] Дайджест грантів для «{profile.businessName.trim() || resolvedName || "Вашого бізнесу"}»
+                      Актуальні гранти для «{profile.businessName.trim() || resolvedName || "Вашого бізнесу"}» — GrantFolio
                     </span>
                   </div>
 
                   <div className="bp-mock-email">
+                    <div className="bp-mock-accent-bar" aria-hidden="true" />
                     <div className="bp-mock-header">
                       <div className="bp-mock-brand">GrantFolio</div>
                       <span className="bp-mock-tag">Персональний дайджест</span>
@@ -252,21 +414,38 @@ export function BusinessProfile({ profile, email, displayName = "", photoURL = "
                         Вітаємо, <strong>{resolvedName || "підприємцю"}</strong>!
                       </p>
                       <p className="bp-mock-lead">
-                        Знайдено <strong>2 актуальні програми</strong>, які мають високий рівень сумісності з вашим бізнес-профілем:
+                        Ми підібрали <strong>2 актуальні програми</strong> фінансування з відкритим прийомом, які відповідають параметрам вашого бізнес-профілю.
                       </p>
+
+                      {(profile.details.industry || profile.region || profile.details.city || profile.details.legalForm) && (
+                        <div className="bp-mock-criteria-strip">
+                          <strong>Критерії профілю:</strong>{" "}
+                          {[
+                            profile.details.industry && `Сфера: ${profile.details.industry}`,
+                            (profile.details.city || profile.region) && `Локація: ${profile.details.city || profile.region}`,
+                            profile.details.legalForm && legalFormLabels[profile.details.legalForm] && `Форма: ${legalFormLabels[profile.details.legalForm]}`,
+                          ].filter(Boolean).join(" · ")}
+                        </div>
+                      )}
 
                       <div className="bp-mock-grant">
                         <div className="bp-mock-grant-head">
-                          <span className="bp-match-badge">⚡ 96% сумісність</span>
+                          <span className="bp-match-badge">
+                            <span className="bp-match-dot" aria-hidden="true" />
+                            Рекомендовано за профілем
+                          </span>
                           <span className="bp-mock-deadline">До 27 листопада 2026</span>
                         </div>
-                        <h5 className="bp-mock-grant-title">Грант на створення або розвиток бізнесу (Власна справа)</h5>
+                        <p className="bp-mock-provider">ДІЯ / ДЕРЖАВНИЙ ЦЕНТР ЗАЙНЯТОСТІ</p>
+                        <h5 className="bp-mock-grant-title">Власна справа: започаткування та масштабування</h5>
                         <p className="bp-mock-grant-meta">
-                          💰 До <strong>500 000 грн</strong> · Безповоротне державне фінансування
+                          <strong>Старт — до 500 тис. грн; масштабування — до 2,5 млн грн</strong>
+                          <span className="bp-mock-sep"> · </span>
+                          <span>Безповоротний грант</span>
                         </p>
-                        <p className="bp-mock-grant-reason">
-                          🎯 <strong>Чому підходить:</strong> Програма активна у вашому регіоні ({profile.region || "Україна"}), покриває обладнання, оренду та маркетинг.
-                        </p>
+                        <div className="bp-mock-grant-reason">
+                          <strong>Чому підходить:</strong> Фінансування запуску та розвитку справи у вашому регіоні ({profile.region || "Україна"}), покриває обладнання, оренду та маркетинг.
+                        </div>
                         <div className="bp-mock-cta">
                           <span className="bp-mock-btn">Підготувати заявку в GrantFolio →</span>
                         </div>
@@ -274,23 +453,30 @@ export function BusinessProfile({ profile, email, displayName = "", photoURL = "
 
                       <div className="bp-mock-grant">
                         <div className="bp-mock-grant-head">
-                          <span className="bp-match-badge is-secondary">⚡ 88% сумісність</span>
-                          <span className="bp-mock-deadline">До 15 грудня 2026</span>
+                          <span className="bp-match-badge is-secondary">
+                            <span className="bp-match-dot is-secondary" aria-hidden="true" />
+                            Відкритий прийом
+                          </span>
+                          <span className="bp-mock-deadline">До 30 листопада 2026</span>
                         </div>
-                        <h5 className="bp-mock-grant-title">BLOOM: Підтримка підприємств з соціальним впливом</h5>
+                        <p className="bp-mock-provider">PROSPER GLOBAL — BLOOM</p>
+                        <h5 className="bp-mock-grant-title">Обладнання для соціально відповідального малого бізнесу</h5>
                         <p className="bp-mock-grant-meta">
-                          💰 До <strong>40 000 EUR</strong> · Міжнародна донорська підтримка
+                          <strong>17 000–30 000 USD у гривневому еквіваленті</strong>
+                          <span className="bp-mock-sep"> · </span>
+                          <span>Безповоротний грант</span>
                         </p>
-                        <p className="bp-mock-grant-reason">
-                          🎯 <strong>Чому підходить:</strong> Спрямовано на підтримку діючих підприємств та створення нових робочих місць.
-                        </p>
-                      </div>
-
-                      <div className="bp-mock-footer">
-                        <p>Ви отримали це повідомлення, тому що надали згоду на розсилку у профілі бізнесу на grantfolio.pp.ua.</p>
-                        <div className="bp-mock-footer-links">
-                          <span>Налаштувати підбір</span> · <span>Керувати підпискою</span> · <span>Відписатися в 1 клік</span>
+                        <div className="bp-mock-grant-reason">
+                          <strong>Чому підходить:</strong> Підтримка зареєстрованих МСП із соціальним або екологічним впливом та створенням нових робочих місць.
                         </div>
+                        <p className="bp-mock-secondary-link">Переглянути умови програми →</p>
+                      </div>
+                    </div>
+
+                    <div className="bp-mock-footer">
+                      <p>Ви отримали цей лист, тому що увімкнули персональну розсилку актуальних грантів у профілі бізнесу на grantfolio.pp.ua.</p>
+                      <div className="bp-mock-footer-links">
+                        <span>Налаштувати профіль</span> · <span>Каталог грантів</span> · <span>Керувати підпискою</span>
                       </div>
                     </div>
                   </div>

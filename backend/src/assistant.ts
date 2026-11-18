@@ -60,7 +60,8 @@ export function assistantRouter(db: Pool, responder: AssistantResponder | null |
         snapshot.profileRevision = profile.rowCount ? profile.rows[0].revision : 0;
         if (profile.rowCount) {
           const { details, revision: _revision, ...base } = profile.rows[0];
-          const { contactName: _contactName, phone: _phone, website: _website, ...safeDetails } = details;
+          const rawDetails = details && typeof details === "object" ? details : {};
+          const { contactName: _contactName, phone: _phone, website: _website, newsletterEmail: _newsletterEmail, ...safeDetails } = rawDetails;
           snapshot.businessProfile = Object.keys(safeDetails).length ? { ...base, details: safeDetails } : base;
         }
         const history = await db.query("SELECT question, reply, revision, profile_revision FROM assistant_exchanges WHERE case_id=$1 AND owner_id=$2 ORDER BY created_at DESC, id DESC LIMIT 2", [req.params.id, uid]);

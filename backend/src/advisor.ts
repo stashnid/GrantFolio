@@ -5,6 +5,7 @@ import { searchGrants } from "./grant-discovery.js";
 import { GRANT_CATALOG } from "./grant-catalog-data.js";
 import { configuredGeminiResponder } from "./gemini.js";
 import type { AssistantResponder } from "./assistant.js";
+import { extractProfileFromText } from "./profile-extractor.js";
 const input = z
   .object({
     id: z.string().uuid(),
@@ -216,8 +217,76 @@ export function advisorRouter(
         let businessProfile;
         if (profile.rowCount) {
           const { details, ...base } = profile.rows[0];
-          const { contactName: _n, phone: _p, website: _w, ...safe } = details;
+          const rawDetails = details && typeof details === "object" ? details : {};
+          const { contactName: _n, phone: _p, website: _w, newsletterEmail: _e, ...safe } = rawDetails;
           businessProfile = { ...base, details: safe };
+        }
+
+        // Extract business context facts from user prompt and sync into profile if empty
+        const { data: extractedData, facts: extractedFacts } = extractProfileFromText(p.message);
+        let profileUpdated = false;
+        if (extractedFacts.length > 0) {
+          try {
+            if (profile.rowCount) {
+              const row = profile.rows[0];
+              const details = (row.details && typeof row.details === "object" ? { ...row.details } : {}) as Record<string, string>;
+              let changed = false;
+
+              let nextBusinessName = row.businessName || "";
+              if (!nextBusinessName && extractedData.businessName) {
+                nextBusinessName = extractedData.businessName;
+                changed = true;
+              }
+              let nextRegion = row.region || "";
+              if (!nextRegion && extractedData.region) {
+                nextRegion = extractedData.region;
+                changed = true;
+              }
+              let nextDescription = row.description || "";
+              if (!nextDescription && extractedData.description) {
+                nextDescription = extractedData.description;
+                changed = true;
+              }
+
+              for (const key of ["city", "legalForm", "industry", "requestedAmount", "fundingPurpose", "teamSize", "grantExperience"] as const) {
+                if (!details[key] && extractedData[key]) {
+                  details[key] = extractedData[key]!;
+                  changed = true;
+                }
+              }
+
+              if (changed) {
+                await db.query(
+                  `UPDATE profiles SET business_name=$2, description=$3, region=$4, details=$5::jsonb, updated_at=now(), revision=revision+1 WHERE owner_id=$1`,
+                  [uid, nextBusinessName, nextDescription, nextRegion, JSON.stringify(details)]
+                );
+                profileUpdated = true;
+                const { contactName: _n, phone: _p, website: _w, newsletterEmail: _e, ...safeDetails } = details;
+                businessProfile = { businessName: nextBusinessName, description: nextDescription, region: nextRegion, details: safeDetails };
+              }
+            } else {
+              const details: Record<string, string> = {};
+              for (const key of ["city", "legalForm", "industry", "requestedAmount", "fundingPurpose", "teamSize", "grantExperience"] as const) {
+                if (extractedData[key]) details[key] = extractedData[key]!;
+              }
+              await db.query(
+                `INSERT INTO profiles(owner_id, business_name, description, region, details, revision)
+                 VALUES ($1,$2,$3,$4,$5::jsonb,1)
+                 ON CONFLICT (owner_id) DO NOTHING`,
+                [uid, extractedData.businessName || "", extractedData.description || "", extractedData.region || "", JSON.stringify(details)]
+              );
+              profileUpdated = true;
+              const { contactName: _n, phone: _p, website: _w, newsletterEmail: _e, ...safeDetails } = details;
+              businessProfile = {
+                businessName: extractedData.businessName || "",
+                description: extractedData.description || "",
+                region: extractedData.region || "",
+                details: safeDetails,
+              };
+            }
+          } catch {
+            /* Profile auto-sync is non-blocking */
+          }
         }
         const greeting = /^(привіт|вітаю|добрий день|доброго дня)[!. ]*$/i.test(
           p.message,
@@ -288,7 +357,13 @@ export function advisorRouter(
             if (timer) clearTimeout(timer);
           }
         }
-        const payload = { mode, search, seed: query.slice(-2000) };
+        const payload = {
+          mode,
+          search,
+          seed: query.slice(-2000),
+          profileUpdated,
+          extractedFacts: extractedFacts.length ? extractedFacts : undefined,
+        };
         const saved = await db.query(
           `INSERT INTO advisor_messages(id,conversation_id,owner_id,question,reply,payload) VALUES($1,$2,$3,$4,$5,$6::jsonb) ON CONFLICT(id) DO NOTHING RETURNING *`,
           [

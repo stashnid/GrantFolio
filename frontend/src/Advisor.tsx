@@ -12,6 +12,13 @@ import { ReplyReveal } from "./ReplyReveal";
 import "./Advisor.css";
 import { advisorSessionKey, createAdvisorSession, parseAdvisorSession } from "./advisor-session";
 
+export type ExtractedProfileFact = {
+  field: string;
+  label: string;
+  value: string;
+  source: string;
+};
+
 type Message = {
   id: string;
   question: string;
@@ -19,6 +26,8 @@ type Message = {
   mode: string;
   search: SearchResult;
   seed: string;
+  profileUpdated?: boolean;
+  extractedFacts?: ExtractedProfileFact[];
 };
 type Conversation = { id: string; title: string };
 
@@ -76,6 +85,7 @@ export function Advisor({
   prefilledMessage,
   prefillConversationId,
   onClearPrefilled,
+  onOpenProfile,
 }: {
   user: User;
   onPrepare: (p: GrantProgram, seed: string) => void;
@@ -84,6 +94,7 @@ export function Advisor({
   prefilledMessage?: string;
   prefillConversationId?: string;
   onClearPrefilled: () => void;
+  onOpenProfile?: () => void;
 }) {
   const { programs: GRANT_PROGRAMS } = useGrantPrograms();
   const [conversations, setConversations] = useState<Conversation[]>([]),
@@ -666,6 +677,32 @@ export function Advisor({
                           <CopyActionIcon copied={isCopied} />
                           <span>{isCopied ? "Скопійовано" : "Копіювати"}</span>
                         </button>
+                      </div>
+                    )}
+                    {revealingId !== m.id && m.extractedFacts && m.extractedFacts.length > 0 && (
+                      <div className="advisor-context-sync-pill" role="status">
+                        <div className="advisor-sync-lead">
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+                          </svg>
+                          <span>{m.profileUpdated ? "Дані збережено у Профіль бізнесу:" : "Виявлено деталі для Профілю:"}</span>
+                        </div>
+                        <div className="advisor-sync-chips">
+                          {m.extractedFacts.map((f) => (
+                            <span key={f.field} className="advisor-sync-chip" title={f.value}>
+                              <strong>{f.label}:</strong> {f.value}
+                            </span>
+                          ))}
+                        </div>
+                        {onOpenProfile && (
+                          <button
+                            type="button"
+                            className="advisor-sync-link"
+                            onClick={onOpenProfile}
+                          >
+                            Переглянути в кабінеті →
+                          </button>
+                        )}
                       </div>
                     )}
                     {revealingId !== m.id && m.search.matches.length > 0 && (
