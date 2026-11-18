@@ -294,7 +294,7 @@ export function App() {
       <a className="skip-link" href="#main-content" onClick={(event) => { event.preventDefault(); document.getElementById("main-content")?.focus(); }}>Перейти до вмісту</a>
       <header className={user ? "app-sidebar" : undefined} data-mobile-open={mobileMenuOpen}>
         <a className="brand" href="/" aria-label="GrantFolio, головна">
-          <span className="brand-symbol" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 24 24" fill="none"><path d="M5 19V5h14v5h-9v9H5Z" fill="currentColor"/><path d="M14 14h5v5h-5z" fill="currentColor" opacity=".5"/></svg></span>GrantFolio
+          GrantFolio
         </a>
         <span className="header-note">Гранти та фінансова підтримка бізнесу</span>
         {user && <button type="button" className="mobile-nav-toggle" aria-expanded={mobileMenuOpen} aria-controls="app-navigation" aria-label={mobileMenuOpen ? "Закрити меню" : "Відкрити меню"} onClick={() => setMobileMenuOpen(open => !open)}><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" strokeWidth="1.6"><path d="M4 6h16M4 12h16M4 18h16" /></svg>Меню</button>}
