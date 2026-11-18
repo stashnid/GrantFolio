@@ -699,7 +699,7 @@ test("grant applications isolate owners, reject concurrent writes and invalidate
   assert.match(exported, /Тип заявника:\nНе вказано/);
   assert.equal((await call(owner, `${path}/diia-draft/export`, "POST", {
     expectedRevision: 2, expectedCaseRevision: 0,
-  })).status, 422);
+  })).status, 402);
   assert.equal((await call(owner, `/api/cases/${id}/program`, "PUT", { programId: null, expectedRevision: 0 })).status, 200);
   assert.equal((await call(owner, path, "PUT", { ...command, expectedRevision: 2 })).status, 409);
   assert.equal((await (await call(owner, path)).json()).application, null);
@@ -744,6 +744,10 @@ test("financial plans reconcile a private snapshot and block stale exports", asy
   const attempt = { ...revisions, expectedPlanRevision: 1 };
   assert.equal((await call(stranger, `${financialPath}/export`, "POST", attempt)).status, 404);
 
+  assert.equal((await call(owner, `${financialPath}/export`, "POST", attempt)).status, 402);
+  assert.equal((await call(owner, `${path}/preparation-access`, "POST")).status, 200);
+  await db.query("UPDATE grant_preparation_pilot SET bank_operation_id=$2, amount_kopecks=500, confirmed_at=now() WHERE case_id=$1", [id, crypto.randomUUID()]);
+
   if (process.env.LIBREOFFICE_TEST) {
     const archive = await call(owner, `${financialPath}/export`, "POST", attempt);
     assert.equal(archive.status, 200);
@@ -761,7 +765,7 @@ test("financial plans reconcile a private snapshot and block stale exports", asy
   assert.equal((await db.query("SELECT 1 FROM grant_financial_plans WHERE case_id=$1", [id])).rowCount, 0);
 });
 
-test("a pilot Jar payment unlocks only its enrolled application after confirmation", async () => {
+test("a Jar payment unlocks both exports for only one application after confirmation", async () => {
   const [owner, stranger] = await Promise.all([signup(), signup()]);
   const call = (token: string, path: string, method = "GET", body?: object) =>
     fetch(`${base}${path}`, {
@@ -779,21 +783,33 @@ test("a pilot Jar payment unlocks only its enrolled application after confirmati
   const operator = (...args: string[]) => promisify(execFile)(
     process.execPath, ["--import", "tsx", "backend/src/grant-preparation-pilot-cli.ts", ...args],
   );
-  const reference = (await operator("enroll", first)).stdout.trim();
-  const otherReference = (await operator("enroll", second)).stdout.trim();
   const statusPath = `/api/cases/${first}/preparation-access`;
   const body = { expectedRevision: 0, expectedCaseRevision: 0, answers: { track: "start" } };
+  const diiaExport = `/api/cases/${first}/grant-application/diia-draft/export`;
+  const financialExport = `/api/cases/${first}/grant-financial-plan/export`;
+  assert.deepEqual(await (await call(owner, statusPath)).json(), { state: "standard", reference: null });
+  assert.equal((await call(owner, diiaExport, "POST")).status, 402);
+  assert.equal((await call(owner, financialExport, "POST")).status, 402);
+  assert.equal((await call(stranger, statusPath, "POST")).status, 404);
+  const starts = await Promise.all([call(owner, statusPath, "POST"), call(owner, statusPath, "POST")]);
+  assert.deepEqual(starts.map(response => response.status), [200, 200]);
+  const order = await starts[0].json();
+  assert.equal(order.state, "pending");
+  assert.deepEqual(await starts[1].json(), order);
+  const { reference } = order;
+  const { reference: otherReference } = await (await call(owner, `/api/cases/${second}/preparation-access`, "POST")).json();
   assert.deepEqual(await (await call(owner, statusPath)).json(), { state: "pending", reference });
   assert.equal((await call(stranger, statusPath)).status, 404);
-  for (const route of ["grant-application", "grant-financial-plan", "assistant"]) {
-    assert.equal((await call(owner, `/api/cases/${first}/${route}`, route === "assistant" ? "POST" : "PUT", body)).status, 402);
-  }
+  assert.equal((await call(owner, `/api/cases/${first}/grant-application`, "PUT", body)).status, 200);
+  assert.equal((await call(owner, diiaExport, "POST")).status, 402);
+  assert.equal((await call(owner, financialExport, "POST")).status, 402);
   const operation = crypto.randomUUID();
   await assert.rejects(operator("confirm", reference, operation, "0"));
-  await operator("confirm", reference, operation, "137");
-  assert.equal((await operator("confirm", reference, operation, "137")).stdout.trim(), reference);
-  await assert.rejects(operator("confirm", otherReference, operation, "137"), /Operation already assigned/);
-  assert.deepEqual(await (await call(owner, statusPath)).json(), { state: "active", reference });
-  assert.equal((await call(owner, `/api/cases/${first}/grant-application`, "PUT", body)).status, 200);
-  assert.equal((await call(owner, `/api/cases/${second}/grant-application`, "PUT", body)).status, 402);
+  await operator("confirm", reference, operation, "500");
+  assert.equal((await operator("confirm", reference, operation, "500")).stdout.trim(), reference);
+  await assert.rejects(operator("confirm", otherReference, operation, "500"), /Operation already assigned/);
+  assert.deepEqual(await (await call(owner, statusPath, "POST")).json(), { state: "active", reference });
+  assert.equal((await call(owner, diiaExport, "POST")).status, 400);
+  assert.equal((await call(owner, financialExport, "POST")).status, 400);
+  assert.equal((await call(owner, `/api/cases/${second}/grant-financial-plan/export`, "POST")).status, 402);
 });
