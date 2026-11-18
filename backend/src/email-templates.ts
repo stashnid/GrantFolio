@@ -1,10 +1,11 @@
-import { randomBytes } from "node:crypto";
+import { randomBytes, randomUUID } from "node:crypto";
 import { GRANT_CATALOG } from "./grant-catalog-data.js";
 type GrantProgram = (typeof GRANT_CATALOG)[number];
 import { isGrantAvailable } from "./grant-availability.js";
 import { searchGrants } from "./grant-discovery.js";
 
 const APP_ORIGIN = "https://grantfolio.pp.ua";
+const DEFAULT_SUPPORT_EMAIL = "grantfoliomanager@gmail.com";
 
 const LEGAL_FORM_LABELS: Record<string, string> = {
   idea: "Ідея / старт",
@@ -33,6 +34,8 @@ export type DigestProfileInput = {
   legalForm?: string;
   requestedAmount?: string;
   fundingPurpose?: string;
+  unsubscribeUrl?: string;
+  replyToEmail?: string;
 };
 
 export type DigestProgramItem = {
@@ -51,6 +54,7 @@ export type RenderedEmail = {
   subject: string;
   text: string;
   html: string;
+  headers: Record<string, string>;
 };
 
 export function escapeHtml(value: string): string {
@@ -80,18 +84,39 @@ export function buildMimeMessage(params: {
   subject: string;
   text: string;
   html?: string;
+  replyTo?: string;
+  headers?: Record<string, string>;
+  messageIdDomain?: string;
 }): string {
   const from = assertHeaderSafe(params.from, "From");
   const to = assertHeaderSafe(params.to, "To");
   const subjectText = assertHeaderSafe(params.subject, "Subject");
   const encodedSubject = Buffer.from(subjectText, "utf8").toString("base64");
+  const domain = assertHeaderSafe(params.messageIdDomain || "grantfolio.pp.ua", "Message-ID");
+
+  const headerLines = [
+    `From: ${from}`,
+    `To: ${to}`,
+    ...(params.replyTo ? [`Reply-To: ${assertHeaderSafe(params.replyTo, "Reply-To")}`] : []),
+    `Date: ${new Date().toUTCString()}`,
+    `Message-ID: <${randomUUID()}@${domain}>`,
+    `Subject: =?UTF-8?B?${encodedSubject}?=`,
+    "MIME-Version: 1.0",
+    "Content-Language: uk",
+  ];
+
+  if (params.headers) {
+    for (const [name, value] of Object.entries(params.headers)) {
+      if (!/^[A-Za-z0-9-]+$/.test(name)) {
+        throw new Error(`Invalid header name: ${name}`);
+      }
+      headerLines.push(`${name}: ${assertHeaderSafe(value, name)}`);
+    }
+  }
 
   if (!params.html) {
     const lines = [
-      `From: ${from}`,
-      `To: ${to}`,
-      `Subject: =?UTF-8?B?${encodedSubject}?=`,
-      "MIME-Version: 1.0",
+      ...headerLines,
       "Content-Type: text/plain; charset=UTF-8",
       "Content-Transfer-Encoding: base64",
       "",
@@ -102,10 +127,7 @@ export function buildMimeMessage(params: {
 
   const boundary = `gf_${randomBytes(12).toString("hex")}`;
   const lines = [
-    `From: ${from}`,
-    `To: ${to}`,
-    `Subject: =?UTF-8?B?${encodedSubject}?=`,
-    "MIME-Version: 1.0",
+    ...headerLines,
     `Content-Type: multipart/alternative; boundary="${boundary}"`,
     "",
     `--${boundary}`,
@@ -226,7 +248,7 @@ function emailShell(params: {
   <title>GrantFolio</title>
 </head>
 <body style="margin:0;padding:0;background-color:#f1f5f9;font-family:${font};color:#0f1d32;-webkit-font-smoothing:antialiased;">
-  <div style="display:none;max-height:0;overflow:hidden;opacity:0;mso-hide:all;">${escapeHtml(params.preheader)}</div>
+  <div style="display:none;font-size:1px;line-height:1px;max-height:0px;max-width:0px;overflow:hidden;color:#f1f5f9;">${escapeHtml(params.preheader)}&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;&#847;&zwnj;&nbsp;</div>
   <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f1f5f9;width:100%;">
     <tr>
       <td align="center" style="padding:32px 16px;">
@@ -280,7 +302,7 @@ export function renderGrantDigestEmail(
   const displayTarget =
     profile.businessName?.trim() || profile.recipientName?.trim() || "Вашого бізнесу";
   const greetingName = profile.recipientName?.trim() || "підприємцю";
-  const subject = `[GrantFolio] Персональний дайджест грантів для «${displayTarget}»`;
+  const subject = `Актуальні гранти для «${displayTarget}» — GrantFolio`;
 
   const criteriaItems = [
     profile.industry?.trim() ? `Сфера: ${profile.industry.trim()}` : "",
@@ -404,6 +426,9 @@ export function renderGrantDigestEmail(
     </table>
   `;
 
+  const unsubscribeHref = profile.unsubscribeUrl || APP_ORIGIN;
+  const replyToEmail = profile.replyToEmail?.trim() || DEFAULT_SUPPORT_EMAIL;
+
   const footerNoteHtml = `
     <p style="margin:0 0 8px 0;font-family:${font};font-size:12px;line-height:1.55;color:#64748b;">
       Ви отримали цей лист, тому що увімкнули персональну розсилку актуальних грантів у профілі бізнесу на <a href="${APP_ORIGIN}" style="color:#315fd7;text-decoration:none;">grantfolio.pp.ua</a>.
@@ -413,7 +438,7 @@ export function renderGrantDigestEmail(
       &nbsp;&middot;&nbsp;
       <a href="${APP_ORIGIN}/#grants" style="color:#315fd7;text-decoration:none;font-weight:600;">Каталог грантів</a>
       &nbsp;&middot;&nbsp;
-      <a href="${APP_ORIGIN}" style="color:#64748b;text-decoration:underline;">Керувати підпискою</a>
+      <a href="${escapeHtml(unsubscribeHref)}" style="color:#64748b;text-decoration:underline;">Відписатися в 1 клік</a>
     </p>
   `;
 
@@ -440,12 +465,26 @@ export function renderGrantDigestEmail(
     `Відкрити робочий простір GrantFolio: ${APP_ORIGIN}/`,
     "",
     "Ви отримали цей лист, тому що увімкнули розсилку грантів у профілі бізнесу GrantFolio.",
+    ...(profile.unsubscribeUrl ? [`Відписатися в 1 клік: ${profile.unsubscribeUrl}`] : []),
   ];
+
+  const listUnsubscribeParts = [
+    ...(profile.unsubscribeUrl ? [`<${profile.unsubscribeUrl}>`] : []),
+    `<mailto:${replyToEmail}?subject=Unsubscribe>`,
+  ];
+  const headers: Record<string, string> = {
+    "List-Id": "GrantFolio Digest <digest.grantfolio.pp.ua>",
+    "List-Unsubscribe": listUnsubscribeParts.join(", "),
+    ...(profile.unsubscribeUrl
+      ? { "List-Unsubscribe-Post": "List-Unsubscribe=One-Click" }
+      : {}),
+  };
 
   return {
     subject,
     text: textLines.join("\n"),
     html,
+    headers,
   };
 }
 
@@ -500,5 +539,12 @@ export function renderLoginCodeEmail(code: string): RenderedEmail {
     "Якщо ви не намагалися увійти, проігноруйте цей лист.",
   ].join("\n");
 
-  return { subject, text, html };
+  return {
+    subject,
+    text,
+    html,
+    headers: {
+      "Auto-Submitted": "auto-generated",
+    },
+  };
 }

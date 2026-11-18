@@ -398,7 +398,7 @@ export function BusinessProfile({
                     <span className="bp-preview-dot bp-dot-yellow" />
                     <span className="bp-preview-dot bp-dot-green" />
                     <span className="bp-preview-subject">
-                      [GrantFolio] Персональний дайджест грантів для «{profile.businessName.trim() || resolvedName || "Вашого бізнесу"}»
+                      Актуальні гранти для «{profile.businessName.trim() || resolvedName || "Вашого бізнесу"}» — GrantFolio
                     </span>
                   </div>
 

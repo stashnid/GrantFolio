@@ -1,5 +1,13 @@
 # Журнал роботи
 
+## 18.11.2026 — Захист розсилки від потрапляння у спам (RFC 8058 / RFC 5322 / доменна відправка)
+
+- Діагностовано живі DNS-записи `grantfolio.pp.ua` (`ns10/11/12.uadns.com`): відсутні `SPF` (`TXT`) і `DMARC` (`_dmarc`), листи йшли з `@gmail.com` без `List-Unsubscribe` / `List-Unsubscribe-Post`.
+- Створено `backend/src/newsletter-unsubscribe.ts` та маршрути `GET`/`POST /api/newsletter/unsubscribe` у `backend/src/app.ts` із підписаними HMAC-SHA256 токенами для справжньої 1-клік відписки за стандартом RFC 8058.
+- Оновлено `backend/src/email-templates.ts`: додано повний набір RFC 5322 / RFC 8058 заголовків (`Date`, `Message-ID`, `Reply-To`, `Content-Language`, `List-Id`, `List-Unsubscribe`, `List-Unsubscribe-Post`, `Auto-Submitted`), прибрано `[GrantFolio]` із теми та `opacity:0` із прехедера.
+- У `backend/src/email-login-code.ts` додано нативну підтримку відправки з власного домену через Resend (`RESEND_API_KEY` + `MAIL_FROM`) із прозорим fallback на Gmail API.
+- Перевірки: `npm run typecheck`, `npm run build`, `git diff --check`, 12/12 юніт-тестів PASS.
+
 ## 18.11.2026 — Преміальні HTML-листи (дайджест грантів і коди входу) та чисті статуси відправки
 
 - Видалено зайві технічні згадки «через Google Cloud Mail» / «(Google Cloud connected)» зі статусу відправки тестового листа в `BusinessProfile.tsx`.

@@ -9,6 +9,12 @@ import { feedbackRouter } from "./feedback.js";
 import { donationsRouter } from "./donations.js";
 import { configuredEmailLoginCode, sendGmailMessage } from "./email-login-code.js";
 import { renderGrantDigestEmail, selectDigestPrograms } from "./email-templates.js";
+import {
+  buildUnsubscribeUrl,
+  getUnsubscribeSecret,
+  renderUnsubscribeConfirmationHtml,
+  verifyUnsubscribeToken,
+} from "./newsletter-unsubscribe.js";
 import { profileDetails } from "./profile-details.js";
 import { extractProfileFromHistory } from "./profile-extractor.js";
 
@@ -54,6 +60,42 @@ export function createApp(
       res.json({ status: "ok" });
     } catch {
       res.status(503).json({ status: "db_unavailable" });
+    }
+  });
+  const handleUnsubscribe = async (tokenParam: unknown): Promise<boolean> => {
+    const secret = getUnsubscribeSecret();
+    if (!secret || typeof tokenParam !== "string" || !tokenParam) return false;
+    const uid = verifyUnsubscribeToken(tokenParam, secret);
+    if (!uid) return false;
+    await db.query(
+      `UPDATE profiles
+       SET details = jsonb_set(COALESCE(details, '{}'::jsonb), '{grantNewsletter}', '""'::jsonb, true),
+           updated_at = now(),
+           revision = revision + 1
+       WHERE owner_id = $1`,
+      [uid],
+    );
+    return true;
+  };
+  app.post("/api/newsletter/unsubscribe", async (req, res, next) => {
+    try {
+      const ok = await handleUnsubscribe(req.query.token);
+      res.set("Cache-Control", "no-store").status(ok ? 200 : 400).json({ ok });
+    } catch (error) {
+      next(error);
+    }
+  });
+  app.get("/api/newsletter/unsubscribe", async (req, res, next) => {
+    try {
+      const ok = await handleUnsubscribe(req.query.token);
+      res
+        .set("Cache-Control", "no-store")
+        .set("Referrer-Policy", "no-referrer")
+        .status(ok ? 200 : 400)
+        .type("text/html; charset=utf-8")
+        .send(renderUnsubscribeConfirmationHtml(ok));
+    } catch (error) {
+      next(error);
     }
   });
   app.use([...privateRoutes, "/api/auth/email-code"], async (req, res, next) => {
@@ -171,13 +213,21 @@ export function createApp(
         legalForm: parsed.data.legalForm || savedDetails.legalForm || "",
         requestedAmount: parsed.data.requestedAmount || savedDetails.requestedAmount || "",
         fundingPurpose: parsed.data.fundingPurpose || savedDetails.fundingPurpose || "",
+        unsubscribeUrl: buildUnsubscribeUrl(res.locals.uid),
+        replyToEmail: process.env.MAIL_REPLY_TO?.trim() || undefined,
       };
       const programs = selectDigestPrograms(digestInput);
       const digest = renderGrantDigestEmail(digestInput, programs);
 
       let delivered = false;
       try {
-        delivered = await sendGmailMessage(targetEmail, digest.subject, digest.text, digest.html);
+        delivered = await sendGmailMessage(
+          targetEmail,
+          digest.subject,
+          digest.text,
+          digest.html,
+          digest.headers,
+        );
       } catch {
         delivered = false;
       }

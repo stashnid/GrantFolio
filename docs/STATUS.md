@@ -1,5 +1,18 @@
 # Поточний стан GrantFolio
 
+## Захист розсилки від спаму (RFC 8058 One-Click Unsubscribe, RFC 5322, підтримка доменної пошти) — 18.11.2026
+
+1. **Реальна 1-клік відписка (RFC 8058)**:
+   - Створено `backend/src/newsletter-unsubscribe.ts` із підписаними HMAC-SHA256 токенами (constant-time перевірка `timingSafeEqual`).
+   - Додано публічні маршрути `POST /api/newsletter/unsubscribe` (автоматична 1-клік відписка Gmail) та `GET /api/newsletter/unsubscribe` (брендована сторінка підтвердження відписки), які вимикають `grantNewsletter` у `profiles.details`.
+2. **Антиспам-заголовки та деспам контенту (`backend/src/email-templates.ts`)**:
+   - Додано `Date`, `Message-ID` (узгоджений із доменом відправника), `Reply-To`, `Content-Language: uk`, `List-Id`, `List-Unsubscribe`, `List-Unsubscribe-Post: List-Unsubscribe=One-Click` для дайджестів та `Auto-Submitted: auto-generated` для кодів входу.
+   - Прибрано квадратні дужки `[GrantFolio]` із теми листа та `opacity:0` зі схованого прехедера.
+3. **Готовність до відправки з власного домену (`grantfolio.pp.ua`)**:
+   - У `backend/src/email-login-code.ts` додано нативну підтримку Resend HTTP API (`RESEND_API_KEY` + `MAIL_FROM`, наприклад `GrantFolio <grants@grantfolio.pp.ua>`) із автоматичним fallback на Gmail API.
+   - Перевірка DNS `grantfolio.pp.ua` (`ns10/11/12.uadns.com`) зафіксувала відсутність SPF, DKIM і DMARC записів — власнику домену передано точні DNS-записи для повної доменної автентифікації.
+4. **Верифікація**: `npm run typecheck`, `npm run build`, `git diff --check`, 12/12 тестів PASS.
+
 ## Преміальні HTML-листи (дайджест грантів і коди входу) та чисті сповіщення — 18.11.2026
 
 1. **Прибрано зайві технічні деталі в UI**: у `BusinessProfile.tsx` вилучено згадки «через Google Cloud Mail» / «(Google Cloud connected)» — залишено лаконічне повідомлення «Тестовий лист надіслано на `<email>`».

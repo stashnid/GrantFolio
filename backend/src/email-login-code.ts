@@ -7,7 +7,7 @@ import { buildMimeMessage, renderLoginCodeEmail } from "./email-templates.js";
 
 const cookieName = "__Host-grantfolio-email";
 const sessionSeconds = 12 * 60 * 60;
-const sender = "grantfoliomanager@gmail.com";
+const defaultGmailSender = "grantfoliomanager@gmail.com";
 const email = z.email().max(254);
 const codeBody = z.object({ code: z.string().regex(/^\d{6}$/) }).strict();
 
@@ -17,6 +17,37 @@ const mailSettings = z.object({
   clientSecret: z.string().min(1),
   refreshToken: z.string().min(1),
 });
+
+async function sendViaResend(params: {
+  recipient: string;
+  subject: string;
+  text: string;
+  html?: string;
+  headers?: Record<string, string>;
+}): Promise<boolean | null> {
+  const apiKey = process.env.RESEND_API_KEY?.trim();
+  const from = process.env.MAIL_FROM?.trim();
+  if (!apiKey || !from) return null;
+  const replyTo = process.env.MAIL_REPLY_TO?.trim() || defaultGmailSender;
+  const response = await fetch("https://api.resend.com/emails", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      from,
+      to: [params.recipient],
+      reply_to: replyTo,
+      subject: params.subject,
+      text: params.text,
+      ...(params.html ? { html: params.html } : {}),
+      ...(params.headers && Object.keys(params.headers).length ? { headers: params.headers } : {}),
+    }),
+    signal: AbortSignal.timeout(8000),
+  });
+  return response.ok;
+}
 
 export function configuredEmailLoginCode(db: Pool) {
   const value = process.env.EMAIL_LOGIN_CODE_CONFIG;
@@ -33,6 +64,17 @@ export function configuredEmailLoginCode(db: Pool) {
   }
 
   return createEmailLoginCode(db, settings.signingKey, async (recipient, code) => {
+    const rendered = renderLoginCodeEmail(code);
+    const resendOk = await sendViaResend({
+      recipient,
+      subject: rendered.subject,
+      text: rendered.text,
+      html: rendered.html,
+      headers: rendered.headers,
+    });
+    if (resendOk === true) return;
+    if (resendOk === false) throw new Error("Email delivery unavailable");
+
     const token = await fetch("https://oauth2.googleapis.com/token", {
       method: "POST",
       body: new URLSearchParams({
@@ -45,13 +87,15 @@ export function configuredEmailLoginCode(db: Pool) {
     });
     if (!token.ok) throw new Error("Email authorization unavailable");
     const credentials = z.object({ access_token: z.string().min(1) }).parse(await token.json());
-    const rendered = renderLoginCodeEmail(code);
     const raw = buildMimeMessage({
-      from: `GrantFolio <${sender}>`,
+      from: `GrantFolio <${defaultGmailSender}>`,
+      replyTo: defaultGmailSender,
       to: recipient,
       subject: rendered.subject,
       text: rendered.text,
       html: rendered.html,
+      headers: rendered.headers,
+      messageIdDomain: "gmail.com",
     });
     const delivery = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
       method: "POST",
@@ -68,9 +112,23 @@ export async function sendGmailMessage(
   subjectText: string,
   bodyText: string,
   htmlText?: string,
+  headers?: Record<string, string>,
 ): Promise<boolean> {
   const parsedRecipient = email.safeParse(recipient.trim());
   if (!parsedRecipient.success) return false;
+  try {
+    const resendOk = await sendViaResend({
+      recipient: parsedRecipient.data,
+      subject: subjectText,
+      text: bodyText,
+      html: htmlText,
+      headers,
+    });
+    if (resendOk !== null) return resendOk;
+  } catch {
+    return false;
+  }
+
   const value = process.env.EMAIL_LOGIN_CODE_CONFIG;
   if (!value) return false;
   let settings: z.infer<typeof mailSettings>;
@@ -93,11 +151,14 @@ export async function sendGmailMessage(
     if (!token.ok) return false;
     const credentials = z.object({ access_token: z.string().min(1) }).parse(await token.json());
     const raw = buildMimeMessage({
-      from: `GrantFolio <${sender}>`,
+      from: `GrantFolio <${defaultGmailSender}>`,
+      replyTo: process.env.MAIL_REPLY_TO?.trim() || defaultGmailSender,
       to: parsedRecipient.data,
       subject: subjectText,
       text: bodyText,
       html: htmlText,
+      headers,
+      messageIdDomain: "gmail.com",
     });
     const delivery = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/messages/send", {
       method: "POST",
