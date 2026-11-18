@@ -60,6 +60,7 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
   const [exportingDiiaDraft, setExportingDiiaDraft] = useState(false);
   const [stale, setStale] = useState(false);
   const [error, setError] = useState("");
+  const [access, setAccess] = useState<{ state: "standard" | "pending" | "active"; reference: string | null } | null>(null);
   const [reload, setReload] = useState(0);
   const path = `/api/cases/${caseId}/grant-application`;
 
@@ -67,11 +68,17 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
     const controller = new AbortController();
     setLoading(true);
     setError("");
-    authenticatedRequest(user, path, { signal: controller.signal })
-      .then(async result => {
-        if (!result.ok) throw new Error("application_read_failed");
+    setAccess(null);
+    Promise.all([
+      authenticatedRequest(user, path, { signal: controller.signal }),
+      authenticatedRequest(user, `/api/cases/${caseId}/preparation-access`, { signal: controller.signal }),
+    ])
+      .then(async ([result, status]) => {
+        if (!result.ok || !status.ok) throw new Error("application_read_failed");
         const data = await result.json() as ReviewResponse;
+        const paymentAccess = await status.json() as NonNullable<typeof access>;
         if (controller.signal.aborted) return;
+        setAccess(paymentAccess);
         setResponse(data);
         setEditing(null);
         setStale(data.caseRevision !== caseRevision);
@@ -83,7 +90,7 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
         if (!controller.signal.aborted) setLoading(false);
       });
     return () => controller.abort();
-  }, [user, path, caseRevision, reload]);
+  }, [user, path, caseId, caseRevision, reload]);
 
   const application = response?.application;
   if (response && !application && !loading && !error) {
@@ -92,7 +99,7 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
   const question = application?.questions.find(item => item.id === editing) ?? application?.nextQuestion;
   const explanation = question && questionExplanations[question.id];
   const answerDescription = explanation ? "grant-application-answer-note" : undefined;
-  const blocked = disabled || stale || loading || saving || response?.caseRevision !== caseRevision;
+  const blocked = access === null || access.state === "pending" || disabled || stale || loading || saving || response?.caseRevision !== caseRevision;
 
   async function save(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -181,7 +188,14 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
     {loading && <p role="status">Завантажуємо анкету…</p>}
     {error && <p role="alert" className="error">{error}</p>}
     {stale && <p>За потреби повторно відкрийте проєкт, щоб завантажити його актуальну версію.</p>}
-    {(stale || (!response && !!error)) && <button type="button" className="link" onClick={() => setReload(value => value + 1)}>Оновити анкету</button>}
+    {(stale || (access === null && !!error)) && <button type="button" className="link" onClick={() => setReload(value => value + 1)}>Оновити анкету</button>}
+    {access?.state === "pending" && <div role="status">
+      <p><strong>Очікуємо підтвердження оплати за цю заявку</strong></p>
+      <p>Поповніть тестову банку monobank на довільну суму за реквізитами від організатора. Приватно передайте йому код заявки та інформацію про переказ.</p>
+      <p>Код заявки <code>{access.reference}</code></p>
+      <button type="button" className="secondary-btn" onClick={() => setReload(value => value + 1)}>Перевірити підтвердження</button>
+    </div>}
+    {access?.state === "active" && <p role="status">Оплату підтверджено. Можете продовжити підготовку цієї заявки.</p>}
     {application && !loading && <>
       <p>{application.readyForReview ? "Відповіді зібрано для предметної перевірки." : "Заповніть робочу анкету. Вона допоможе зібрати факти й пройти базові перевірки за умовами програми."}</p>
       {disabled && <p>Спочатку збережіть або відновіть правки проєкту.</p>}

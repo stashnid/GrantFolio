@@ -1,3 +1,4 @@
+import { grantPreparationPilotRouter } from "./grant-preparation-pilot.js";
 import {GRANT_CATALOG} from "./grant-catalog-data.js";
 import { Router } from "express";
 import type { Pool } from "pg";
@@ -52,11 +53,12 @@ function view(row: CaseRow) {
 }
 export function casesRouter(db: Pool) {
   const router = Router();
-  router.use(assistantRouter(db, configuredGeminiResponder()));
   router.use((_req, res, next) => {
     res.set("Cache-Control", "no-store");
     next();
   });
+  router.use(grantPreparationPilotRouter(db));
+  router.use(assistantRouter(db, configuredGeminiResponder()));
   router.use(grantApplicationRouter(db));
   router.use(grantFinancialPlanRouter(db));
   router.get("/", async (_req, res, next) => {

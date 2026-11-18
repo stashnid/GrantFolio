@@ -1,5 +1,7 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 import { once } from "node:events";
 import { initializeApp } from "firebase-admin/app";
 import { getAuth } from "firebase-admin/auth";
@@ -757,4 +759,41 @@ test("financial plans reconcile a private snapshot and block stale exports", asy
   assert.equal((await call(owner, `${financialPath}/export`, "POST", { ...attempt, expectedApplicationRevision: 2 })).status, 409);
   assert.equal((await call(owner, path, "DELETE")).status, 200);
   assert.equal((await db.query("SELECT 1 FROM grant_financial_plans WHERE case_id=$1", [id])).rowCount, 0);
+});
+
+test("a pilot Jar payment unlocks only its enrolled application after confirmation", async () => {
+  const [owner, stranger] = await Promise.all([signup(), signup()]);
+  const call = (token: string, path: string, method = "GET", body?: object) =>
+    fetch(`${base}${path}`, {
+      method,
+      headers: { Authorization: `Bearer ${token}`, ...(body && { "Content-Type": "application/json" }) },
+      body: body && JSON.stringify(body),
+    });
+  async function createCase() {
+    const created = await call(owner, "/api/cases", "POST", { title: "Платіжний пілот", programId: "vlasna-sprava" });
+    assert.equal(created.status, 201);
+    return (await created.json()).case.id as string;
+  }
+  const first = await createCase();
+  const second = await createCase();
+  const operator = (...args: string[]) => promisify(execFile)(
+    process.execPath, ["--import", "tsx", "backend/src/grant-preparation-pilot-cli.ts", ...args],
+  );
+  const reference = (await operator("enroll", first)).stdout.trim();
+  const otherReference = (await operator("enroll", second)).stdout.trim();
+  const statusPath = `/api/cases/${first}/preparation-access`;
+  const body = { expectedRevision: 0, expectedCaseRevision: 0, answers: { track: "start" } };
+  assert.deepEqual(await (await call(owner, statusPath)).json(), { state: "pending", reference });
+  assert.equal((await call(stranger, statusPath)).status, 404);
+  for (const route of ["grant-application", "grant-financial-plan", "assistant"]) {
+    assert.equal((await call(owner, `/api/cases/${first}/${route}`, route === "assistant" ? "POST" : "PUT", body)).status, 402);
+  }
+  const operation = crypto.randomUUID();
+  await assert.rejects(operator("confirm", reference, operation, "0"));
+  await operator("confirm", reference, operation, "137");
+  assert.equal((await operator("confirm", reference, operation, "137")).stdout.trim(), reference);
+  await assert.rejects(operator("confirm", otherReference, operation, "137"), /Operation already assigned/);
+  assert.deepEqual(await (await call(owner, statusPath)).json(), { state: "active", reference });
+  assert.equal((await call(owner, `/api/cases/${first}/grant-application`, "PUT", body)).status, 200);
+  assert.equal((await call(owner, `/api/cases/${second}/grant-application`, "PUT", body)).status, 402);
 });
