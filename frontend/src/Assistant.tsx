@@ -44,6 +44,7 @@ type Props = {
   welcomePrompt?: string;
   nextStep?: { label: string; description: string; onOpen: () => void };
   onReviewDocuments?: () => void;
+  embedded?: boolean;
 };
 
 type StarterIconKind = "budget" | "rules" | "customers" | "readiness" | "idea" | "plan";
@@ -407,6 +408,7 @@ export function Assistant({
   projectDetails,
   onApplySuggestion,
   canApplySuggestions = false,
+  embedded = false,
 }: Props) {
   const confirm = useConfirm();
   const activeCaseIdRef = useRef(caseId);
@@ -593,6 +595,11 @@ export function Assistant({
   }, [prefilledPrompt, onClearPrefilled, caseId, confirm]);
 
   useEffect(() => {
+    if (exchanges.length === 0 && !loading) {
+      if (scrollArea.current) scrollArea.current.scrollTop = 0;
+      scrollToBottom.current = false;
+      return;
+    }
     if (scrollToBottom.current) {
       followReply();
       scrollToBottom.current = false;
@@ -728,12 +735,18 @@ export function Assistant({
 
   return (
     <section className="live-chat-container" aria-labelledby="live-chat-heading">
-      <header className="live-chat-header">
-        <div className="chat-header-info">
-          <h2 id="live-chat-heading">Асистент</h2>
-          <span className="chat-status-indicator">Відповідає на основі збереженої версії проєкту</span>
-        </div>
-      </header>
+      {embedded ? (
+        <h2 id="live-chat-heading" className="sr-only">
+          Асистент
+        </h2>
+      ) : (
+        <header className="live-chat-header">
+          <div className="chat-header-info">
+            <h2 id="live-chat-heading">Асистент</h2>
+            <span className="chat-status-indicator">Відповідає на основі збереженої версії проєкту</span>
+          </div>
+        </header>
+      )}
       <div
         ref={scrollArea}
         className="chat-scroll-area"
@@ -910,7 +923,7 @@ export function Assistant({
             </div>
           </div>
         )}
-        {(nextStep || onReviewDocuments) && (
+        {hasMessages && (nextStep || onReviewDocuments) && (
           <section className="chat-next-step" aria-label="Наступні кроки">
             {nextStep && (
               <div className="chat-next-step-content">

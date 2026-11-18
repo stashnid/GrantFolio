@@ -456,6 +456,10 @@ export function Advisor({
   }, [prefilledMessage, prefillConversationId, busy, conversation, onClearPrefilled]);
 
   useEffect(() => {
+    if (messages.length === 0 && !busy) {
+      if (scrollArea.current) scrollArea.current.scrollTop = 0;
+      return;
+    }
     followReply();
   }, [messages, busy]);
 

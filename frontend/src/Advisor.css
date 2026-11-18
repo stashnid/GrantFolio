@@ -1,6 +1,6 @@
 .advisor-layout {
   display: flex;
-  height: calc(100dvh - 52px);
+  height: calc(100dvh - 44px);
   min-height: 0;
   background: #ffffff;
 }
@@ -11,16 +11,16 @@
   min-width: 0;
   min-height: 0;
   flex-direction: column;
-  height: calc(100dvh - 52px);
+  height: calc(100dvh - 44px);
 }
 
 .advisor-toolbar {
   display: flex;
   flex: none;
   align-items: center;
-  gap: 14px;
-  min-height: 54px;
-  padding: 10px 28px;
+  gap: 12px;
+  min-height: 46px;
+  padding: 8px 24px;
   border-bottom: 1px solid #e5ecf4;
   background: #ffffff;
 }
@@ -632,7 +632,12 @@
 @media (max-width: 900px) {
   .advisor-layout,
   .advisor-page {
-    height: calc(100dvh - 102px);
+    height: calc(100dvh - 56px);
+  }
+  .advisor-toolbar {
+    min-height: 46px;
+    padding: 6px 14px;
+    gap: 10px;
   }
   .advisor-history-desktop {
     display: none;
@@ -698,9 +703,9 @@
   .advisor-history-toggle {
     display: inline-flex;
     align-items: center;
-    gap: 7px;
+    gap: 6px;
     min-height: 40px;
-    padding: 7px 13px;
+    padding: 6px 12px;
     border: 1px solid #dce4ee;
     border-radius: 9999px;
     background: #ffffff;
@@ -719,11 +724,11 @@
 
 @media (max-width: 520px) {
   .advisor-toolbar {
-    min-height: 52px;
-    padding: 10px 16px;
+    min-height: 44px;
+    padding: 6px 14px;
   }
   .advisor-toolbar p {
-    max-width: 210px;
+    display: none;
   }
   .advisor-grant {
     padding: 16px;

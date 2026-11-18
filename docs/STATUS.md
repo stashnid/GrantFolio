@@ -1,5 +1,19 @@
 # Поточний стан GrantFolio
 
+## Комфортний макет чату асистента в проєктах і на мобільних екранах — 18.11.2026
+
+1. **Пріоритетний макет «Мої проєкти» → «Асистент» (`frontend/src/Cases.tsx`, `frontend/src/Assistant.tsx`, `frontend/src/Assistant.css`, `frontend/src/workspace.css`)**:
+   - Об’єднано окремі шапки `.cases-toolbar` і широку рамку `.case-switcher` в одну компактну панель `.cases-unified-bar` (вибір проєкту, «+ Новий проєкт» і кнопка інспектора «Дані проєкту» з лічильником готовності `0/6` та індикатором незбережених змін).
+   - На вкладці «Асистент» права панель `.case-context` переведена у висувний інспектор `.case-context--drawer` (`Escape` без конфлікту з `ConfirmDialog`, `aria-hidden` + `inert`, повернення фокуса), звільнивши повну ширину для чату (`820px` колонка читання); на кроках редагування 1–4 збережено стандартну двоколонкову верстку.
+   - Прибрано дубльований внутрішній заголовок чату (`<Assistant embedded />` зберігає `sr-only` для `aria-labelledby`), legacy `padding-top: 24px`, зайву картку `.chat-next-step` у порожньому чаті та перекриття композера (`margin-top: -28px`).
+2. **Мобільна інтеграція чату (`frontend/src/Advisor.tsx`, `frontend/src/Advisor.css`, `frontend/src/Assistant.css`, `frontend/src/workspace.css`)**:
+   - На мобільних (`<= 900px`) приховано дубльований `.workspace-topbar`, замінено 93px селектор `.mobile-case-step` на компактну горизонтальну стрічку кроків `.case-steps-nav`, усунуто подвійний скрол (`docScrollHeight: 844px` на `390×844`) і порожній нижній рядок у мобільному композері (inline pill-композер з кнопкою відправки 40×40px справа та `env(safe-area-inset-bottom)`).
+   - Виправлено баг автоскролу порожнього чату в `Advisor.tsx` і `Assistant.tsx`, який раніше зрізав заголовок вітального екрана зверху.
+   - Висота стрічки повідомлень зросла з `213px` до `519px` на `1280×800` (+144%), з `313px` до `619px` на `1440×900` (+98%), з `217px` до `598px` у проєктному чаті на `390×844` (+176%) і з `486px` до `619px` у мобільному `Advisor`.
+3. **Незалежне рев’ю й верифікація**:
+   - Делеговано ECC-агентам `code-explorer`, `architect` і `react-reviewer` (фінальний вердикт: **APPROVE**).
+   - `npm run typecheck`, `npm run build`, `git diff --check`, жива перевірка Chromium BEFORE/AFTER (`1280×800`, `1440×900`, `390×844`, нуль горизонтального переповнення) — **PASS**. [Детальний звіт](agents/2026-11-18-chat-layout-comfort.md).
+
 ## Стилізований діалог підтвердження GrantFolio (заміна системних `window.confirm`) — 18.11.2026
 
 1. **Фірмове модальне вікно підтвердження (`frontend/src/ConfirmDialog.tsx`, `frontend/src/ConfirmDialog.css`, `frontend/src/main.tsx`)**:

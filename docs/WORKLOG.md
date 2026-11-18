@@ -1,5 +1,11 @@
 # Журнал роботи
 
+## 18.11.2026 — Комфортний макет чату асистента в проєктах і на мобільних екранах
+
+- Делеговано аудит (`code-explorer`), архітектурне планування (`architect`) та незалежне рев’ю (`react-reviewer`, вердикт **APPROVE**) для виправлення тісного чату в «Мої проєкти» → «Асистент» і мобільної верстки обох чатів.
+- Об’єднано `.cases-toolbar` і `.case-switcher` у компактну панель `.cases-unified-bar`, переведено `.case-context` у висувний інспектор на вкладці «Асистент» (`inert`, `aria-hidden`, `Escape`, відновлення фокуса), прибрано дубльовані шапки (`embedded` у `Assistant.tsx`, приховання `.workspace-topbar` і `.mobile-case-step` на мобільному), накладання композера (`margin-top: -28px`), порожній рядок мобільного композера та баг автоскролу порожнього чату (`Advisor.tsx`, `Assistant.tsx`).
+- Підтверджено живими замірами Chromium BEFORE/AFTER: стрічка чату збільшилась із `213px` до `519px` (`1280×800`), із `313px` до `619px` (`1440×900`), із `217px` до `598px` (`390×844`, нуль подвійного скролу — `docScrollHeight: 844px`) та із `486px` до `619px` у мобільному `Advisor`. `npm run typecheck`, `npm run build`, `git diff --check` — PASS. Звіт: `docs/agents/2026-11-18-chat-layout-comfort.md`.
+
 ## 18.11.2026 — Стилізований діалог підтвердження GrantFolio (заміна системних `window.confirm`)
 
 - Створено `frontend/src/ConfirmDialog.tsx` та `frontend/src/ConfirmDialog.css` (`ConfirmProvider` + `useConfirm`) і підключено у `frontend/src/main.tsx`.
