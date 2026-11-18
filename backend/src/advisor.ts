@@ -2,9 +2,6 @@ import { Router } from "express";
 import { z } from "zod";
 import type { Pool } from "pg";
 import { searchGrants } from "./grant-discovery.js";
-import { GRANT_CATALOG } from "./grant-catalog-data.js";
-import { configuredGeminiResponder } from "./gemini.js";
-import type { AssistantResponder } from "./assistant.js";
 import { extractProfileFromText } from "./profile-extractor.js";
 const input = z
   .object({
@@ -69,11 +66,7 @@ export function nextQuestion(query: string, intents: string[], hasMatches: boole
     return "Збережіть опис потреби й перевірте умови програм у каталозі. Робочу чернетку можна підготувати до підтвердження прийому.";
   return "Які витрати ви хочете покрити? Це допоможе звузити пошук.";
 }
-export function advisorRouter(
-  db: Pool,
-  responder: AssistantResponder | undefined = configuredGeminiResponder(),
-  timeoutMs = 25000,
-) {
+export function advisorRouter(db: Pool) {
   const router = Router();
   const active = new Set<string>();
   router.get("/conversations", async (_req, res, next) => {
@@ -212,23 +205,11 @@ export function advisorRouter(
                   (m) => !m.programId.startsWith("erasmus-"),
                 ),
         };
-        const profile = await db.query(
-          'SELECT business_name AS "businessName",description,region,details FROM profiles WHERE owner_id=$1',
-          [uid],
-        );
-        let businessProfile;
-        if (profile.rowCount) {
-          const { details, ...base } = profile.rows[0];
-          const rawDetails = details && typeof details === "object" ? details : {};
-          const { contactName: _n, phone: _p, website: _w, newsletterEmail: _e, ...safe } = rawDetails;
-          businessProfile = { ...base, details: safe };
-        }
-
         const { facts: extractedFacts } = extractProfileFromText(p.message);
         const greeting = /^(привіт|вітаю|добрий день|доброго дня)[!. ]*$/i.test(
           p.message,
         );
-        let reply = personalEducation
+        const reply = personalEducation
           ? "GrantFolio допомагає шукати фінансування для відкриття або розвитку бізнесу. Програми для особистого навчання та стипендії не входять до каталогу. Якщо маєте підприємницьку ідею, розкажіть про неї."
           : studentNeedsIdea
             ? "Допоможу розібратися з фінансуванням підприємницької ідеї. Яку справу ви плануєте відкрити або розвинути та на що потрібні кошти?"
@@ -238,64 +219,8 @@ export function advisorRouter(
                   .slice(0, 3)
                   .map((m) => `${m.title}. ${m.reason}`)
                   .join("\n\n")}\n\n${nextQuestion(query, search.intents, search.matches.length > 0)}`;
-        let mode = "guided";
-        if (responder && !personalEducation && !studentNeedsIdea) {
-          const controller = new AbortController();
-          let timer: ReturnType<typeof setTimeout> | undefined;
-          try {
-            const generated = await Promise.race([
-              responder(
-                {
-                  title: "Підбір фінансування за потребою",
-                  revision: 0,
-                  profileRevision: 0,
-                  details: {},
-                  items: [],
-                  total_kopecks: "0",
-                  businessProfile,
-                  mode: "discovery",
-                  discovery: {
-                    query,
-                    search,
-                    programs: search.matches
-                      .slice(0, 4)
-                      .map((m) =>
-                        GRANT_CATALOG.find((p) => p.id === m.programId),
-                      ),
-                    history: newNeed
-                      ? []
-                      : prior
-                          .filter((r) => previousSeed.includes(r.question))
-                          .slice(-6)
-                          .map(({ question, reply }) => ({ question, reply })),
-                  },
-                },
-                p.message,
-                controller.signal,
-              ),
-              new Promise<never>((_, reject) => {
-                timer = setTimeout(() => {
-                  controller.abort();
-                  reject(Error("timeout"));
-                }, timeoutMs);
-              }),
-            ]);
-            if (
-              typeof generated === "string" &&
-              generated.trim() &&
-              generated.length <= 12000
-            ) {
-              reply = generated.trim();
-              mode = "ai";
-            }
-          } catch {
-            /* Verified catalog guidance remains usable when the provider has no quota. */
-          } finally {
-            if (timer) clearTimeout(timer);
-          }
-        }
         const payload = {
-          mode,
+          mode: "guided",
           search,
           seed: query.slice(-2000),
           extractedFacts: extractedFacts.length ? extractedFacts : undefined,

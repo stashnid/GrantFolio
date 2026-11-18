@@ -14,6 +14,12 @@ type ReviewResponse = {
   caseRevision: number;
 };
 
+const questionExplanations: Partial<Record<GrantApplicationQuestion["id"], string>> = {
+  requestedGrantKopecks: "Цю суму звіряємо з лімітом обраного напряму та збереженим кошторисом. Якщо сума передбачає надбавку, перевірте підставу в умовах програми.",
+  ownContributionKopecks: "Разом із запитом на грант власні кошти мають покрити збережений кошторис. Мінімальний внесок і винятки звірте з умовами вашого напряму.",
+  newJobs: "Кількість нових робочих місць може визначати зобов’язання за грантом. Враховуйте найм, який зможете забезпечити, та звірте вимоги вашого напряму.",
+};
+
 function money(value: number) {
   return (value / 100).toLocaleString("uk-UA", { style: "currency", currency: "UAH" });
 }
@@ -81,6 +87,8 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
     return <section id="grant-application" className="readiness"><h4>Анкета заявки</h4><p>Для цієї програми доступний загальний план підготовки. Окрему анкету ще не додано.</p></section>;
   }
   const question = application?.questions.find(item => item.id === editing) ?? application?.nextQuestion;
+  const explanation = question && questionExplanations[question.id];
+  const answerDescription = explanation ? "grant-application-answer-note" : undefined;
   const blocked = disabled || stale || loading || saving || response?.caseRevision !== caseRevision;
 
   async function save(event: FormEvent<HTMLFormElement>) {
@@ -132,13 +140,14 @@ export function GrantApplication({ user, caseId, caseRevision, disabled }: {
       {disabled && <p>Спочатку збережіть або відновіть правки проєкту.</p>}
       {question && <form key={`${question.id}:${response?.revision}`} onSubmit={save} className="grant-application-form">
         <label htmlFor="grant-application-answer"><strong>{question.prompt}</strong></label>
+        {explanation && <p id="grant-application-answer-note">{explanation}</p>}
         <fieldset disabled={blocked}>
           {question.kind === "select" ? <select id="grant-application-answer" name="answer" required defaultValue={valueForInput(question)}>
             <option value="">Оберіть відповідь</option>
             {question.options?.map(option => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select> : question.kind === "text" ? <textarea id="grant-application-answer" name="answer" defaultValue={valueForInput(question)} required maxLength={3000} rows={4} /> :
             question.kind === "confirmation" ? <input id="grant-application-answer" name="answer" type="checkbox" value="yes" required /> :
-            <input id="grant-application-answer" name="answer" defaultValue={valueForInput(question)} inputMode={question.kind === "integer" ? "numeric" : "decimal"} required maxLength={20} />}
+            <input id="grant-application-answer" name="answer" aria-describedby={answerDescription} defaultValue={valueForInput(question)} inputMode={question.kind === "integer" ? "numeric" : "decimal"} required maxLength={20} />}
           <button type="submit" className="secondary-btn">{saving ? "Зберігаємо…" : "Зберегти відповідь"}</button>
         </fieldset>
         {question.source && <p><a href={question.source} target="_blank" rel="noopener noreferrer">Джерело вимоги</a></p>}

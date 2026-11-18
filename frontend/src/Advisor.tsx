@@ -657,7 +657,7 @@ export function Advisor({
                       <AiEmblem />
                       <strong className="author-name">GrantFolio Асистент</strong>
                       <span className="revision-badge">
-                        {m.mode === "guided" ? "Підбір за умовами каталогу" : "З урахуванням вашої розмови"}
+                        {m.mode === "guided" ? "Підбір за умовами каталогу" : "Раніше збережена відповідь ШІ"}
                       </span>
                     </div>
                     <div className="bubble-text assistant-text">
@@ -719,6 +719,10 @@ export function Advisor({
                               <h3>{match.title}</h3>
                               <p>{match.reason}</p>
                               <small>{match.caution}</small>
+                              <p>{hasGuidedApplication(p.id)
+                                ? "У GrantFolio доступні анкета та підготовка робочих матеріалів."
+                                : "У GrantFolio доступні умови програми та посилання на надавача."}</p>
+                              <p><a href={p.officialUrl} target="_blank" rel="noopener noreferrer" aria-label={`Офіційне джерело програми: ${match.title} (відкриється в новій вкладці)`}>Офіційне джерело ↗</a></p>
                               <div className="advisor-grant-actions">
                                 <button
                                   type="button"
