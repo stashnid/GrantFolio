@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "./BusinessProfile.css";
 import { regions, industries, cities } from "./profile-options";
 import { KvedPicker } from "./KvedPicker";
@@ -6,6 +6,19 @@ import { CustomSelect } from "./CustomSelect";
 
 import { type Profile, type DetailKey } from "./profile";
 export { emptyProfile, normalizeProfile, type Profile } from "./profile";
+const legalFormLabels: Record<string, string> = {
+  idea: "Ідея",
+  fop: "ФОП",
+  company: "Компанія",
+  ngo: "ГО",
+};
+function userInitials(name: string, email: string): string {
+  const words = name.trim().split(/\s+/).filter(Boolean);
+  if (words.length >= 2) return (words[0][0] + words[1][0]).toUpperCase();
+  if (words.length === 1) return words[0].slice(0, 2).toUpperCase();
+  const prefix = email.split("@")[0]?.replace(/[^a-zA-Zа-яА-ЯіїєґІЇЄҐ0-9]/g, "") ?? "";
+  return prefix ? prefix.slice(0, 2).toUpperCase() : "GF";
+}
 type FieldKey = DetailKey | "businessName" | "region" | "description";
 type Field = { key: FieldKey; label: string; max: number; multiline?: boolean; hint?: string; inputMode?: "numeric" | "decimal" | "tel" | "url" };
 const sections: { title: string; intro: string; fields: Field[] }[] = [
@@ -36,13 +49,40 @@ function fieldError(key: FieldKey, value: string): string {
   if ((key === "requestedAmount" || key === "ownContribution") && (!/^(?:\d+|\d{1,3}(?:[ \u00a0\u202f]\d{3})+)(?:[.,]\d{1,2})?$/.test(value) || Number(normalizedAmount(value)) > 1000000000 || normalizedAmount(value).length > 20)) return "Вкажіть суму до 1 000 000 000 грн, до двох знаків після коми або крапки.";
   return "";
 }
-export function BusinessProfile({ profile, email, ready, busy, dirty, error, message, loading = false, conflict = false, onChange, onSubmit, onRetry }: { profile: Profile; email: string; ready: boolean; busy: boolean; loading?: boolean; conflict?: boolean; dirty: boolean; error: string; message: string; onChange: (profile: Profile) => void; onSubmit: (e: React.FormEvent) => void; onRetry: () => void }) {
+export function BusinessProfile({ profile, email, displayName = "", photoURL = "", ready, busy, dirty, error, message, loading = false, conflict = false, onChange, onSubmit, onRetry }: { profile: Profile; email: string; displayName?: string; photoURL?: string; ready: boolean; busy: boolean; loading?: boolean; conflict?: boolean; dirty: boolean; error: string; message: string; onChange: (profile: Profile) => void; onSubmit: (e: React.FormEvent) => void; onRetry: () => void }) {
   const [section, setSection] = useState(0);
   const [attempted, setAttempted] = useState(false);
   const [touched, setTouched] = useState<Partial<Record<FieldKey, boolean>>>({});
+  const [photoFailed, setPhotoFailed] = useState(false);
+  const [emailCopied, setEmailCopied] = useState(false);
+  const copyTimer = useRef<number | null>(null);
+  useEffect(() => () => { if (copyTimer.current) window.clearTimeout(copyTimer.current); }, []);
+  useEffect(() => { setPhotoFailed(false); }, [photoURL]);
   const valueFor = (key: FieldKey) => key === "businessName" || key === "region" || key === "description" ? profile[key] : profile.details[key];
   const fields = sections.flatMap(s => s.fields);
   const completed = fields.filter(f => valueFor(f.key).trim()).length;
+  const percent = Math.round((completed / fields.length) * 100);
+  const resolvedName = profile.details.contactName.trim() || displayName.trim();
+  const initials = userInitials(resolvedName, email);
+  const businessMeta = [
+    legalFormLabels[profile.details.legalForm] ?? "",
+    profile.details.city.trim() || profile.region.trim(),
+  ].filter(Boolean).join(" · ");
+  const businessLabel = profile.businessName.trim() || businessMeta;
+  const showPhoto = !!photoURL && !photoFailed;
+  async function copyEmail() {
+    if (!email) return;
+    try {
+      await navigator.clipboard.writeText(email);
+      setEmailCopied(true);
+      if (copyTimer.current) window.clearTimeout(copyTimer.current);
+      copyTimer.current = window.setTimeout(() => setEmailCopied(false), 1800);
+    } catch {}
+  }
+  function focusContactName() {
+    setSection(0);
+    requestAnimationFrame(() => document.getElementById("profile-contactName")?.focus());
+  }
   const errors = fields.map(f => ({ ...f, error: fieldError(f.key, valueFor(f.key)) })).filter(f => f.error);
   const change = (key: FieldKey, value: string) => onChange(key === "businessName" || key === "region" || key === "description" ? { ...profile, [key]: value } : { ...profile, details: { ...profile.details, [key]: value } });
   function submit(e: React.FormEvent) { if (errors.length) { e.preventDefault(); setAttempted(true); setSection(sections.findIndex(s => s.fields.some(f => f.key === errors[0].key))); requestAnimationFrame(() => document.getElementById(`profile-${errors[0].key}`)?.focus()); return; } onSubmit(e); }
@@ -64,7 +104,122 @@ export function BusinessProfile({ profile, email, ready, busy, dirty, error, mes
         {error && <p className="bp-error" role="alert">{error}</p>}{message && <p className="bp-success" role="status">{message}</p>}
         <div className="bp-actions"><button type="submit" className="bp-save" disabled={busy || loading || !ready || !dirty || conflict}>{busy ? "Зберігаємо…" : "Зберегти зміни"}</button></div>
       </div></form></div>
-      <aside className="bp-summary"><h3>Ваш акаунт</h3><span>Електронна пошта</span><strong>{email || "Не вказано"}</strong><div className="bp-summary-divider" /><span>Заповнено полів</span><strong className="bp-completion-count">{completed} з {fields.length}</strong><div className="bp-progress" aria-hidden="true"><i style={{ width: `${completed / fields.length * 100}%` }} /></div><p>Заповнюйте профіль поступово. Дані можна змінити будь-коли.</p></aside>
+      <aside className="bp-summary" aria-label="Ваш акаунт">
+        <div className="bp-account-top">
+          <div className="bp-avatar" aria-hidden="true">
+            {showPhoto ? (
+              <img
+                src={photoURL}
+                alt=""
+                referrerPolicy="no-referrer"
+                onError={() => setPhotoFailed(true)}
+              />
+            ) : (
+              <span>{initials}</span>
+            )}
+          </div>
+          <div className="bp-account-identity">
+            <p className="bp-account-eyebrow">Ваш акаунт</p>
+            {resolvedName ? (
+              <h3 className="bp-account-name" title={resolvedName}>{resolvedName}</h3>
+            ) : (
+              <button
+                type="button"
+                className="bp-account-add-name"
+                onClick={focusContactName}
+              >
+                Додати ім’я та прізвище →
+              </button>
+            )}
+            {businessLabel && (
+              <p className="bp-account-business" title={businessLabel}>
+                {profile.businessName.trim() ? profile.businessName.trim() : businessMeta}
+                {profile.businessName.trim() && businessMeta ? ` · ${businessMeta}` : ""}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="bp-account-email-box">
+          <span className="bp-account-meta-label">Електронна пошта</span>
+          <div className="bp-account-email-row">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <rect x="3" y="5" width="18" height="14" rx="2.5" />
+              <path d="m3 7 9 6 9-6" />
+            </svg>
+            <strong className="bp-account-email" title={email || "Не вказано"}>
+              {email || "Не вказано"}
+            </strong>
+            {email && (
+              <button
+                type="button"
+                className={`bp-email-copy ${emailCopied ? "is-copied" : ""}`}
+                onClick={() => void copyEmail()}
+                aria-label={emailCopied ? "Електронну пошту скопійовано" : "Копіювати електронну пошту"}
+                title={emailCopied ? "Скопійовано" : "Копіювати"}
+              >
+                {emailCopied ? (
+                  <svg width="14" height="14" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+                    <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                ) : (
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <rect x="9" y="9" width="12" height="12" rx="2" />
+                    <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
+                  </svg>
+                )}
+              </button>
+            )}
+          </div>
+          <span className="sr-only" role="status" aria-live="polite">
+            {emailCopied ? "Електронну пошту скопійовано" : ""}
+          </span>
+        </div>
+
+        <div className="bp-summary-divider" />
+
+        <div className="bp-completion-head">
+          <div>
+            <span className="bp-account-meta-label">Заповнення профілю</span>
+            <strong className="bp-completion-count">{completed} з {fields.length} полів</strong>
+          </div>
+          <span className="bp-completion-pct">{percent}%</span>
+        </div>
+        <div className="bp-progress" aria-hidden="true">
+          <i style={{ width: `${percent}%` }} />
+        </div>
+
+        <ul className="bp-section-checklist" aria-label="Стан розділів профілю">
+          {sections.map((s, idx) => {
+            const doneCount = s.fields.filter(f => valueFor(f.key).trim()).length;
+            const totalCount = s.fields.length;
+            const allDone = doneCount === totalCount;
+            return (
+              <li key={s.title}>
+                <button
+                  type="button"
+                  className={`bp-checklist-item ${section === idx ? "is-current" : ""} ${allDone ? "is-complete" : ""}`}
+                  onClick={() => setSection(idx)}
+                >
+                  <span className="bp-checklist-dot" aria-hidden="true">
+                    {allDone && (
+                      <svg width="10" height="10" viewBox="0 0 16 16" fill="none">
+                        <path d="M3.5 8.5L6.5 11.5L12.5 4.5" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </span>
+                  <span className="bp-checklist-title">{s.title}</span>
+                  <span className="bp-checklist-count">{doneCount}/{totalCount}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+
+        <p className="bp-summary-note">
+          Заповнюйте профіль поступово — асистент використовує збережені дані для точнішого підбору програм.
+        </p>
+      </aside>
     </div>
   </div>;
 }

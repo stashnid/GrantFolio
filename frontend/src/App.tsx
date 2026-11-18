@@ -501,7 +501,7 @@ export function App() {
               />
             </div>
             <div hidden={tab !== "profile"}>
-              <BusinessProfile key={user.uid} loading={profileLoading} conflict={profileConflict} profile={profile} email={user.email ?? ""} ready={profileReady} busy={busy} dirty={profileDirty} error={error} message={message} onChange={(next) => { setProfile(next); setMessage(""); }} onSubmit={save} onRetry={() => { if (profileDirty && !window.confirm("Завантажити збережений профіль? Незбережені зміни у формі буде втрачено.")) return; setError(""); setRetry(retry + 1); }} />
+              <BusinessProfile key={user.uid} loading={profileLoading} conflict={profileConflict} profile={profile} email={user.email ?? ""} displayName={user.displayName ?? ""} photoURL={user.photoURL ?? ""} ready={profileReady} busy={busy} dirty={profileDirty} error={error} message={message} onChange={(next) => { setProfile(next); setMessage(""); }} onSubmit={save} onRetry={() => { if (profileDirty && !window.confirm("Завантажити збережений профіль? Незбережені зміни у формі буде втрачено.")) return; setError(""); setRetry(retry + 1); }} />
               {profileReady && !profileDirty && savedProfile.businessName && <button type="button" className="link" onClick={() => openTab("catalog")}>Перейти до каталогу грантів →</button>}
             </div>
             <div hidden={tab !== "feedback"}>
