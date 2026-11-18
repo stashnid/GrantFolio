@@ -1,7 +1,8 @@
 import { Router } from "express";
 import { z } from "zod";
 import type { Pool } from "pg";
-import { searchGrants } from "./grant-discovery.js";
+import { normalize, searchGrants } from "./grant-discovery.js";
+import { GRANT_CATALOG } from "./grant-catalog-data.js";
 import { extractProfileFromText } from "./profile-extractor.js";
 const input = z
   .object({
@@ -32,6 +33,9 @@ const view = (r: any) => ({
 // Ask for one missing fact at a time using the current conversation, not just the last message.
 export function nextQuestion(query: string, intents: string[], hasMatches: boolean): string {
   const q = query.toLocaleLowerCase("uk");
+  if (/ферм|господарств/.test(q) && !/тварин|теплиц|садів|ягід|овоч|молок|бджіл|зерн/.test(q)) {
+    return "Що плануєте виробляти на фермі й на яку першу витрату потрібне фінансування? Від цього залежить, чи варто розглядати грант на запуск бізнесу або окрему аграрну програму.";
+  }
   // A mention of ФОП alone (e.g. “чи потрібен ФОП?”) is not a status.
   const hasBusinessStatus = /(?:ще\s+)?не\s+(?:є\s+|маю\s+|зареєстрован(?:ий|а)\s+як\s+)?фоп|(?:немає|не маю)\s+(?:зареєстрованого\s+)?фоп|(?:працюю|зареєстрован(?:ий|а)|оформлен(?:ий|а))\s+(?:як\s+)?фоп|(?:маю|відкрив|відкрила|вже)\s+фоп|(?:фоп|бізнес)\s+(?:вже|ще не|немає)|вже працю|планую відкрити/.test(q);
   if (
@@ -75,6 +79,45 @@ export function nextQuestion(query: string, intents: string[], hasMatches: boole
   if (intents.some(intent => ["equipment", "transport", "production", "garden"].includes(intent)))
     return "Збережіть опис потреби й перевірте умови програм у каталозі. Робочу чернетку можна підготувати до підтвердження прийому.";
   return "Які витрати ви хочете покрити? Це допоможе звузити пошук.";
+}
+function namedProgram(message: string) {
+  const q = normalize(message);
+  return GRANT_CATALOG.find((p) => {
+    const name = normalize(p.title);
+    return (name.length > 8 && q.includes(name)) ||
+      (p.id === "vlasna-sprava" && /власн[ауої] справ[ауиі]/.test(q)) ||
+      (p.id === "ua-greenhouse-grant" && /грант(?:у|ом)? на .*теплиц/.test(q)) ||
+      (p.id === "agro-gardens" && /грант(?:у|ом)? на (?:сад|ягідник|виноградник)/.test(q));
+  });
+}
+// Answer questions about a catalog program using its curated, source-linked fields.
+export function programFollowUp(message: string, previousMatches: { programId: string }[], newNeed: boolean, selectedProgramId?: string, context = ""): string | undefined {
+  if (newNeed) return undefined;
+  const q = normalize(message);
+  const costs = /витрат|витратити|потрат|купити|придбати|закуп|на що|що можна/.test(q);
+  const eligibility = /умов|вимог|хто може|чи (?:можу|підход)|право на|чи потрібен фоп/.test(q);
+  const apply = /як пода|як подат|подача|подати|заявк|документ|оформ/.test(q);
+  if (!costs && !eligibility && !apply) return undefined;
+  const named = namedProgram(message) ?? GRANT_CATALOG.find((p) => p.id === selectedProgramId);
+  const previous = previousMatches.map((m) => GRANT_CATALOG.find((p) => p.id === m.programId)).filter((p): p is (typeof GRANT_CATALOG)[number] => Boolean(p));
+  const farm = /ферм|господарств|агро/i.test(context);
+  const farmExample = farm ? GRANT_CATALOG.find(p => p.id === "vlasna-sprava") : undefined;
+  const program = named ?? previous[0] ?? farmExample;
+  if (!program) return undefined;
+  const example = !named && previous.length !== 1;
+  const sections: string[] = [];
+  if (costs) sections.push(`**На що можна спрямувати кошти**\n${program.details.costs.map(cost => `- ${cost}`).join("\n")}${program.id === "vlasna-sprava" && farm ? "\n\nДля ферми обладнання для сортування, пакування або охолодження може бути кандидатом у кошторис, але допустимість конкретної покупки треба перевірити за чинними правилами." : ""}`);
+  if (eligibility) sections.push(`Основні вимоги: ${program.details.eligibility.join(" ")} ${program.details.exclusions.join(" ")} ${program.details.obligations.join(" ")}`);
+  if (apply && farm && program.id === "vlasna-sprava") sections.push("Для вашої ферми почніть з продукту, обсягу виробництва та каналів збуту. Для кожної покупки вкажіть кількість, ціну за пропозицією постачальника та яку роботу вона дозволить виконати.");
+  if (apply) sections.push(`Документи: ${program.details.documents.join(" ")}\nЯк діяти:\n${program.details.steps.map((step, i) => `${i + 1}. ${step}`).join("\n")}`);
+  const status = program.intakeStatus === "paused" ? "Прийом призупинено; дату відновлення потрібно підтвердити." : program.intakeStatus === "archived" ? "Програма архівна; актуальний прийом не підтверджений." : "Актуальний прийом і вашу відповідність потрібно підтвердити в офіційному джерелі.";
+  const statusKnown = /(?:я|ми) (?:ще |вже |уже )?(?:не )?фоп|(?:працюю|зареєстрован\S*) як фоп|(?:вже|уже) (?:працюю|маю фоп)/.test(normalize(context));
+  const question = example
+    ? previous.length ? "Яку з запропонованих програм ви маєте на увазі?" : "Що плануєте вирощувати або яку продукцію хочете продавати?"
+    : costs ? "Яку покупку перевіримо для вашого кошторису?"
+    : eligibility ? statusKnown ? "Який КВЕД плануєте вказати для цієї діяльності?" : "Ви вже зареєстровані як ФОП або юридична особа?"
+    : "З чого почнемо: з опису продукту, продажів чи кошторису?";
+  return [`${example ? "Як приклад розгляну" : "Розглянемо"} «${program.title}».`, ...sections, status, ...(program.details.unresolved.length ? [`Потрібно уточнити: ${program.details.unresolved[0]}`] : []), `[Офіційні умови](${program.officialUrl})`, question].join("\n\n");
 }
 export function advisorRouter(db: Pool) {
   const router = Router();
@@ -268,8 +311,9 @@ export function advisorRouter(db: Pool) {
             (intent) =>
               intent !== "applicant" && previous.intents.includes(intent),
           );
+        const followUpWording = /витрат|витратити|потрат|купити|придбати|закуп|на що|що можна|умов|вимог|хто може|чи (?:можу|підход)|право на|як пода|як подат|подача|подати|заявк|документ|оформ/i.test(p.message);
         const newNeed =
-          explicitChange || (current.intents.length > 0 && distinctNeed);
+          explicitChange || (!followUpWording && current.intents.length > 0 && distinctNeed);
         const query = (
           newNeed
             ? p.message
@@ -303,18 +347,22 @@ export function advisorRouter(db: Pool) {
         const greeting = /^(привіт|вітаю|добрий день|доброго дня)[!. ]*$/i.test(
           p.message,
         );
+        const namedSelection = namedProgram(p.message);
+        const selectedProgramId = namedSelection?.id ?? (!newNeed ? prior.at(-1)?.payload?.selectedProgramId : undefined);
+        const followUp = programFollowUp(p.message, prior.at(-1)?.payload?.search?.matches ?? [], newNeed && !namedSelection, selectedProgramId, query) ?? (namedSelection ? `Розглянемо «${namedSelection.title}». ${namedSelection.details.overview} ${namedSelection.intakeStatus === "paused" ? "Прийом призупинено; дату відновлення потрібно підтвердити." : "Актуальний прийом і вашу відповідність потрібно підтвердити."} [Офіційні умови](${namedSelection.officialUrl})\n\nЩо хочете з’ясувати: витрати, вимоги чи подання заявки?` : undefined);
         const reply = personalEducation
           ? "GrantFolio допомагає шукати фінансування для відкриття або розвитку бізнесу. Програми для особистого навчання та стипендії не входять до каталогу. Якщо маєте підприємницьку ідею, розкажіть про неї."
           : studentNeedsIdea
             ? "Допоможу розібратися з фінансуванням підприємницької ідеї. Яку справу ви плануєте відкрити або розвинути та на що потрібні кошти?"
             : greeting
               ? "Вітаю! Допоможу розібратися з фінансуванням і підготувати матеріали для заявки. На що вам потрібні кошти? Можна описати своїми словами — знати назву гранту не потрібно."
-              : `${search.explanation}\n\n${search.matches
+              : followUp ?? `${search.explanation}\n\n${search.matches
                   .slice(0, 3)
                   .map((m) => `${m.title}. ${m.reason}`)
                   .join("\n\n")}\n\n${nextQuestion(query, search.intents, search.matches.length > 0)}`;
         const payload = {
           mode: "guided",
+          selectedProgramId,
           search,
           seed: query.slice(-2000),
           extractedFacts: extractedFacts.length ? extractedFacts : undefined,

@@ -108,7 +108,9 @@ test("configuredGeminiResponder sends exact POST header/body and includes budget
     assert.equal(requestOptions.signal, controller.signal);
 
     const parsedBody = JSON.parse(requestOptions.body);
-    assert.ok(parsedBody.systemInstruction);
+    const consultationPrompt = parsedBody.systemInstruction.parts[0].text;
+    assert.match(consultationPrompt, /зістав названі позиції з підтвердженими категоріями/);
+    assert.match(consultationPrompt, /де знайти офіційну форму і як перейти до подання/);
     assert.ok(parsedBody.contents);
     assert.equal(parsedBody.generationConfig.maxOutputTokens, 1200);
 

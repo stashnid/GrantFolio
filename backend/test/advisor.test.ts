@@ -535,3 +535,32 @@ test("DELETE returns 429 advisor_busy while a reply is in flight for the owner",
     listener.close();
   }
 });
+
+test("farm consultation answers spending, requirements and application questions in one conversation", async () => {
+  const conversationId = crypto.randomUUID();
+  async function send(message: string) {
+    const response = await call(a, "", { id: crypto.randomUUID(), conversationId, message });
+    assert.equal(response.status, 200);
+    return (await response.json()).message;
+  }
+  await send("Хочу відкрити ферму. Я вже ФОП.");
+  const costs = await send("На що можна витратити кошти?");
+  assert.match(costs.reply, /На що можна спрямувати кошти/);
+  await send("Власна справа");
+  const requirements = await send("Які вимоги до заявника?");
+  assert.equal(requirements.selectedProgramId, "vlasna-sprava");
+  assert.match(requirements.reply, /КВЕД/);
+  assert.doesNotMatch(requirements.reply, /Ви вже зареєстровані/);
+  const application = await send("Як підготувати й подати заявку?");
+  assert.match(application.reply, /Для вашої ферми/);
+  assert.match(application.reply, /XLSX.*PDF/);
+  assert.match(application.reply, /виберіть банк і підпишіть/);
+  assert.match(application.reply, /\[Офіційні умови\]\(https:\/\/diia\.gov\.ua/);
+  assert.match(application.reply, /підтверди/);
+  const greenhouse = await send("Які документи для гранту на модульну теплицю?");
+  assert.equal(greenhouse.selectedProgramId, "ua-greenhouse-grant");
+  assert.match(greenhouse.reply, /кошторисом/);
+  assert.match(greenhouse.reply, /Прийом призупинено/);
+  const different = await send("А тепер хочу відкрити кав’ярню");
+  assert.equal(different.selectedProgramId, undefined);
+});
