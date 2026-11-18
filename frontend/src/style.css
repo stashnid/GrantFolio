@@ -72,6 +72,7 @@
 
 html {
   scroll-behavior: smooth;
+  overscroll-behavior-y: none;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -159,6 +160,7 @@ main.app-boot-splash {
 
 body {
   margin: 0;
+  overscroll-behavior-y: none;
   font-family: var(--font-sans);
   color: var(--color-text-main);
   background: var(--color-bg-canvas);
