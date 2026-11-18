@@ -125,22 +125,32 @@ export function createApp(
   });
   app.post("/api/me/newsletter/preview", async (req, res) => {
     const token = res.locals.firebaseToken;
-    const targetEmail = (typeof req.body?.email === "string" && req.body.email.trim()) || token?.email;
-    if (!targetEmail || typeof targetEmail !== "string") {
-      res.status(400).json({ error: "missing_recipient" });
+    const recipient = z.email().max(254).safeParse(token?.email);
+    const confirmed = token?.email_verified || (emailCode && token?.firebase.sign_in_provider === "password");
+    if (!recipient.success || !confirmed) {
+      res.status(403).json({ error: "verified_email_required" });
       return;
     }
-    const businessName = typeof req.body?.businessName === "string" ? req.body.businessName.trim() : "";
-    const industry = typeof req.body?.industry === "string" ? req.body.industry.trim() : "";
-    const subject = `[GrantFolio] Персональний дайджест грантів для «${businessName || "Вашого бізнесу"}»`;
-    const textContent = `Вітаємо!\n\nПідібрано актуальні грантові програми для вашого бізнесу (${industry || "загальний профіль"}):\n1. Власна справа (єРобота) — до 500 000 грн (дедлайн 27 листопада)\n2. BLOOM: Підтримка малого бізнесу — до 40 000 EUR\n\nДеталі та підготовка заявки: https://grantfolio.pp.ua/\n\nВи отримали це повідомлення згідно з вашою згодою у профілі бізнесу GrantFolio.`;
-    let delivered = false;
-    try {
-      delivered = await sendGmailMessage(targetEmail, subject, textContent);
-    } catch {
-      delivered = false;
+    if (req.body?.email !== undefined && req.body.email !== recipient.data) {
+      res.status(400).json({ error: "invalid_preview_recipient" });
+      return;
     }
-    res.json({ ok: true, delivered, recipient: targetEmail });
+    const permit = await db.query(`INSERT INTO newsletter_preview_cooldowns (owner_id, last_requested_at)
+      VALUES ($1, now())
+      ON CONFLICT (owner_id) DO UPDATE SET last_requested_at=excluded.last_requested_at
+      WHERE newsletter_preview_cooldowns.last_requested_at <= excluded.last_requested_at - interval '5 minutes'
+      RETURNING owner_id`, [res.locals.uid]);
+    if (!permit.rowCount) {
+      res.status(429).json({ error: "preview_cooldown" });
+      return;
+    }
+    const delivered = await sendGmailMessage(recipient.data, "Тестовий лист GrantFolio",
+      "Ви запросили тестовий лист у профілі GrantFolio.\n\nУ дайджесті ви зможете переглядати назви грантів, умови участі та посилання на офіційні джерела. Керувати налаштуваннями розсилки можна в профілі бізнесу на https://grantfolio.pp.ua/.");
+    if (!delivered) {
+      res.status(503).json({ error: "email_delivery_unavailable" });
+      return;
+    }
+    res.json({ ok: true, delivered: true, recipient: recipient.data });
   });
   app.use("/api/advisor", advisorRouter(db));
   app.use("/api/cases", casesRouter(db));
