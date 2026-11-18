@@ -149,27 +149,27 @@ const POSITIVE_WTP_VALUES = new Set<FeedbackWillingnessToPay>([
 ]);
 
 const ROLE_LABELS_UK: Record<string, string> = {
-  entrepreneur: "Підприємець",
-  fop: "ФОП",
-  startup_founder: "Засновник стартапу",
-  accountant: "Бухгалтер / фінансист",
-  student_business: "Студент із бізнес-ідеєю",
-  volunteer: "Волонтер / громадський проєкт",
+  entrepreneur: "Підприємець / власник справи",
+  fop: "ФОП (працюю на себе)",
+  startup_founder: "Планує розпочати власну справу",
+  accountant: "Бухгалтер або юрист",
+  student_business: "Студент або початківець",
+  volunteer: "Волонтер або громадська діяльність",
   other: "Інше",
 };
 
 const TASK_LABELS_UK: Record<string, string> = {
-  profile: "Профіль бізнесу",
-  project: "Картка проєкту / заявки",
-  budget: "Кошторис і фінанси",
-  assistant: "ШІ-консультант",
+  project: "Весь сайт загалом",
   catalog: "Каталог грантів",
-  export: "Експорт документів",
+  assistant: "Поради помічника",
+  budget: "Розрахунок витрат",
+  profile: "Дані про бізнес",
+  export: "Завантаження документів",
 };
 
 const OUTCOME_LABELS_UK: Record<FeedbackTaskOutcome, string> = {
-  completed: "Виконано повністю",
-  partial: "Виконано частково",
+  completed: "Так, усе вийшло",
+  partial: "Вийшло частково",
   failed: "Не вдалося виконати",
   unspecified: "Не вказано",
 };
@@ -177,10 +177,10 @@ const OUTCOME_LABELS_UK: Record<FeedbackTaskOutcome, string> = {
 const WTP_LABELS_UK: Record<FeedbackWillingnessToPay, string> = {
   none: "Не вказано",
   free_only: "Тільки безкоштовно",
-  pay_per_application: "Оплата за підготовку заявки",
-  monthly_subscription: "Щомісячна підписка",
-  donation_ready: "Готовий(а) підтримати донатом",
-  already_paid: "Уже оплатив(ла) / задонатив(ла)",
+  pay_per_application: "Оплата за готову заявку",
+  monthly_subscription: "Невелика щомісячна оплата",
+  donation_ready: "Добровільний внесок (донат)",
+  already_paid: "Уже оплачено / підтримано",
 };
 
 const STATUS_LABELS_UK: Record<FeedbackStatus, string> = {

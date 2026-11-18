@@ -73,7 +73,7 @@ export function App() {
     [selectedProgram, setSelectedProgram] = useState<GrantProgram | null>(null),
     [fundingTarget, setFundingTarget] = useState<{id:string;title:string;revision:number}|null>(null),
     [feedbackOpen, setFeedbackOpen] = useState(false),
-    [feedbackTask, setFeedbackTask] = useState<FeedbackTask>("assistant"),
+    [feedbackTask, setFeedbackTask] = useState<FeedbackTask>("project"),
     [feedbackContext, setFeedbackContext] = useState<{
       screen?: "advisor" | "cases" | "catalog" | "budget" | "profile" | "export";
       programId?: string | null;
@@ -83,8 +83,7 @@ export function App() {
     task?: FeedbackTask,
     context?: { screen?: "advisor" | "cases" | "catalog" | "budget" | "profile" | "export"; programId?: string | null },
   ) {
-    const resolvedTask: FeedbackTask =
-      task ?? (tab === "advisor" ? "assistant" : tab === "cases" ? "project" : tab === "catalog" ? "catalog" : "profile");
+    const resolvedTask: FeedbackTask = task ?? "project";
     setFeedbackTask(resolvedTask);
     setFeedbackContext(context ?? { screen: tab });
     setFeedbackOpen(true);
