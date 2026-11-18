@@ -541,3 +541,76 @@
     transition: none;
   }
 }
+
+/* AI Context Extraction & Profile Synchronization */
+.advisor-context-sync-pill {
+  margin-top: 12px;
+  padding: 10px 14px;
+  background: #f4f8fe;
+  border: 1px solid #d9e6f9;
+  border-radius: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.advisor-sync-lead {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #1e3a8a;
+  letter-spacing: 0.02em;
+}
+
+.advisor-sync-lead svg {
+  color: #2563eb;
+  flex-shrink: 0;
+}
+
+.advisor-sync-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.advisor-sync-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: #ffffff;
+  border: 1px solid #c7dcf8;
+  border-radius: 6px;
+  font-size: 11.5px;
+  color: #1e293b;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.advisor-sync-chip strong {
+  color: #3b82f6;
+  font-weight: 600;
+}
+
+.advisor-sync-link {
+  align-self: flex-start;
+  margin-top: 2px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: #2563eb;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  transition: color 150ms ease;
+}
+
+.advisor-sync-link:hover {
+  color: #1d4ed8;
+}

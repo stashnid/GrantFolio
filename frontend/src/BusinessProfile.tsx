@@ -6,7 +6,7 @@ import { CustomSelect } from "./CustomSelect";
 import { auth } from "./firebase";
 import { authenticatedRequest } from "./api";
 
-import { type Profile, type DetailKey } from "./profile";
+import { type Profile, type DetailKey, normalizeProfile } from "./profile";
 export { emptyProfile, normalizeProfile, type Profile } from "./profile";
 const legalFormLabels: Record<string, string> = {
   idea: "Ідея",
@@ -63,10 +63,69 @@ export function BusinessProfile({ profile, email, displayName = "", photoURL = "
   const [emailCopied, setEmailCopied] = useState(false);
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [aiSyncing, setAiSyncing] = useState(false);
+  const [aiSuggestions, setAiSuggestions] = useState<{
+    suggestions: Partial<Record<FieldKey, string>>;
+    facts: Array<{ field: string; label: string; value: string; source: string }>;
+    unappliedCount: number;
+  } | null>(null);
+  const [aiFeedback, setAiFeedback] = useState<{ type: "success" | "info" | "error"; message: string } | null>(null);
   const isNewsletterOn = profile.details.grantNewsletter === "yes";
   const copyTimer = useRef<number | null>(null);
   useEffect(() => () => { if (copyTimer.current) window.clearTimeout(copyTimer.current); }, []);
   useEffect(() => { setPhotoFailed(false); }, [photoURL]);
+
+  useEffect(() => {
+    if (!auth.currentUser || !ready) return;
+    let active = true;
+    (async () => {
+      try {
+        const res = await authenticatedRequest(auth.currentUser!, "/api/me/profile-suggestions");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (active && data && typeof data.unappliedCount === "number") {
+          setAiSuggestions(data);
+        }
+      } catch {}
+    })();
+    return () => { active = false; };
+  }, [ready, profile]);
+
+  async function handleAiSync() {
+    if (!auth.currentUser || aiSyncing) return;
+    setAiSyncing(true);
+    setAiFeedback(null);
+    try {
+      const res = await authenticatedRequest(auth.currentUser, "/api/me/sync-from-conversations", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) throw new Error("HTTP error " + res.status);
+      const data = await res.json();
+      if (data?.profile) {
+        onChange(normalizeProfile(data.profile));
+        if (data.mergedCount > 0) {
+          setAiFeedback({
+            type: "success",
+            message: `✓ Оновлено ${data.mergedCount} полів з ваших розмов із ШІ!`,
+          });
+        } else {
+          setAiFeedback({
+            type: "info",
+            message: "Дані з розмов з асистентом вже синхронізовано з профілем.",
+          });
+        }
+        setAiSuggestions(null);
+      }
+    } catch {
+      setAiFeedback({
+        type: "error",
+        message: "Не вдалося синхронізувати дані з розмов. Спробуйте пізніше.",
+      });
+    } finally {
+      setAiSyncing(false);
+    }
+  }
   async function handleSendTestEmail() {
     if (!auth.currentUser) return;
     const targetEmail = (profile.details.newsletterEmail || email || "").trim();
@@ -132,9 +191,66 @@ export function BusinessProfile({ profile, email, displayName = "", photoURL = "
   const change = (key: FieldKey, value: string) => onChange(key === "businessName" || key === "region" || key === "description" ? { ...profile, [key]: value } : { ...profile, details: { ...profile.details, [key]: value } });
   function submit(e: React.FormEvent) { if (errors.length) { e.preventDefault(); setAttempted(true); setSection(sections.findIndex(s => s.fields.some(f => f.key === errors[0].key))); requestAnimationFrame(() => document.getElementById(`profile-${errors[0].key}`)?.focus()); return; } onSubmit(e); }
   return <div className="business-profile">
-    <div className="bp-header"><div><p className="bp-eyebrow">Ваш простір</p><h2>Профіль бізнесу</h2><p>Інформація вашого бізнес-акаунта</p></div><span className={dirty ? "bp-status changed" : "bp-status"}>{!ready ? (error ? "Не завантажено" : "Завантаження…") : dirty ? "Є незбережені зміни" : "Збережено"}</span></div>
+    <div className="bp-header">
+      <div>
+        <p className="bp-eyebrow">Ваш простір</p>
+        <h2>Профіль бізнесу</h2>
+        <p>Інформація вашого бізнес-акаунта</p>
+      </div>
+      <div className="bp-header-actions">
+        <button
+          type="button"
+          className="bp-ai-sync-btn"
+          disabled={aiSyncing || !ready}
+          onClick={handleAiSync}
+          title="Оновити профіль на основі фактів, озвучених у розмовах із ШІ-асистентом"
+        >
+          <span className="bp-ai-icon" aria-hidden="true">✨</span>
+          <span>{aiSyncing ? "Синхронізація…" : "Заповнити з діалогу ШІ"}</span>
+        </button>
+        <span className={dirty ? "bp-status changed" : "bp-status"}>
+          {!ready ? (error ? "Не завантажено" : "Завантаження…") : dirty ? "Є незбережені зміни" : "Збережено"}
+        </span>
+      </div>
+    </div>
     <div className="bp-layout"><div className="bp-main">
       <nav className="bp-nav" aria-label="Розділи профілю">{sections.map((s, i) => <button key={s.title} type="button" aria-pressed={section === i} onClick={() => setSection(i)}>{s.title}</button>)}</nav>
+
+      {aiFeedback && (
+        <div className={`bp-ai-feedback ${aiFeedback.type}`} role="status">
+          <span>{aiFeedback.message}</span>
+          <button type="button" className="bp-ai-feedback-close" onClick={() => setAiFeedback(null)} aria-label="Закрити сповіщення">×</button>
+        </div>
+      )}
+
+      {aiSuggestions && aiSuggestions.unappliedCount > 0 && (
+        <div className="bp-ai-banner" role="status">
+          <div className="bp-ai-banner-content">
+            <span className="bp-ai-banner-icon" aria-hidden="true">✨</span>
+            <div>
+              <h4>Знайдено {aiSuggestions.unappliedCount} нових фактів у ваших діалогах з асистентом</h4>
+              <p>Асистент запам’ятав деталі вашої справи під час спілкування. Можете додати їх до кабінету в один клік.</p>
+              <div className="bp-ai-banner-chips">
+                {aiSuggestions.facts.slice(0, 5).map((f) => (
+                  <span key={f.field} className="bp-ai-chip">
+                    <strong>{f.label}:</strong> {f.value}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+          <div className="bp-ai-banner-actions">
+            <button
+              type="button"
+              className="bp-ai-apply-btn"
+              disabled={aiSyncing}
+              onClick={handleAiSync}
+            >
+              {aiSyncing ? "Застосовуємо…" : "Застосувати все"}
+            </button>
+          </div>
+        </div>
+      )}
       <form onSubmit={submit} noValidate><div className="bp-section"><p className="bp-section-number">Розділ {section + 1} з {sections.length}</p><h3>{sections[section].title}</h3><p>{sections[section].intro} Усі поля необов’язкові — заповніть ті, що стосуються вас.</p>
         {(!ready || conflict) && <button type="button" className="bp-retry" disabled={loading || busy} onClick={onRetry}>{loading ? "Завантажуємо…" : conflict ? "Завантажити актуальний профіль" : "Повторити завантаження"}</button>}
         {section === 5 ? (

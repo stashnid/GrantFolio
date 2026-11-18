@@ -155,6 +155,9 @@ export function App() {
     setMobileMenuOpen(false);
     if (next !== "catalog" && window.location.hash.startsWith("#grants")) window.history.replaceState(null, "", window.location.pathname + window.location.search);
     if (next === "catalog" && window.location.hash !== "#grants") window.location.hash = "grants";
+    if (next === "profile" && !profileDirty) {
+      setRetry((r) => r + 1);
+    }
     setTab(next);
     if (user) { try { sessionStorage.setItem(`grantfolio:last-tab:${user.uid}`,next); } catch { /* Navigation still works without browser storage. */ } }
   };
@@ -490,7 +493,7 @@ export function App() {
           ) : (
             <>
             <div hidden={tab !== "advisor"}>
-              <Advisor key={user.uid} user={user} onDirty={setAdvisorDirty} prefilledMessage={advisorPrompt} prefillConversationId={advisorPromptId} onClearPrefilled={() => {setAdvisorPrompt("");setAdvisorPromptId("");}} onView={p => { openTab("catalog"); window.location.hash=`grants/${p.id}`; }} onPrepare={(p,seed) => {setSelectedProgram(p);setPreparationSeed(seed);setPreparationId(crypto.randomUUID());openTab("cases");}} />
+              <Advisor key={user.uid} user={user} onDirty={setAdvisorDirty} prefilledMessage={advisorPrompt} prefillConversationId={advisorPromptId} onClearPrefilled={() => {setAdvisorPrompt("");setAdvisorPromptId("");}} onView={p => { openTab("catalog"); window.location.hash=`grants/${p.id}`; }} onPrepare={(p,seed) => {setSelectedProgram(p);setPreparationSeed(seed);setPreparationId(crypto.randomUUID());openTab("cases");}} onOpenProfile={() => openTab("profile")} />
             </div>
             <div hidden={tab !== "catalog"} className="catalog-tab-content">
               <GrantCatalog

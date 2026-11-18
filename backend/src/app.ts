@@ -9,6 +9,7 @@ import { feedbackRouter } from "./feedback.js";
 import { donationsRouter } from "./donations.js";
 import { configuredEmailLoginCode, sendGmailMessage } from "./email-login-code.js";
 import { profileDetails } from "./profile-details.js";
+import { extractProfileFromHistory } from "./profile-extractor.js";
 
 const profile = z
   .object({
@@ -141,6 +142,119 @@ export function createApp(
       delivered = false;
     }
     res.json({ ok: true, delivered, recipient: targetEmail });
+  });
+  app.get("/api/me/profile-suggestions", async (_req, res, next) => {
+    try {
+      const uid = res.locals.uid;
+      const history = await db.query(
+        "SELECT question, reply FROM advisor_messages WHERE owner_id=$1 ORDER BY created_at ASC LIMIT 100",
+        [uid]
+      );
+      if (!history.rowCount) {
+        res.json({ facts: [], suggestions: {} });
+        return;
+      }
+      const current = await db.query(
+        'SELECT business_name AS "businessName", description, region, details FROM profiles WHERE owner_id=$1',
+        [uid]
+      );
+      const row = current.rows[0];
+      const existing = row ? {
+        businessName: row.businessName || "",
+        description: row.description || "",
+        region: row.region || "",
+        details: (row.details && typeof row.details === "object" ? { ...row.details } : {}) as Record<string, string>,
+      } : undefined;
+      const { data, facts } = extractProfileFromHistory(history.rows, existing);
+      const unappliedCount = Object.keys(data).length;
+      res.json({ facts, suggestions: data, unappliedCount });
+    } catch (error) {
+      next(error);
+    }
+  });
+  app.post("/api/me/sync-from-conversations", async (_req, res, next) => {
+    try {
+      const uid = res.locals.uid;
+      const history = await db.query(
+        "SELECT question, reply FROM advisor_messages WHERE owner_id=$1 ORDER BY created_at ASC LIMIT 100",
+        [uid]
+      );
+      if (!history.rowCount) {
+        res.json({ ok: true, synced: false, facts: [], message: "Немає повідомлень для аналізу" });
+        return;
+      }
+      const current = await db.query(
+        'SELECT business_name AS "businessName", description, region, details, revision FROM profiles WHERE owner_id=$1',
+        [uid]
+      );
+      const currentRow = current.rows[0];
+      const existing = {
+        businessName: currentRow?.businessName || "",
+        description: currentRow?.description || "",
+        region: currentRow?.region || "",
+        details: (currentRow?.details && typeof currentRow.details === "object" ? { ...currentRow.details } : {}) as Record<string, string>,
+      };
+      const currentRevision = currentRow?.revision ?? 0;
+      const { data: extracted, facts } = extractProfileFromHistory(history.rows, existing);
+      if (!facts.length || !Object.keys(extracted).length) {
+        res.json({ ok: true, synced: false, facts: [], profile: existing, revision: currentRevision });
+        return;
+      }
+
+      let mergedCount = 0;
+      let newBusinessName = existing.businessName;
+      if (!newBusinessName && extracted.businessName) {
+        newBusinessName = extracted.businessName;
+        mergedCount++;
+      }
+      let newRegion = existing.region;
+      if (!newRegion && extracted.region) {
+        newRegion = extracted.region;
+        mergedCount++;
+      }
+      let newDescription = existing.description;
+      if (!newDescription && extracted.description) {
+        newDescription = extracted.description;
+        mergedCount++;
+      }
+      const details = { ...existing.details };
+
+      for (const key of ["city", "legalForm", "industry", "requestedAmount", "fundingPurpose", "teamSize", "grantExperience"] as const) {
+        if (!details[key] && extracted[key]) {
+          details[key] = extracted[key]!;
+          mergedCount++;
+        }
+      }
+
+      let saved;
+      if (current.rowCount) {
+        saved = await db.query(
+          `UPDATE profiles SET business_name=$2, description=$3, region=$4,
+            details=$5::jsonb, updated_at=now(), revision=revision+1
+           WHERE owner_id=$1
+           RETURNING business_name AS "businessName", description, region, details, revision`,
+          [uid, newBusinessName, newDescription, newRegion, JSON.stringify(details)]
+        );
+      } else {
+        saved = await db.query(
+          `INSERT INTO profiles(owner_id, business_name, description, region, details, revision)
+           VALUES ($1,$2,$3,$4,$5::jsonb,1)
+           RETURNING business_name AS "businessName", description, region, details, revision`,
+          [uid, newBusinessName, newDescription, newRegion, JSON.stringify(details)]
+        );
+      }
+      const row = saved.rows[0];
+      res.json({
+        ok: true,
+        synced: true,
+        mergedCount,
+        facts,
+        profile: presentProfile(row),
+        revision: row.revision,
+      });
+    } catch (error) {
+      next(error);
+    }
   });
   app.use("/api/advisor", advisorRouter(db));
   app.use("/api/cases", casesRouter(db));
