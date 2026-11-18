@@ -76,6 +76,54 @@ html {
   -moz-osx-font-smoothing: grayscale;
 }
 
+main.app-boot-splash {
+  min-height: 100dvh;
+  margin: 0 !important;
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  place-items: center;
+  padding: 24px;
+  background: #ffffff !important;
+}
+
+.app-boot-inner {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+}
+
+.app-boot-brand {
+  color: #122441;
+  font-family: var(--font-heading);
+  font-size: 26px;
+  font-weight: 800;
+  letter-spacing: -0.045em;
+}
+
+.app-boot-spinner {
+  width: 24px;
+  height: 24px;
+  border: 2.5px solid #e2e8f0;
+  border-top-color: #315fd7;
+  border-radius: 50%;
+  animation: gf-bootSpin 0.75s linear infinite;
+}
+
+@keyframes gf-bootSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .app-boot-spinner {
+    animation: none;
+    border-color: #315fd7;
+    opacity: 0.65;
+  }
+}
+
 .sr-only {
   position: absolute;
   width: 1px;

@@ -40,6 +40,7 @@ function NavIcon({kind}: {kind: WorkspaceTab | "logout"}) {
 export function App() {
   const emailInput = useRef<HTMLInputElement>(null);
   const autoSendEmailCode = useRef(false);
+  const activeUid = useRef<string | null>(null);
   const [confirmation, setConfirmation] = useState<"checking" | "required" | "ready" | "unavailable">("checking");
   const [confirmationAttempt, setConfirmationAttempt] = useState(0);
   const [user, setUser] = useState<User | null>(null),
@@ -70,6 +71,13 @@ export function App() {
   useEffect(
     () =>
       onAuthStateChanged(auth, (u) => {
+        const nextUid = u?.uid ?? null;
+        if (nextUid && activeUid.current === nextUid) {
+          setUser(u);
+          setLoading(false);
+          return;
+        }
+        activeUid.current = nextUid;
         if (!u) autoSendEmailCode.current = false;
         setUser(u);
         setConfirmation("checking");
@@ -270,6 +278,19 @@ export function App() {
       setBusy(false);
     }
   }
+  if (loading || (user && confirmation === "checking")) {
+    return (
+      <main className="app-boot-splash" aria-busy="true">
+        <div className="app-boot-inner" role="status" aria-live="polite">
+          <span className="app-boot-brand">GrantFolio</span>
+          <span className="app-boot-spinner" aria-hidden="true" />
+          <span className="sr-only">
+            {user ? "Перевіряємо вхід…" : "Відкриваємо GrantFolio…"}
+          </span>
+        </div>
+      </main>
+    );
+  }
   if (user && confirmation === "required") {
     return <EmailLoginCode key={user.uid} user={user} autoSend={autoSendEmailCode.current} onVerified={() => {
       autoSendEmailCode.current = false;
@@ -278,22 +299,33 @@ export function App() {
     }} onExit={() => void logout()} />;
   }
   if (user && confirmation !== "ready") {
-    return <main className="panel"><section className="card auth-card">
-      {confirmation === "checking" ? <p role="status">Перевіряємо вхід…</p> : <>
-        <p role="alert">Не вдалося перевірити вхід.</p>
-        <button type="button" className="primary" onClick={() => {
-          setConfirmation("checking");
-          setConfirmationAttempt(attempt => attempt + 1);
-        }}>Спробувати ще раз</button>
-        <button type="button" className="link" onClick={() => void logout()}>Вийти</button>
-      </>}
+    return <main className="app-boot-splash"><section className="card auth-card">
+      <p role="alert">Не вдалося перевірити вхід.</p>
+      <button type="button" className="primary" onClick={() => {
+        setConfirmation("checking");
+        setConfirmationAttempt(attempt => attempt + 1);
+      }}>Спробувати ще раз</button>
+      <button type="button" className="link" onClick={() => void logout()}>Вийти</button>
     </section></main>;
   }
   return (
     <>
       <a className="skip-link" href="#main-content" onClick={(event) => { event.preventDefault(); document.getElementById("main-content")?.focus(); }}>Перейти до вмісту</a>
       <header className={user ? "app-sidebar" : undefined} data-mobile-open={mobileMenuOpen}>
-        <a className="brand" href="/" aria-label="GrantFolio, головна">
+        <a
+          className="brand"
+          href="/"
+          aria-label="GrantFolio, головна"
+          onClick={(event) => {
+            if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey || event.button !== 0) return;
+            event.preventDefault();
+            if (user) {
+              openTab("advisor");
+            } else {
+              window.scrollTo({ top: 0, behavior: "smooth" });
+            }
+          }}
+        >
           GrantFolio
         </a>
         <span className="header-note">Гранти та фінансова підтримка бізнесу</span>
