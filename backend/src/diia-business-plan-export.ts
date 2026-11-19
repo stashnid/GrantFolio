@@ -9,6 +9,9 @@ import type { GrantApplicationAnswers } from "./grant-application.js";
 import type { FinancialBusinessPlanRows, FinancialPlan } from "./grant-financial-plan.js";
 import { calculateFinancialPlan, financialBusinessPlanRowsMatch } from "./grant-financial-plan.js";
 import { parseGrantInvestmentLines } from "./grant-investment-lines.js";
+import { FormulaOverwriteError, assertCanWriteCell } from "./export/templateCellMap.js";
+
+export { FormulaOverwriteError } from "./export/templateCellMap.js";
 
 const run = promisify(execFile);
 const workbookNamespace = "http://schemas.openxmlformats.org/spreadsheetml/2006/main";
@@ -205,13 +208,13 @@ function sheetPaths(files: Record<string, Uint8Array>) {
   return { paths, workbookXml };
 }
 
-function replaceCell(xml: string, reference: string, value: string | number | null, clear: boolean) {
+function replaceCell(xml: string, sheetName: string, reference: string, value: string | number | null, clear: boolean) {
   const matcher = new RegExp(`<c\\b([^>]*\\br="${reference}"[^>]*)\\s*\\/>|<c\\b([^>]*\\br="${reference}"[^>]*)>([\\s\\S]*?)<\\/c>`);
   const match = matcher.exec(xml);
   if (!match) throw new Error(`Missing official template cell: ${reference}`);
   const attributes = match[1] ?? match[2];
   const inner = match[3] ?? "";
-  if (/<f(?:\s|>)/.test(inner)) throw new Error(`Refusing to replace a formula cell: ${reference}`);
+  assertCanWriteCell(sheetName, reference, inner);
   const style = attributes.match(/\bs="([^"]+)"/)?.[1];
   const styleAttribute = style ? ` s="${style}"` : "";
   let replacement: string;
@@ -302,14 +305,14 @@ export function buildDiiaBusinessPlanWorkbook(
     if (!paths.has(sheet)) throw new Error(`Missing official sheet: ${sheet}`);
     if (!/^[A-Z]{1,3}[1-9][0-9]*$/.test(cell)) throw new Error(`Invalid cell reference: ${cell}`);
     const path = paths.get(sheet)!;
-    files[path] = strToU8(replaceCell(strFromU8(files[path]), cell, null, true));
+    files[path] = strToU8(replaceCell(strFromU8(files[path]), sheet, cell, null, true));
   }
   for (const [sheetName, entries] of Object.entries(cells)) {
     if (!sheetName || !paths.has(sheetName)) throw new Error(`Missing official sheet: ${sheetName}`);
     let sheetXml = strFromU8(files[paths.get(sheetName)!]);
     for (const [reference, value] of Object.entries(entries ?? {})) {
       if (!/^[A-Z]{1,3}[1-9][0-9]*$/.test(reference)) throw new Error(`Invalid cell reference: ${reference}`);
-      sheetXml = replaceCell(sheetXml, reference, value, false);
+      sheetXml = replaceCell(sheetXml, sheetName, reference, value, false);
     }
     files[paths.get(sheetName)!] = strToU8(sheetXml);
   }

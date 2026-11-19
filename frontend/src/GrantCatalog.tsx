@@ -342,6 +342,7 @@ export function GrantCatalog({
   const [category, setCategory] = useState("all");
   const [funding, setFunding] = useState("all");
   const [onlyOpen, setOnlyOpen] = useState(false);
+  const [onlyFlagship, setOnlyFlagship] = useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(catalogId);
   const lastCard = useRef<string | null>(null);
@@ -483,7 +484,11 @@ export function GrantCatalog({
     category !== "all" ||
     funding !== "all" ||
     onlyOpen ||
+    onlyFlagship ||
     search.trim().length > 0;
+  const flagshipCount = useMemo(() => {
+    return programs.filter((p) => p.supportTier === "deep").length;
+  }, [programs]);
   const searchIndex = useMemo(
     () =>
       new Map(
@@ -525,12 +530,12 @@ export function GrantCatalog({
     const trimmedSearch = search.trim();
     const queryWords = trimmedSearch
       ? normalize(search)
-          .split(" ")
-          .filter(
-            (word) =>
-              word.length > 1 &&
-              !["для", "на", "та", "і", "у", "в"].includes(word),
-          )
+        .split(" ")
+        .filter(
+          (word) =>
+            word.length > 1 &&
+            !["для", "на", "та", "і", "у", "в"].includes(word),
+        )
       : [];
     return programs
       .filter((p) => {
@@ -538,6 +543,7 @@ export function GrantCatalog({
         if (funding !== "all" && (p.fundingType ?? "unknown") !== funding)
           return false;
         if (onlyOpen && !confirmedIds.has(p.id)) return false;
+        if (onlyFlagship && p.supportTier !== "deep") return false;
         if (!trimmedSearch) return true;
         if (matches.has(p.id)) return true;
         const text = searchIndex.get(p.id) ?? "";
@@ -552,6 +558,7 @@ export function GrantCatalog({
     category,
     funding,
     onlyOpen,
+    onlyFlagship,
     confirmedIds,
     search,
     result,
@@ -562,6 +569,7 @@ export function GrantCatalog({
     setCategory("all");
     setFunding("all");
     setOnlyOpen(false);
+    setOnlyFlagship(false);
   };
   const list = (items: readonly string[]) => (
     <ul>
@@ -615,12 +623,26 @@ export function GrantCatalog({
             Офіційна програма: {selected.title}
           </p>
           <div className="grant-badges">
+            {selected.supportTier === "deep" ? (
+              <span className="grant-badge-deep">
+                ⭐ Глибока підготовка + документи
+              </span>
+            ) : (
+              <span className="grant-badge-catalog">
+                📋 Огляд програми
+              </span>
+            )}
             <span>{fundingLabel(selected)}</span>
             <span>
               {selected.programKind === "program"
                 ? "Програма підтримки"
                 : "Конкурс / набір"}
             </span>
+          </div>
+          <div className={`grant-support-tier-banner ${selected.supportTier === "deep" ? "deep" : "catalog-only"}`}>
+            {selected.supportTier === "deep"
+              ? "⭐ Флагманська програма: доступні повний Playbook з лімітами, перевірка робочих місць, податкового повернення та генерація документів (Excel .xlsx / PDF)."
+              : "📋 Огляд програми: для цієї програми доступні консультація та базовий проєкт, а повні шаблони офіційних документів та авторозрахунок доступні у флагманських програмах."}
           </div>
           <p className="grant-page-amount">{selected.amount}</p>
           <p className="grant-official-name">
@@ -937,6 +959,22 @@ export function GrantCatalog({
               </span>
               <span className="catalog-switch-count">{openAvailableCount}</span>
             </button>
+            <button
+              type="button"
+              role="switch"
+              id="grant-flagship-filter"
+              aria-checked={onlyFlagship}
+              className="catalog-switch-btn"
+              onClick={() => setOnlyFlagship((v) => !v)}
+            >
+              <span className="catalog-switch-track" aria-hidden="true">
+                <span className="catalog-switch-thumb" />
+              </span>
+              <span className="catalog-switch-label">
+                ⭐ Флагманські програми
+              </span>
+              <span className="catalog-switch-count">{flagshipCount}</span>
+            </button>
           </div>
           <p className="catalog-scope-note">
             {onlyOpen
@@ -1030,6 +1068,15 @@ export function GrantCatalog({
                 {p.categoryLabel} · {p.provider}
               </p>
               <div className="grant-badges">
+                {p.supportTier === "deep" ? (
+                  <span className="grant-badge-deep">
+                    ⭐ Глибока підготовка + документи
+                  </span>
+                ) : (
+                  <span className="grant-badge-catalog">
+                    📋 Огляд програми
+                  </span>
+                )}
                 <span>{fundingLabel(p)}</span>
                 <span>
                   {p.programKind === "program"

@@ -6,6 +6,10 @@ import { parseDraftSuggestions } from "./draft-suggestions.js";
 import type { ProfileDetails } from "./profile-details.js";
 import { postgresAssistantLimiter, type AssistantLimiter } from "./assistant-limits.js";
 
+import { getProgramPlaybook } from "./playbooks/index.js";
+import { runAgentOrchestrator } from "./ai/agentOrchestrator.js";
+import { isAiConfigured } from "./ai/aiConfig.js";
+
 const input = z.object({ expectedRevision: z.number().int().min(0).max(2147483646), message: z.string().trim().min(1).max(2000) }).strict();
 type Snapshot = { mode?: "discovery" | "preparation-ideas"; discovery?: unknown; title: string; program_id?: string | null; revision: number; profileRevision: number; details: unknown; items: unknown; total_kopecks: string; businessProfile?: { businessName: string; description: string; region: string; details?: Omit<ProfileDetails, "contactName" | "phone" | "website"> }; conversation?: { question: string; reply: string; revision: number; stale: boolean; truncated: boolean }[] };
 export type AssistantResponder = (snapshot: Snapshot, message: string, signal: AbortSignal) => Promise<string>;
@@ -45,7 +49,37 @@ export function assistantRouter(db: Pool, responder: AssistantResponder | null |
       if (!result.rowCount) { res.status(404).json({ error: "not_found" }); return; }
       const snapshot: Snapshot = result.rows[0];
       if (snapshot.revision !== parsed.data.expectedRevision) { res.status(409).json({ error: "revision_conflict" }); return; }
-      if (!responder) { res.status(503).json({ error: "assistant_unavailable" }); return; }
+      const activeResponder: AssistantResponder | undefined = responder ?? (isAiConfigured() ? async (snap, msg, signal) => {
+        const hist: { role: "user" | "model"; text: string }[] = [];
+        if (Array.isArray(snap.conversation)) {
+          for (const c of snap.conversation) {
+            hist.push({ role: "user", text: c.question });
+            hist.push({ role: "model", text: c.reply });
+          }
+        }
+        const playbook = snap.program_id ? getProgramPlaybook(snap.program_id) : undefined;
+        const res = await runAgentOrchestrator({
+          userMessage: msg,
+          history: hist,
+          context: {
+            mode: "project",
+            activeProject: {
+              title: snap.title,
+              program_id: snap.program_id,
+              revision: snap.revision,
+              total_kopecks: snap.total_kopecks,
+              items: Array.isArray(snap.items) ? snap.items : undefined,
+              details: snap.details,
+            },
+            activePlaybook: playbook,
+            userProfile: snap.businessProfile,
+          },
+          signal,
+        });
+        return res.reply_text;
+      } : undefined);
+
+      if (!activeResponder) { res.status(503).json({ error: "assistant_unavailable" }); return; }
       const uid: string = res.locals.uid;
       const lease = await limiter.acquire(uid, timeoutMs + 60000);
       if (!lease) { res.status(429).json({ error: "rate_limited" }); return; }
@@ -60,9 +94,9 @@ export function assistantRouter(db: Pool, responder: AssistantResponder | null |
           const { contactName: _contactName, phone: _phone, website: _website, newsletterEmail: _newsletterEmail, ...safeDetails } = rawDetails;
           snapshot.businessProfile = Object.keys(safeDetails).length ? { ...base, details: safeDetails } : base;
         }
-        const history = await db.query("SELECT question, reply, revision, profile_revision FROM assistant_exchanges WHERE case_id=$1 AND owner_id=$2 ORDER BY created_at DESC, id DESC LIMIT 2", [req.params.id, uid]);
+        const history = await db.query("SELECT question, reply, revision, profile_revision FROM assistant_exchanges WHERE case_id=$1 AND owner_id=$2 ORDER BY created_at DESC, id DESC LIMIT 16", [req.params.id, uid]);
         snapshot.conversation = history.rows.reverse().map((row) => ({ question: row.question.slice(0, 2000), reply: parseDraftSuggestions(row.reply).reply.slice(0, 3000), revision: row.revision, stale: row.revision !== snapshot.revision || row.profile_revision === null || row.profile_revision !== snapshot.profileRevision, truncated: row.question.length > 2000 || row.reply.length > 3000 }));
-        const reply = await Promise.race([responder(snapshot, parsed.data.message, controller.signal), new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error("timeout")); }, timeoutMs); })]);
+        const reply = await Promise.race([activeResponder(snapshot, parsed.data.message, controller.signal), new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error("timeout")); }, timeoutMs); })]);
         if (typeof reply !== "string" || !reply.trim() || reply.length > 12000) throw new Error("upstream");
         let saved;
         try {

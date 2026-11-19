@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execSync } from "node:child_process";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
 import { strFromU8, unzipSync } from "fflate";
@@ -134,7 +135,16 @@ test("rejects formula edits and missing cells", async () => {
   assert.throws(() => buildDiiaBusinessPlanWorkbook(template, { "Бізнес план": { Z999: 9 } }, []), /missing official template cell/i);
 });
 
-test("official export creates a PDF from the same workbook and hides reference sheets", async () => {
+function hasLibreOffice(): boolean {
+  try {
+    execSync("which soffice || which libreoffice", { stdio: "ignore" });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+test("official export creates a PDF from the same workbook and hides reference sheets", { skip: !hasLibreOffice() }, async () => {
   const template = await readFile(templateUrl);
   const archive = unzipSync(await createDiiaBusinessPlanExport(template, { "Бізнес план": { B41: "Загальна система" } }, [
     { sheet: "Бізнес план", cell: "B43" },

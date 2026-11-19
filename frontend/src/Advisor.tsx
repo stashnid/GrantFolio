@@ -136,6 +136,7 @@ export function Advisor({
     [hasMore, setHasMore] = useState(false),
     [cursor, setCursor] = useState<string | null>(null);
   const [revealingId, setRevealingId] = useState<string | null>(null);
+  const [liveProgressStatus, setLiveProgressStatus] = useState<string>("");
   const [pendingQuestion, setPendingQuestion] = useState("");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copyError, setCopyError] = useState("");
@@ -511,38 +512,102 @@ export function Advisor({
     }
     persistRef.current();
     try {
-      const r = await authenticatedRequest(
-        user,
-        "/api/advisor",
-        {
+      let streamHandled = false;
+      try {
+        const token = await user.getIdToken();
+        const streamRes = await fetch("/api/advisor/stream", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
           body: JSON.stringify({
             id: attempts.current[id].id,
             conversationId: id,
             message: question,
           }),
-        },
-        40000
-      );
-      if (!r.ok) throw new ApiError("http", r.status);
-      const data = await r.json();
-      const m = data.message;
-      if (!m || typeof m.reply !== "string" || !Array.isArray(m.search?.matches)) throw Error();
-      if (current.current !== id) return;
-      setRevealingId(messages.some((item) => item.id === m.id) ? null : m.id);
-      setMessages((previous) => [...previous.filter((x) => x.id !== m.id), m]);
-      updateText("");
-      delete drafts.current[id];
-      delete attempts.current[id];
-      setRestored(false);
-      persistRef.current();
-      void loadConversations().catch(() => {});
+        });
+
+        if (streamRes.ok && streamRes.body) {
+          const reader = streamRes.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = "";
+          let finalMsg: any = null;
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            buffer += decoder.decode(value, { stream: true });
+            const events = buffer.split("\n\n");
+            buffer = events.pop() || "";
+            for (const ev of events) {
+              const lines = ev.split("\n");
+              const evLine = lines.find((l) => l.startsWith("event: "));
+              const dataLine = lines.find((l) => l.startsWith("data: "));
+              if (evLine && dataLine) {
+                const evType = evLine.slice(7).trim();
+                const data = JSON.parse(dataLine.slice(6));
+                if (evType === "status" && data.status) {
+                  setLiveProgressStatus(data.status);
+                } else if (evType === "done" && data.message) {
+                  finalMsg = data.message;
+                }
+              }
+            }
+          }
+          if (finalMsg && typeof finalMsg.reply === "string" && Array.isArray(finalMsg.search?.matches)) {
+            streamHandled = true;
+            const m = finalMsg;
+            if (current.current === id) {
+              setRevealingId(messages.some((item) => item.id === m.id) ? null : m.id);
+              setMessages((previous) => [...previous.filter((x) => x.id !== m.id), m]);
+              updateText("");
+              delete drafts.current[id];
+              delete attempts.current[id];
+              setRestored(false);
+              persistRef.current();
+              void loadConversations().catch(() => {});
+            }
+          }
+        }
+      } catch {
+        streamHandled = false;
+      }
+
+      if (!streamHandled) {
+        const r = await authenticatedRequest(
+          user,
+          "/api/advisor",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              id: attempts.current[id].id,
+              conversationId: id,
+              message: question,
+            }),
+          },
+          40000
+        );
+        if (!r.ok) throw new ApiError("http", r.status);
+        const data = await r.json();
+        const m = data.message;
+        if (!m || typeof m.reply !== "string" || !Array.isArray(m.search?.matches)) throw Error();
+        if (current.current !== id) return;
+        setRevealingId(messages.some((item) => item.id === m.id) ? null : m.id);
+        setMessages((previous) => [...previous.filter((x) => x.id !== m.id), m]);
+        updateText("");
+        delete drafts.current[id];
+        delete attempts.current[id];
+        setRestored(false);
+        persistRef.current();
+        void loadConversations().catch(() => {});
+      }
     } catch (e) {
       setError(
         readableApiError(e, "Не вдалося підтвердити відповідь. Запитання залишилося; можна повторити без дублювання.")
       );
     } finally {
+      setLiveProgressStatus("");
       setBusy(false);
       setPendingQuestion("");
       sending.current = false;
@@ -1114,6 +1179,17 @@ export function Advisor({
                         )}
                       </div>
                     )}
+                    {Array.isArray((m as any).pending_proposals) && (m as any).pending_proposals.length > 0 && (
+                      <div className="advisor-proposals-container">
+                        {(m as any).pending_proposals.map((prop: any) => (
+                          <div key={prop.id} className="advisor-proposal-item">
+                            <span className="proposal-tag">💡 Пропозиція для проєкту</span>
+                            <p className="proposal-text">{prop.summary}</p>
+                            <span className="proposal-note">Потрібне підтвердження в інтерфейсі</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                     {revealingId !== m.id && !selectedProgram && m.search.matches.length > 0 && (
                       <div className="advisor-recommendations" aria-label="Можливі програми">
                         {m.search.matches.slice(0, 3).map((match) => {
@@ -1208,7 +1284,7 @@ export function Advisor({
                       <span />
                       <span />
                     </span>
-                    <span className="chat-pending-text">Аналізую запит і шукаю можливі програми…</span>
+                    <span className="chat-pending-text">{liveProgressStatus || "Аналізую запит і шукаю можливі програми…"}</span>
                   </div>
                 </div>
               </div>

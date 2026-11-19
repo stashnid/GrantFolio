@@ -19,7 +19,10 @@
     "test:auth-persistence": "node scripts/test-auth-persistence.mjs",
     "grants:refresh": "node --env-file-if-exists=.env --import tsx backend/src/grant-sync-cli.ts",
     "grants:discover": "node --env-file-if-exists=.env --import tsx backend/src/funding-monitor-cli.ts",
-    "grants:smart-sync": "node --env-file-if-exists=.env --import tsx backend/src/smart-monitor-cli.ts"
+    "grants:smart-sync": "node --env-file-if-exists=.env --import tsx backend/src/smart-monitor-cli.ts",
+    "sync:playbooks": "node --env-file-if-exists=.env --import tsx backend/src/playbooks/syncPlaybooks.ts",
+    "sync:embeddings": "node --env-file-if-exists=.env --import tsx backend/src/matching/hybridSearch.ts",
+    "eval:assistant": "node --env-file-if-exists=.env --import tsx scripts/eval-assistant.ts"
   },
   "dependencies": {
     "express": "5.1.0",

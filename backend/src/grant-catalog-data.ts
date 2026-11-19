@@ -23,6 +23,10 @@ export type GrantCatalogEntry = {
   officialUrl: string;
   checkedAt: string;
   intakeStatus: "open" | "unconfirmed" | "paused" | "archived";
+  supportTier?: "deep" | "catalog_only";
+  searchTags?: string[];
+  searchSynonyms?: string[];
+  useCaseExamples?: string[];
   planningLimitKopecks?: number;
   currency?: "UAH" | "USD" | "EUR";
   fundingType?: "grant" | "reimbursement" | "cofinancing" | "loan" | "equity" | "guarantee" | "prize" | "voucher" | "in-kind" | "recoverable-grant" | "blended" | "leasing" | "factoring" | "insurance";
@@ -80,6 +84,7 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
       "https://diia.gov.ua/services/zapochatkuvannia-ta-masshtabuvannia-vlasnoi-spravy",
     checkedAt: "2026-11-18",
     intakeStatus: "unconfirmed",
+    supportTier: "deep",
     planningLimitKopecks: 250000000,
     details: {
       overview:
@@ -186,6 +191,7 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
       "https://diia.gov.ua/services/zapochatkuvannia-ta-masshtabuvannia-vlasnoi-spravy",
     checkedAt: "2026-11-16",
     intakeStatus: "archived",
+    supportTier: "deep",
     details: {
       overview:
         "Ця картка зберігає пояснення переходу між програмами. Дія оголосила завершення старого прийому 31 липня 2026 року.",
@@ -255,6 +261,7 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
       "https://diia.gov.ua/services/grant-na-pererobne-pidpriyemstvo",
     checkedAt: "2026-11-16",
     intakeStatus: "paused",
+    supportTier: "deep",
     planningLimitKopecks: 1600000000,
     details: {
       overview:
@@ -318,6 +325,7 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
     officialUrl: "https://diia.gov.ua/services/grant-na-sad",
     checkedAt: "2026-11-16",
     intakeStatus: "paused",
+    supportTier: "deep",
     details: {
       overview:
         "Підтримка висадки багаторічних насаджень, а не загальне фінансування будь-якого агробізнесу.",

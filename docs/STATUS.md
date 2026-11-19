@@ -1,5 +1,45 @@
 # Поточний стан GrantFolio
 
+## Комплексний апгрейд AI-асистента, каталогу, плейбуків, фінансової моделі та формуло-безпечного Excel-експорту (MASTER SPEC) — 19.11.2026
+
+1. **Етап 1: Конфігурація моделей (Model Router) та базовий System Prompt**:
+   - Створено модуль `backend/src/ai/aiConfig.ts` та додано змінні в `.env.example`: `GEMINI_CHAT_MODEL`, `GEMINI_PRO_MODEL`, `GEMINI_UTILITY_MODEL`, `GEMINI_EMBEDDING_MODEL`, `AI_ASSISTANT_SYSTEM_PROMPT_OVERRIDE`.
+   - Створено модуль `backend/src/ai/prompts/assistantSystemPrompt.ts` із затвердженим системним промптом: сувора заборона клішованих привітань («Вітаю! Знайшов гранти...»), критичне мислення, націленість на бізнес-реалії України та динамічне підлаштування довжини.
+   - Тести `backend/test/aiConfig.test.ts` успішно пройдені (2/2).
+
+2. **Етап 2: Глибокі плейбуки флагманських програм та оновлення каталогу**:
+   - Створено строгу Zod-схему `backend/src/playbooks/schema.ts` та 5 детальних структурованих плейбуків (`backend/src/playbooks/`): «Власна справа», «Грант для ветеранів», «Brave1», «Грант на переробне підприємство», «Сади та теплиці».
+   - Додано міграцію `backend/migrations/026_program_playbooks_and_search.sql` (таблиця `catalog_programs` з полями `support_tier`, `search_tags`, `search_synonyms`, `use_case_examples`, `embedding_vector`).
+   - Створено CLI-скрипт синхронізації `backend/src/playbooks/syncPlaybooks.ts` (`npm run sync:playbooks`).
+   - Оновлено каталог: додано фільтр «⭐ Флагманські програми», візуальні бейджі «Глибока підготовка + документи» vs «Огляд програми» та інформаційні плашки у модальному вікні.
+   - Тести `backend/test/playbooks.test.ts` успішно пройдені (4/4).
+
+3. **Етап 3: Агентний цикл (Agent Loop), Tool Calling та гібридний пошук**:
+   - Створено модуль `backend/src/ai/geminiClient.ts` з підтримкою багатоходового виклику функцій (Tool Calling), генерації ембеддингів та безпечного офлайн-фолбеку для CI без живих ключів.
+   - Реалізовано гібридний пошук `backend/src/matching/hybridSearch.ts` (поєднання семантичних ембеддингів, триграмів, сленгових синонімів та контексту профілю заявника; запит «приватне ППО» надійно знаходить Brave1).
+   - Створено `backend/src/ai/agentOrchestrator.ts` з 4-кроковим агентним циклом та 5 інструментами (`search_grants`, `get_program_playbook`, `get_project_state`, `validate_project_financials`, `propose_structured_update`).
+   - Реалізовано SSE-стрімінг `POST /api/advisor/stream` із живою індикацією статусів («Аналізую запит…», «Шукаю гранти…») та human-in-the-loop картками пропозицій (ШІ ніколи не записує дані в БД напряму).
+   - Створено тестовий CLI `scripts/eval-assistant.ts` (`npm run eval:assistant`).
+   - Тести `backend/test/assistantAgent.test.ts` успішно пройдені (4/4).
+
+4. **Етап 4: Детермінована фінансова модель (цілі копійки), валідатор гранту та двоконтурний бізнес-план**:
+   - Створено `backend/src/finance/taxConfig2026.ts` з офіційними ставками податків 2026 року (мінзарплата 8 000 грн, ФОП 2, ФОП 3, наймані працівники ПДФО 18%, ВЗ 5%, ЄСВ 22%).
+   - Створено `backend/src/finance/engine.ts`: помісячний розрахунок грошових потоків (24/36/60 міс.) виключно в цілих копійках, модель виходу на потужність (ramp-up), формування `FinancialPlan` для Дія.
+   - Створено `backend/src/finance/grantValidator.ts`: діагностика касових розривів, перевірка 36-місячного повернення суми гранту через сплату податків (Порядок КМУ № 738), контроль нормативів працевлаштування та лімітів витрат.
+   - Створено `backend/src/ai/businessPlanPipeline.ts`: 4-кроковий контур підготовки бізнес-плану, де текст генерується строго на основі детермінованого фінансового знімка.
+   - Тести `backend/test/financeEngine.test.ts` успішно пройдені (3/3).
+
+5. **Етап 4.3: Формуло-безпечний експорт в Excel (без втрати та пошкодження формул)**:
+   - Створено модуль `backend/src/export/templateCellMap.ts` з декларативними списками `INPUT_CELLS`, `PROTECTED_FORMULA_CELLS` та типізованою помилкою `FormulaOverwriteError`.
+   - Оновлено `backend/src/diia-business-plan-export.ts`: перевірка дозволених клітинок перед записом, збереження стилів `s="..."`, очищення застарілого кешу, примусовий перерахунок через `fullCalcOnLoad="1"` та `forceFullCalc="1"`.
+   - Створено тест `backend/test/excelExport.formulas.test.ts`: підтверджено 100% збереження формул `<f>` на аркушах «Бізнес план» (18 формул) та «Прибутки та збитки» (1138 формул) для 36-місячного плану «Власна справа».
+   - Тести `backend/test/excelExport.formulas.test.ts` успішно пройдені (2/2 + 1 conditional skip).
+
+6. **Повна верифікація**:
+   - `npm run typecheck` — 0 помилок.
+   - `npm run build` — успішно (backend tsc + frontend vite build).
+   - Всі юніт-тести оновленого функціоналу проходять офлайн без живих ключів API.
+
 ## Відкат до попередньої версії сторінки входу за запитом користувача — 19.11.2026
 
 1. **Відновлення класичної початкової сторінки входу (`frontend/src/App.tsx`)**:
