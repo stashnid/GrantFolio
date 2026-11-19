@@ -362,7 +362,7 @@ export function Cases({
       setSelected(c);
       setDraft(toDraft(c.items));
       setDetails(c.details || emptyDetails);
-      setActiveStep("assistant");
+      setActiveStep(c.programId && hasGuidedApplication(c.programId) ? "review" : "assistant");
       setAssistantPrompt("");
       void loadReadiness(c.id);
       setConflict(false);
@@ -374,22 +374,41 @@ export function Cases({
       setBusy(false);
     }
   }
+  const handledPreparation = useRef("");
   useEffect(() => {
-    if (selectedProgram && programTarget) { setShowCreate(false); return; }
-    if (selectedProgram) {
+    if (!selectedProgram) { handledPreparation.current = ""; return; }
+    if (programTarget || !ready || busy) return;
+    const key = preparationId || `catalog:${selectedProgram.id}`;
+    if (handledPreparation.current === key) return;
+    handledPreparation.current = key;
+    void (async () => {
+      if (!(await mayLeaveDraft()) || !mountedRef.current) { onClearProgram?.(); return; }
+      setTitle("");
+      setInitialNeed(preparationSeed.slice(0, 2000));
+      setError("");
       setShowCreate(true);
-      setTitle((current) => (!preparationId && current) || `${preparationSeed ? preparationSeed.slice(0,80) : businessName || "Мій проєкт"} — ${friendlyTitle(selectedProgram)}`.slice(0, 160));
       requestAnimationFrame(() => createTitleInput.current?.focus());
-    }
-  }, [selectedProgram, programTarget, businessName, preparationSeed, preparationId]);
+    })();
+  }, [selectedProgram, programTarget, preparationId, preparationSeed, ready, busy]);
 
-  async function create(e?: React.FormEvent, preparation?: { title: string; programId: string; initialDescription: string }) {
+  async function openNewProject() {
+    if (!(await mayLeaveDraft())) return;
+    onClearProgram?.();
+    setTitle("");
+    setInitialNeed("");
+    setError("");
+    setShowCreate(true);
+    requestAnimationFrame(() => createTitleInput.current?.focus());
+  }
+
+  async function create(e?: React.FormEvent) {
     e?.preventDefault();
-    if (programTarget || busy || !ready || (!preparation && !(await mayLeaveDraft()))) return;
-    const targetId = preparation?.programId ?? selectedProgram?.id ?? null;
+    if (programTarget || busy || !ready || !(await mayLeaveDraft())) return;
+    const targetId = selectedProgram?.id ?? "vlasna-sprava";
     const target = targetId ? GRANT_PROGRAMS.find(p => p.id === targetId) : null;
     if (targetId && (!target || !hasGuidedApplication(target.id))) { setError("Для цієї програми доступний пошук і перегляд умов. Виберіть програму з анкетою або створіть загальну чернетку."); return; }
-    const values = preparation ?? { title, programId: target?.id ?? null, initialDescription: initialNeed };
+    if (!title.trim()) { setError("Введіть власну назву проєкту."); createTitleInput.current?.focus(); return; }
+    const values = { title: title.trim(), programId: target?.id ?? null, initialDescription: initialNeed };
     const body = JSON.stringify(values);
     if (!createAttempt.current || createAttempt.current.body !== body) createAttempt.current = { body, id: crypto.randomUUID() };
     setBusy(true);
@@ -410,7 +429,7 @@ export function Cases({
       setSelected(c);
       setDraft([]);
       setDetails(c.details || emptyDetails);
-      setActiveStep("assistant");
+      setActiveStep(c.programId && hasGuidedApplication(c.programId) ? "review" : "assistant");
       setAssistantPrompt("");
       void loadReadiness(c.id);
       setTitle("");
@@ -425,30 +444,6 @@ export function Cases({
       setBusy(false);
     }
   }
-
-  const handledPreparation = useRef("");
-  useEffect(() => {
-    if (programTarget || !preparationId || handledPreparation.current === preparationId || !selectedProgram || !ready || busy) return;
-    handledPreparation.current = preparationId;
-    const targetProgram = selectedProgram;
-    const targetSeed = preparationSeed;
-    const targetBusiness = businessName;
-    void (async () => {
-      if (!(await mayLeaveDraft())) {
-        if (mountedRef.current) {
-          setShowCreate(false);
-          onClearProgram?.();
-        }
-        return;
-      }
-      if (!mountedRef.current) return;
-      await create(undefined, {
-        title: `${targetSeed ? targetSeed.slice(0, 80) : targetBusiness || "Мій проєкт"} — ${friendlyTitle(targetProgram)}`.slice(0, 160),
-        programId: targetProgram.id,
-        initialDescription: targetSeed,
-      });
-    })();
-  }, [preparationId, selectedProgram, programTarget, ready, busy, preparationSeed, businessName]);
 
   async function attachProgram() {
     if (!programTarget || !selectedProgram || !selected || selected.id !== programTarget.id || selected.revision !== programTarget.revision || busy || dirty || pending || conflict || sessionDraft.recovery) return;
@@ -923,9 +918,8 @@ export function Cases({
             className="secondary-btn cases-new-btn"
             disabled={!ready || !!programTarget}
             onClick={() => {
-              setShowCreate((open) => !open);
-              if (showCreate) onClearProgram?.();
-              else requestAnimationFrame(() => createTitleInput.current?.focus());
+              if (showCreate) { setShowCreate(false); onClearProgram?.(); }
+              else void openNewProject();
             }}
             aria-expanded={showCreate}
             aria-controls="create-case-panel"
@@ -985,18 +979,18 @@ export function Cases({
             <h3 id="case-empty-title">У вас ще немає проєктів</h3>
             <p>Тут з’являться ваші чернетки. Почніть з розмови в розділі «Асистент» або створіть проєкт самостійно.</p>
             <div className="case-load-actions">
-              <button type="button" className="primary" onClick={() => { setShowCreate(true); requestAnimationFrame(() => createTitleInput.current?.focus()); }}>Створити проєкт</button>
+              <button type="button" className="primary" onClick={() => void openNewProject()}>Створити проєкт</button>
             </div>
           </section>
         </div>
       )}
       <div id="create-case-panel" hidden={!showCreate} className="create-case-disclosure">
         <h3>Новий проєкт</h3>
-        <p>{selectedProgram ? `Готуємо новий проєкт для програми «${selectedProgram.title}». Перевірте назву й почніть роботу з асистентом.` : "Назвіть проєкт і, за бажанням, опишіть потребу. Фінансування можна підібрати пізніше."}</p>
+        <p>{selectedProgram ? `Готуємо новий проєкт для програми «${selectedProgram.title}». Введіть власну назву. Після оплати відкриється «Готовність та експорт».` : "Назвіть проєкт і, за бажанням, опишіть потребу. Відкриється актуальна анкета «Власна справа» у вкладці «Готовність та експорт»."}</p>
       <p>Доступ до роботи над проєктом коштує 5 грн одноразово. Після створення ви перейдете до оплати.</p>
       <form onSubmit={create} className="create-case-form">
         <label>
-          Назва чернетки
+          Назва проєкту
           <input
             ref={createTitleInput}
             value={title}
