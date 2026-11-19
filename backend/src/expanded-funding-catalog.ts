@@ -3808,6 +3808,7 @@ export const EXPANDED_FUNDING_CATALOG: GrantCatalogEntry[] = [
   },
   {
     "id": "ua-brave1-core",
+    "aliases": ["Brave1", "Brave 1", "Брейв1", "Брейв 1", "Браве1"],
     "title": "Brave1 — основна грантова програма",
     "provider": "Brave1 / Український фонд стартапів",
     "amount": "До 500 тис., 2 млн, 4 млн або 8 млн грн",
