@@ -508,7 +508,7 @@ export function advisorRouter(
         let tool_trace: any[] = [];
 
         // Agent Orchestration (live or offline)
-        if (isAiConfigured() && !personalEducation) {
+        if ((sseMode || responder) && isAiConfigured() && !personalEducation) {
           const agentHistory: { role: "user" | "model"; text: string }[] = [];
           for (const item of prior) {
             agentHistory.push({ role: "user", text: item.question });

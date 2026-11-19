@@ -94,7 +94,7 @@ export function assistantRouter(db: Pool, responder: AssistantResponder | null |
           const { contactName: _contactName, phone: _phone, website: _website, newsletterEmail: _newsletterEmail, ...safeDetails } = rawDetails;
           snapshot.businessProfile = Object.keys(safeDetails).length ? { ...base, details: safeDetails } : base;
         }
-        const history = await db.query("SELECT question, reply, revision, profile_revision FROM assistant_exchanges WHERE case_id=$1 AND owner_id=$2 ORDER BY created_at DESC, id DESC LIMIT 16", [req.params.id, uid]);
+        const history = await db.query("SELECT question, reply, revision, profile_revision FROM assistant_exchanges WHERE case_id=$1 AND owner_id=$2 ORDER BY created_at DESC, id DESC LIMIT 2", [req.params.id, uid]);
         snapshot.conversation = history.rows.reverse().map((row) => ({ question: row.question.slice(0, 2000), reply: parseDraftSuggestions(row.reply).reply.slice(0, 3000), revision: row.revision, stale: row.revision !== snapshot.revision || row.profile_revision === null || row.profile_revision !== snapshot.profileRevision, truncated: row.question.length > 2000 || row.reply.length > 3000 }));
         const reply = await Promise.race([activeResponder(snapshot, parsed.data.message, controller.signal), new Promise<never>((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(new Error("timeout")); }, timeoutMs); })]);
         if (typeof reply !== "string" || !reply.trim() || reply.length > 12000) throw new Error("upstream");
