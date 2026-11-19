@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
-import type { Pool } from "pg";
+import type { Pool, PoolClient } from "pg";
 import { z } from "zod";
 import { FinancialAssumptionsSchema } from "../finance/assumptions.js";
 import { profileDetails } from "../profile-details.js";
@@ -14,7 +14,7 @@ export const AgentProposalSchema = z.discriminatedUnion("kind", [
   z.object({kind:z.literal("profile_fields"),changes:profileFields}).strict(),
   z.object({kind:z.literal("financial_assumptions"),changes:FinancialAssumptionsSchema}).strict(),
 ]);
-export async function createAgentProposal(db: Pool, raw: unknown, scope: AgentScope) {
+export async function createAgentProposal(db: Pick<Pool | PoolClient, "query">, raw: unknown, scope: AgentScope) {
   const proposal = AgentProposalSchema.parse(raw);
   if (!scope.caseId || scope.expectedRevision === undefined || scope.expectedProfileRevision === undefined) throw Error("project_required");
   const id = randomUUID();
@@ -52,12 +52,26 @@ export function agentProposalsRouter(db: Pool) {
         const details=profileDetails.parse({...pr.rows[0].details,...parsed.data.changes});
         const updated=await client.query("UPDATE profiles SET details=$2::jsonb,revision=revision+1,updated_at=now() WHERE owner_id=$1 RETURNING revision",[uid,JSON.stringify(details)]); profileRevision=updated.rows[0].revision;
       } else {
-        const details={...c.details,...(parsed.data.kind==="financial_assumptions" ? {financialAssumptions:parsed.data.changes} : parsed.data.changes)};
-        const updated=await client.query("UPDATE cases SET details=$3::jsonb,revision=revision+1 WHERE id=$1 AND owner_id=$2 RETURNING revision",[p.case_id,uid,JSON.stringify(details)]); revision=updated.rows[0].revision;
+        const isFinancial=parsed.data.kind==="financial_assumptions";
+        const value=isFinancial ? parsed.data.changes : {...c.details,...parsed.data.changes};
+        const sql=isFinancial ? "UPDATE cases SET financial_assumptions=$3::jsonb,revision=revision+1 WHERE id=$1 AND owner_id=$2 RETURNING revision" : "UPDATE cases SET details=$3::jsonb,revision=revision+1 WHERE id=$1 AND owner_id=$2 RETURNING revision";
+        const updated=await client.query(sql,[p.case_id,uid,JSON.stringify(value)]); revision=updated.rows[0].revision;
       }
       const result={proposal:{id:id.data,status:"applied",kind:p.kind,unverified:p.kind==="financial_assumptions"},caseRevision:revision,...(profileRevision===undefined?{}:{profileRevision})};
       await client.query("UPDATE agent_proposals SET status='applied',applied_key=$2,applied_request=$3::jsonb,applied_result=$4::jsonb,applied_at=now() WHERE id=$1",[id.data,body.data.idempotencyKey,JSON.stringify(body.data),JSON.stringify(result)]);
       await client.query("COMMIT"); res.json(result);
     } catch(e) { await client.query("ROLLBACK").catch(()=>{}); if ((e as {code?:string}).code==="23505") res.status(409).json({error:"idempotency_conflict"}); else next(e); } finally {client.release();}
   }); return router;
+}
+
+/** Refresh stored attachment status and revisions without exposing another owner's proposals. */
+export async function hydrateAgentProposals(db: Pool, ownerId: string, messages: Record<string, any>[]) {
+  const ids = [...new Set(messages.flatMap(m => Array.isArray(m.pending_proposals) ? m.pending_proposals.map((p: any) => p?.id).filter((id: unknown) => z.string().uuid().safeParse(id).success) : []))] as string[];
+  if (!ids.length) return messages;
+  const rows = await db.query(`SELECT p.id,p.status,p.case_revision,p.profile_revision,c.revision AS current_case_revision,COALESCE(pr.revision,0) AS current_profile_revision FROM agent_proposals p JOIN cases c ON c.id=p.case_id AND c.owner_id=p.owner_id LEFT JOIN profiles pr ON pr.owner_id=p.owner_id WHERE p.owner_id=$1 AND p.id=ANY($2::uuid[])`, [ownerId,ids]);
+  const states = new Map(rows.rows.map((r:any) => [r.id,r]));
+  return messages.map(m => !Array.isArray(m.pending_proposals) ? m : {...m, pending_proposals:m.pending_proposals.map((p:any) => {
+    const state = states.get(p?.id) as any;
+    return state ? {...p,status:state.status,currentCaseRevision:state.current_case_revision,currentProfileRevision:state.current_profile_revision,stale:state.case_revision!==state.current_case_revision || state.profile_revision!==state.current_profile_revision} : {...p,status:"unavailable",stale:true};
+  })});
 }

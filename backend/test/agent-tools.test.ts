@@ -59,3 +59,20 @@ test("proposal apply enforces owner, payment, revisions and idempotent replay", 
   assert.equal((await send("owner",{...body,idempotencyKey:crypto.randomUUID()})).status,409);
  } finally { server.close(); }
 });
+
+test("neutral Brave1 turn rejects specialist tool proposals without any database write", async () => {
+ const {configuredAgentRuntime}=await import("../src/ai/agentRuntime.js"); let calls=0, writes=0; let last:any;
+ const provider=async(input:any)=>{calls++;last=structuredClone(input.contents); if(calls===1)return {parts:[{functionCall:{name:"search_grants",args:{semanticQuery:"Brave1",keywords:[],limit:3}}}]}; if(calls===2)return {parts:[{functionCall:{name:"propose_structured_update",args:{kind:"text_application_fields",changes:{projectDescription:"кошторис ППО"}}}}]}; return {parts:[{text:"Перегляньте офіційну сторінку Brave1."}]};};
+ const runtime=configuredAgentRuntime({query:async()=>{writes++;throw Error("unexpected write")}} as never,async()=>({matches:[{id:"brave"}],weak:false}),provider)!;
+ const result=await runtime({scope:{ownerId:"owner",caseId:crypto.randomUUID(),expectedRevision:1,expectedProfileRevision:0},message:"Що таке Brave1?",history:[]},new AbortController().signal);
+ assert.equal(result.pending_proposals.length,0); assert.equal(writes,0);
+ assert.equal(last.at(-1).parts[0].functionResponse.response.result.error,"directory_only");
+});
+
+test("discovery proposal returns a recoverable project-required response without writes", async () => {
+ const {configuredAgentRuntime}=await import("../src/ai/agentRuntime.js"); let calls=0,writes=0,last:any;
+ const provider=async(input:any)=>{calls++;last=structuredClone(input.contents);if(calls===1)return {parts:[{functionCall:{name:"search_grants",args:{semanticQuery:"кавярня",keywords:[],limit:3}}}]};if(calls===2)return {parts:[{functionCall:{name:"propose_structured_update",args:{kind:"text_application_fields",changes:{customers:"Клієнти"}}}}]};return {parts:[{text:"Створіть проєкт, щоб зберегти чернетку."}]};};
+ const runtime=configuredAgentRuntime({query:async()=>{writes++;throw Error("unexpected")}} as never,async()=>({matches:[{id:"a"}],weak:false}),provider)!;
+ const result=await runtime({scope:{ownerId:"owner"},message:"кавярня",history:[]},new AbortController().signal);
+ assert.equal(writes,0);assert.deepEqual(result.pending_proposals,[]);assert.equal(last.at(-1).parts[0].functionResponse.response.result.error,"project_required");
+});

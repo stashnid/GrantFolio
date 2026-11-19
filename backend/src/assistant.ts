@@ -1,3 +1,4 @@
+import { createAgentProposal, hydrateAgentProposals } from "./ai/agentProposals.js";
 import type { NativeAgent } from "./ai/agentRuntime.js";
 import { Router } from "express";
 import { randomUUID } from "node:crypto";
@@ -34,7 +35,8 @@ export function assistantRouter(db: Pool, responder: AssistantResponder | null |
       const hasMore = result.rows.length > 20;
       const rows = result.rows.slice(0, 20).reverse();
       const exchanges = rows.map((row) => ({ id: row.id, question: row.question, ...parseDraftSuggestions(row.reply), ...(row.agent_payload ?? {}), revision: row.revision, createdAt: row.created_at, stale: row.revision !== row.current_revision || row.profile_revision === null || row.profile_revision !== row.current_profile_revision }));
-      res.set("Cache-Control", "no-store").json({ exchanges, hasMore, nextBefore: hasMore ? exchanges[0].id : null });
+      const hydrated = await hydrateAgentProposals(db, uid, exchanges);
+      res.set("Cache-Control", "no-store").json({ exchanges: hydrated, hasMore, nextBefore: hasMore ? exchanges[0].id : null });
     } catch (error) { next(error); }
   });
   router.post("/:id/assistant", async (req, res, next) => {
@@ -42,7 +44,7 @@ export function assistantRouter(db: Pool, responder: AssistantResponder | null |
     const parsed = input.safeParse(req.body);
     if (!parsed.success) { res.status(400).json({ error: "invalid_assistant_request" }); return; }
     try {
-      const result = await db.query("SELECT title, program_id, revision, details, items, total_kopecks FROM cases WHERE id=$1 AND owner_id=$2", [req.params.id, res.locals.uid]);
+      const result = await db.query("SELECT title, program_id, revision, details, items, total_kopecks, financial_assumptions FROM cases WHERE id=$1 AND owner_id=$2", [req.params.id, res.locals.uid]);
       if (!result.rowCount) { res.status(404).json({ error: "not_found" }); return; }
       const snapshot: Snapshot = result.rows[0];
       if (snapshot.revision !== parsed.data.expectedRevision) { res.status(409).json({ error: "revision_conflict" }); return; }
@@ -51,6 +53,8 @@ export function assistantRouter(db: Pool, responder: AssistantResponder | null |
       const lease = await limiter.acquire(uid, timeoutMs + 60000);
       if (!lease) { res.status(429).json({ error: "rate_limited" }); return; }
       const controller = new AbortController();
+      const onClose = () => { if (!res.writableEnded) controller.abort(); };
+      res.once("close", onClose);
       let timer: ReturnType<typeof setTimeout> | undefined;
       try {
         const profile = await db.query('SELECT business_name AS "businessName", description, region, details, revision FROM profiles WHERE owner_id=$1', [uid]);
@@ -69,25 +73,36 @@ export function assistantRouter(db: Pool, responder: AssistantResponder | null |
         const reply = typeof outcome === "string" ? outcome : outcome.reply;
         if (typeof reply !== "string" || !reply.trim() || reply.length > 12000) throw new Error("upstream");
         let saved;
+        const client = agentResult ? await db.connect() : undefined;
+        let persistedProposals: unknown[] = [];
         try {
-          saved = await db.query(`WITH inserted AS (
+          if (client) {
+            await client.query("BEGIN");
+            for (const draft of agentResult!.pending_proposals) {
+              persistedProposals.push(await createAgentProposal(client, draft, {ownerId:uid,caseId:req.params.id,expectedRevision:snapshot.revision,expectedProfileRevision:snapshot.profileRevision}));
+            }
+          }
+          saved = await (client ?? db).query(`WITH inserted AS (
             INSERT INTO assistant_exchanges (id, case_id, owner_id, question, reply, revision, profile_revision, agent_payload)
             SELECT $1, id, owner_id, $4, $5, $6, $7, $8::jsonb FROM cases WHERE id=$2 AND owner_id=$3
             RETURNING id, question, reply, revision, profile_revision, agent_payload, created_at, case_id, owner_id
           ) SELECT inserted.*, cases.revision AS current_revision, COALESCE(profiles.revision, 0) AS current_profile_revision FROM inserted
             JOIN cases ON cases.id=inserted.case_id AND cases.owner_id=inserted.owner_id
             LEFT JOIN profiles ON profiles.owner_id=inserted.owner_id`,
-          [randomUUID(), req.params.id, uid, parsed.data.message, reply.trim(), snapshot.revision, snapshot.profileRevision, JSON.stringify(agentResult ? {pending_proposals:agentResult.pending_proposals,attached_grants:agentResult.attached_grants} : {})]);
+          [randomUUID(), req.params.id, uid, parsed.data.message, reply.trim(), snapshot.revision, snapshot.profileRevision, JSON.stringify(agentResult ? {pending_proposals:persistedProposals,attached_grants:agentResult.attached_grants} : {})]);
           if (!saved.rowCount) throw new Error("save failed");
-        } catch { res.status(500).json({ error: "assistant_save_failed" }); return; }
+          if (controller.signal.aborted) throw Error("timeout");
+          if (client) await client.query("COMMIT");
+        } catch { if (client) await client.query("ROLLBACK").catch(()=>{}); res.status(controller.signal.aborted ? 504 : 500).json({ error: controller.signal.aborted ? "assistant_timeout" : "assistant_save_failed" }); return; }
+        finally { client?.release(); }
         const row = saved.rows[0];
         const exchange = { id: row.id, question: row.question, ...parseDraftSuggestions(row.reply), ...(row.agent_payload ?? {}), revision: row.revision, createdAt: row.created_at, stale: row.revision !== row.current_revision || row.profile_revision === null || row.profile_revision !== row.current_profile_revision };
-        res.set("Cache-Control", "no-store").json({ reply: exchange.reply, reply_text:exchange.reply, attached_grants:agentResult?.attached_grants ?? [], pending_proposals:agentResult?.pending_proposals ?? [], revision: exchange.revision, stale: exchange.stale, exchange });
+        res.set("Cache-Control", "no-store").json({ reply: exchange.reply, reply_text:exchange.reply, attached_grants:agentResult?.attached_grants ?? [], pending_proposals:persistedProposals, revision: exchange.revision, stale: exchange.stale, exchange });
       } catch (error) {
         if (controller.signal.aborted) res.status(504).json({ error: "assistant_timeout" });
         else if (error instanceof Error && error.message === "upstream") res.status(502).json({ error: "assistant_error" });
         else res.status(502).json({ error: "assistant_error" });
-      } finally { if (timer) clearTimeout(timer); await limiter.release(uid, lease).catch(() => {}); }
+      } finally { res.off("close", onClose); if (timer) clearTimeout(timer); await limiter.release(uid, lease).catch(() => {}); }
     } catch (error) { next(error); }
   });
   return router;

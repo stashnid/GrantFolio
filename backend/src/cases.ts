@@ -41,6 +41,7 @@ type CaseRow = {
   items: unknown;
   total_kopecks: string;
   details: unknown;
+  financial_assumptions?: unknown;
 };
 function view(row: CaseRow) {
   return {
@@ -50,6 +51,7 @@ function view(row: CaseRow) {
     revision: row.revision,
     items: row.items,
     details: row.details,
+    financialAssumptions: row.financial_assumptions ?? null,
     totalKopecks: Number(row.total_kopecks),
   };
 }

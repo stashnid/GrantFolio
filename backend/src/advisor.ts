@@ -1,3 +1,4 @@
+import { hydrateAgentProposals } from "./ai/agentProposals.js";
 import type { NativeAgent } from "./ai/agentRuntime.js";
 import { Router } from "express";
 import { z } from "zod";
@@ -304,7 +305,7 @@ export function advisorRouter(db: Pool, responder?: AssistantResponder, limiter 
       );
       const rows = r.rows.slice(0, 30).reverse();
       res.json({
-        messages: rows.map(view),
+        messages: await hydrateAgentProposals(db, res.locals.uid, rows.map(view)),
         hasMore: r.rows.length > 30,
         nextBefore: r.rows.length > 30 ? rows[0]?.id : null,
       });
@@ -335,7 +336,7 @@ export function advisorRouter(db: Pool, responder?: AssistantResponder, limiter 
           res.status(409).json({ error: "message_conflict" });
           return;
         }
-        res.json({ message: view(r) });
+        res.json({ message: (await hydrateAgentProposals(db, uid, [view(r)]))[0] });
         return;
       }
       if (active.has(uid)) {
@@ -353,7 +354,7 @@ export function advisorRouter(db: Pool, responder?: AssistantResponder, limiter 
           if (!native) { res.status(503).json({error:"assistant_unavailable"}); return; }
           const lease = await limiter.acquire(uid, 85000);
           if (!lease) { res.status(429).json({error:"rate_limited"}); return; }
-          const controller = new AbortController(); const timer=setTimeout(()=>controller.abort(),25000);
+          const controller = new AbortController(); const onClose=()=>{if(!res.writableEnded)controller.abort();}; res.once("close",onClose); const timer=setTimeout(()=>controller.abort(),25000);
           try {
             const profile = await db.query('SELECT business_name AS "businessName",description,region,details,revision FROM profiles WHERE owner_id=$1',[uid]);
             const raw=profile.rows[0]; const details=raw?.details ?? {};
@@ -364,7 +365,7 @@ export function advisorRouter(db: Pool, responder?: AssistantResponder, limiter 
             const saved=await db.query(`INSERT INTO advisor_messages(id,conversation_id,owner_id,question,reply,payload) VALUES($1,$2,$3,$4,$5,$6::jsonb) ON CONFLICT(id) DO NOTHING RETURNING *`,[p.id,p.conversationId,uid,p.message,result.reply,JSON.stringify(payload)]);
             if(!saved.rowCount){res.status(409).json({error:"message_conflict"});return;} res.json({message:view(saved.rows[0])}); return;
           } catch { res.status(controller.signal.aborted?504:502).json({error:controller.signal.aborted?"assistant_timeout":"assistant_error"}); return; }
-          finally {clearTimeout(timer);await limiter.release(uid,lease).catch(()=>{});}
+          finally {res.off("close",onClose);clearTimeout(timer);await limiter.release(uid,lease).catch(()=>{});}
         }
         const previousSeed: string =
           typeof prior.at(-1)?.payload?.seed === "string"

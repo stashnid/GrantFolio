@@ -44,6 +44,7 @@ export function createAgentOrchestrator(deps: AgentDependencies) {
       for (const part of calls) {
         const call = part.functionCall!; let value: unknown;
         input.onProgress?.({type:"tool_start",tool:call.name});
+        try {
         if (call.name === "search_grants") {
           if (++searchCalls > 3) throw Error("search_limit");
           value = await deps.searchGrants(searchArgs.parse(call.args ?? {}), {...input.scope,signal});
@@ -53,8 +54,12 @@ export function createAgentOrchestrator(deps: AgentDependencies) {
         } else if (call.name === "get_program_playbook") value = await deps.getPlaybook(programArgs.parse(call.args ?? {}).programId,input.scope);
         else if (call.name === "get_project_state") { emptyArgs.parse(call.args ?? {}); value = await deps.getProjectState(input.scope); }
         else if (call.name === "validate_project_financials") { emptyArgs.parse(call.args ?? {}); value = await deps.validateFinancials(input.scope); }
-        else if (call.name === "propose_structured_update") { value = await deps.proposeUpdate(proposalArgs.parse(call.args ?? {}),input.scope); pending_proposals.push(value); }
+        else if (call.name === "propose_structured_update") { value = await deps.proposeUpdate(proposalArgs.parse(call.args ?? {}),input.scope); if (value && typeof value === "object" && !("error" in value)) pending_proposals.push(value); }
         else throw Error("unknown_tool");
+        } catch (error) {
+          if (error instanceof z.ZodError) value = {error:"invalid_tool_arguments"};
+          else throw error;
+        }
         input.onProgress?.({type:"tool_end",tool:call.name});
         const json = JSON.stringify(value ?? null); if (json.length > 100_000) throw Error("tool_result_too_large");
         responses.push({functionResponse:{name:call.name,...(call.id ? {id:call.id}:{}),response:{result:JSON.parse(json)}}});
