@@ -49,3 +49,10 @@
 - `npm run typecheck`: PASS (0 помилок)
 - `npm run build`: PASS (усі бандли скомпільовано успішно)
 - `git diff --check`: PASS (0 whitespace/syntax issues)
+
+## Публікація та передача
+- Гілка: `feat/marketing-hook-login`
+- Коміт: `ca85615`
+- GitHub PR: https://github.com/stashnid/GrantFolio/pull/new/feat/marketing-hook-login
+- Оновлено: [STATUS.md](../STATUS.md), [WORKLOG.md](../WORKLOG.md).
+
