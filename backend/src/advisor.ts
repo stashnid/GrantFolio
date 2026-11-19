@@ -6,6 +6,7 @@ import { postgresAssistantLimiter, type AssistantLimiter } from "./assistant-lim
 import { normalize, searchGrants } from "./grant-discovery.js";
 import { GRANT_CATALOG } from "./grant-catalog-data.js";
 import { extractProfileFromText } from "./profile-extractor.js";
+import { buildDialogueQuery } from "./advisor-dialogue.js";
 const input = z
   .object({
     id: z.string().uuid(),
@@ -64,7 +65,7 @@ export function nextQuestion(query: string, intents: string[], hasMatches: boole
     /(?:мені|вік|віком)\s*\d{1,3}(?:\s*рок(?:и|ів|у)?)?/g,
     "",
   );
-  if (!/(\d|тисяч|тис\b|мільйон)/.test(withoutAge))
+  if (!/(?:^|\s)\d+(?:[.,]\d+)?(?:\s|$)|тисяч|тис\b|мільйон/.test(withoutAge))
     return "Яка орієнтовна сума вам потрібна?";
   if (
     !/(регіон|област|ки(?:їв|єв)|льв(?:ів|ов)|одес|хар(?:ків|ков)|дніпр|запоріж|полтав|вінниц|черкас|черніг|чернів|житомир|сум|терноп|луц(?:ьк|к)|рівн|ужгород|микола(?:їв|єв)|херсон|кропивницьк|івано|хмельницьк)/.test(
@@ -343,10 +344,8 @@ export function advisorRouter(db: Pool, responder?: AssistantResponder, limiter 
             : prior.map((r) => r.question).join(" ");
         const current = searchGrants(p.message);
         const previous = searchGrants(previousSeed);
-        const explicitChange =
-          /(а тепер|інша тема|інш[аийе] потреб|передумав|передумала)/i.test(
-            p.message,
-          );
+        const dialogue = buildDialogueQuery(p.message, previousSeed);
+        const explicitChange = dialogue.intent === "topic_change";
         const distinctNeed =
           /(хочу|шукаю|потріб|грант.*для)/i.test(p.message) &&
           previous.intents.some((intent) => intent !== "applicant") &&
@@ -357,11 +356,7 @@ export function advisorRouter(db: Pool, responder?: AssistantResponder, limiter 
         const followUpWording = /витрат|витратити|потрат|купити|придбати|закуп|на що|що можна|умов|вимог|хто може|чи (?:можу|підход)|право на|як пода|як подат|подача|подати|заявк|документ|оформ/i.test(p.message);
         const newNeed =
           explicitChange || (!followUpWording && current.intents.length > 0 && distinctNeed);
-        const query = (
-          newNeed
-            ? p.message
-            : [previousSeed, p.message].filter(Boolean).join(" ")
-        ).slice(-5000);
+        const query = newNeed ? p.message : dialogue.query;
         const rawSearch = searchGrants(query);
         const businessIntents = [
           "business",
@@ -393,7 +388,11 @@ export function advisorRouter(db: Pool, responder?: AssistantResponder, limiter 
         const namedSelection = namedProgram(p.message);
         const selectedProgramId = namedSelection?.id ?? (!newNeed ? prior.at(-1)?.payload?.selectedProgramId : undefined);
         const followUp = programFollowUp(p.message, prior.at(-1)?.payload?.search?.matches ?? [], newNeed && !namedSelection, selectedProgramId, query) ?? (namedSelection ? `Розглянемо «${namedSelection.title}». ${namedSelection.details.overview} ${namedSelection.intakeStatus === "paused" ? "Прийом призупинено; дату відновлення потрібно підтвердити." : "Актуальний прийом і вашу відповідність потрібно підтвердити."} [Офіційні умови](${namedSelection.officialUrl})\n\nЩо хочете з’ясувати: витрати, вимоги чи подання заявки?` : undefined);
-        const consultation = personalEducation
+        const consultation = dialogue.intent === "complaint"
+          ? `Перепрошую, попередня відповідь не допомогла. Я повторно перевірив каталог за вашою попередньою потребою. ${search.matches.length ? search.matches.slice(0, 3).map((m) => `${m.title}: ${m.reason}`).join(" ") : "Підтвердженого результату цього пошуку немає; назву або напрям можна перевірити в каталозі."}`
+          : dialogue.intent === "correction"
+            ? `Врахую ваше уточнення в цій розмові. Збережений профіль не змінено; якщо потрібно оновити його, внесіть зміну в профілі.\n\n${search.explanation}`
+          : personalEducation
           ? "GrantFolio допомагає шукати фінансування для відкриття або розвитку бізнесу. Програми для особистого навчання та стипендії не входять до каталогу. Якщо маєте підприємницьку ідею, розкажіть про неї."
           : studentNeedsIdea
             ? "Допоможу розібратися з фінансуванням підприємницької ідеї. Яку справу ви плануєте відкрити або розвинути та на що потрібні кошти?"
@@ -403,13 +402,16 @@ export function advisorRouter(db: Pool, responder?: AssistantResponder, limiter 
                   .slice(0, 3)
                   .map((m) => `${m.title}. ${m.reason}`)
                   .join("\n\n")}\n\n${nextQuestion(query, search.intents, search.matches.length > 0)}`;
-        const idea = responder && !greeting && !personalEducation && !studentNeedsIdea &&
+        const idea = responder && !greeting && !personalEducation && !studentNeedsIdea && !["complaint", "correction"].includes(dialogue.intent) &&
           (followUp || rawSearch.intents.some(intent => businessIntents.includes(intent)))
           ? await preparationIdea(responder, limiter, uid, newNeed ? "" : previousSeed, p.message)
           : undefined;
         const reply = idea ? `**Ідея для вашої чернетки**\n\n${idea}\n\n${consultation}` : consultation;
+        search.questions = ["complaint", "correction"].includes(dialogue.intent) || followUp
+          ? [] : [nextQuestion(query, search.intents, search.matches.length > 0)];
         const payload = {
           mode: "guided",
+          dialogueIntent: dialogue.intent,
           selectedProgramId,
           search,
           seed: query.slice(-2000),
