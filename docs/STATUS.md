@@ -15,6 +15,9 @@
 3. **Верифікація та аудит**:
    - `npm run typecheck`, `npm run build` — 0 помилок.
    - Незалежний аудит агентів ECC `code-reviewer` та `react-reviewer` — **APPROVE**. [Звіт лендінгу](agents/2026-11-19-marketing-hook-login.md).
+4. **Успішний реліз на Google Cloud Run (`grantfolio-web`) — 19.11.2026**:
+   - Повний пайплайн GitHub Actions CI/CD (Run 44476214460, перевірка 206 тестів + `Deploy to Cloud Run`) завершено (**success**).
+   - Сервіс наживо доступний та протестований: `GET /api/health` повертає `HTTP/2 200`, оновлена сторінка доступна за адресою `https://grantfolio.pp.ua`.
 
 
 ## Підтримка входу через Google на мобільних пристроях (Redirect Flow та In-App Browser Guidance) — 18.11.2026
