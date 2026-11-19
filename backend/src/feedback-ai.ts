@@ -1,3 +1,4 @@
+import { getAiConfig, geminiEndpoint } from "./ai/aiConfig.js";
 import { applicationDefault } from "firebase-admin/app";
 import { z } from "zod";
 import type { DeterministicFeedbackMetrics } from "./feedback-report.js";
@@ -502,8 +503,9 @@ export function configuredFeedbackJsonGenerator(
   const env = options.env ?? process.env;
   if (!isSmartFeedbackAiEnabled(env)) return undefined;
 
-  const model = env.GEMINI_MODEL ?? PINNED_GEMINI_MODEL;
-  if (model !== PINNED_GEMINI_MODEL) return undefined;
+  let model: string;
+  try { model = getAiConfig(env).utility; } catch { return undefined; }
+  if (!env.GEMINI_UTILITY_MODEL && env.GEMINI_MODEL && model !== PINNED_GEMINI_MODEL) return undefined;
 
   const vertexProject = env.GEMINI_VERTEX_PROJECT?.trim();
   const apiKey = env.GEMINI_API_KEY?.trim();
@@ -517,9 +519,7 @@ export function configuredFeedbackJsonGenerator(
   const getAccessToken = vertexProject
     ? options.accessTokenProvider ?? (() => applicationDefault().getAccessToken())
     : undefined;
-  const endpoint = vertexProject
-    ? `https://aiplatform.eu.rep.googleapis.com/v1/projects/${vertexProject}/locations/eu/publishers/google/models/${PINNED_GEMINI_MODEL}:generateContent`
-    : `https://generativelanguage.googleapis.com/v1beta/models/${PINNED_GEMINI_MODEL}:generateContent`;
+  const endpoint = geminiEndpoint(model, vertexProject);
 
   return async (prompt: FeedbackPrompt): Promise<unknown> => {
     const body = JSON.stringify({
