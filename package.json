@@ -24,7 +24,8 @@
     "sync:official-docs": "node --env-file-if-exists=.env --import tsx backend/src/knowledge/indexOfficialDocs.ts",
     "sync:embeddings": "node --env-file-if-exists=.env --import tsx backend/src/matching/hybridSearch.ts",
     "inspect:xlsx": "node --import tsx scripts/inspect-xlsx-template.ts",
-    "eval:assistant": "node --env-file-if-exists=.env --import tsx scripts/eval-assistant.ts"
+    "eval:assistant": "node --env-file-if-exists=.env --import tsx scripts/eval-assistant.ts",
+    "test:red-team": "node --env-file-if-exists=.env --import tsx scripts/red-team-calibration.ts"
   },
   "dependencies": {
     "express": "5.1.0",

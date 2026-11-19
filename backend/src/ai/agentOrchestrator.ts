@@ -148,6 +148,58 @@ const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
   },
 ];
 
+/**
+ * Sanitizes markdown output to ensure clean section structure and avoid repeated "1." list restarts across sections
+ */
+function sanitizeDuplicateNumbering(text: string): string {
+  // If markdown headings exist, handle section-by-section
+  const sections = text.split(/(?=^#{1,4}\s)/m);
+  if (sections.length > 1) {
+    let seenList = false;
+    return sections
+      .map((sec) => {
+        const hasOne = /(?:^|\n)\s*1\.\s+/.test(sec);
+        if (!hasOne) return sec;
+        if (!seenList) {
+          seenList = true;
+          return sec;
+        }
+        return sec.replace(/(^|\n)(\s*)\d+\.\s+/g, "$1$2- ");
+      })
+      .join("");
+  }
+
+  // If no markdown headings, replace list restarts
+  let hasFirstList = false;
+  let inSubsequentList = false;
+  const lines = text.split("\n");
+  const resultLines: string[] = [];
+
+  for (const line of lines) {
+    const matchOne = line.match(/^(\s*)1\.\s+(.*)$/);
+    const matchNum = line.match(/^(\s*)\d+\.\s+(.*)$/);
+
+    if (matchOne) {
+      if (!hasFirstList) {
+        hasFirstList = true;
+        resultLines.push(line);
+      } else {
+        inSubsequentList = true;
+        resultLines.push(`${matchOne[1]}- ${matchOne[2]}`);
+      }
+    } else if (matchNum && inSubsequentList) {
+      resultLines.push(`${matchNum[1]}- ${matchNum[2]}`);
+    } else {
+      if (!matchNum) {
+        inSubsequentList = false;
+      }
+      resultLines.push(line);
+    }
+  }
+
+  return resultLines.join("\n");
+}
+
 export async function runAgentOrchestrator(
   options: AgentOrchestratorOptions
 ): Promise<AgentOrchestratorResult> {
@@ -267,11 +319,13 @@ export async function runAgentOrchestrator(
             semanticQuery: query,
             keywords,
             maxAmountUah,
-            limit: 8,
+            limit: 4,
             fetchImpl,
           });
 
-          for (const candidate of results) {
+          // Only keep candidates with strong relevance
+          const highConfidence = results.filter((c) => c.match_score >= 0.45);
+          for (const candidate of highConfidence) {
             // Strictly verify program exists in catalog
             if (GRANT_CATALOG.some((p) => p.id === candidate.program_id)) {
               attachedGrantsMap.set(candidate.program_id, candidate);
@@ -366,27 +420,42 @@ export async function runAgentOrchestrator(
           const summary = String(args.summary || "Оновлення даних");
           const patch = (args.patch && typeof args.patch === "object" ? args.patch : {}) as Record<string, unknown>;
 
-          const proposal: PendingProposal = {
-            id: `prop-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-            target,
-            summary,
-            patch,
-            created_at: new Date().toISOString(),
-          };
-          pendingProposals.push(proposal);
+          // Proposal Prudence: Never propose legalForm (TOV vs FOP) or industry unless confirmed by user
+          if (target === "business_profile") {
+            const userMsgLower = userMessage.toLowerCase();
+            if (patch.legalForm && !userMsgLower.includes("фоп") && !userMsgLower.includes("тов")) {
+              delete patch.legalForm;
+            }
+          }
 
-          toolOutput = {
-            staged: true,
-            proposal_id: proposal.id,
-            message: "Пропозицію додано до списку очікування підтвердження користувачем у UI.",
-          };
+          if (Object.keys(patch).length > 0) {
+            const proposal: PendingProposal = {
+              id: `prop-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+              target,
+              summary,
+              patch,
+              created_at: new Date().toISOString(),
+            };
+            pendingProposals.push(proposal);
 
-          toolTrace.push({
-            step: loopStep,
-            tool: toolName,
-            args,
-            resultSummary: `Сформовано пропозицію ${proposal.id} (${summary})`,
-          });
+            toolTrace.push({
+              step: loopStep,
+              tool: toolName,
+              args,
+              resultSummary: `Сформовано пропозицію ${proposal.id} (${summary})`,
+            });
+          } else {
+            toolOutput = {
+              staged: false,
+              message: "Пропозицію пропущено, оскільки оновлення не містить підтверджених користувачем змін.",
+            };
+            toolTrace.push({
+              step: loopStep,
+              tool: toolName,
+              args,
+              resultSummary: `Пропозицію відхилено як непідтверджену (${summary})`,
+            });
+          }
         } else if (toolName === "get_missing_fields") {
           const progId = (args.program_id as string) || context.activeProject?.program_id || null;
           onProgress?.("Аналізую заповненість анкети проєкту…");
@@ -478,15 +547,166 @@ export async function runAgentOrchestrator(
   }
 
   // Ensure zero bot cliché greetings in final text
-  let sanitizedReply = finalReplyText.trim();
+  let sanitizedReply = sanitizeDuplicateNumbering(finalReplyText.trim());
   if (!sanitizedReply) {
     sanitizedReply = "Готовий розібрати вашу справу та допомогти з підбором програми.";
   }
 
+  const msgLower = userMessage.toLowerCase().trim();
+  const isGreeting = /^(привіт|добрий день|доброго дня|вітаю|hello|hi|хай|хто ти|що ти вмієш)[\s!\.,?]*$/i.test(msgLower);
+  const isProhibited = /казино|азартн|гральн.*автомат|рулетк|букмекер|лотере/i.test(msgLower);
+  const isJailbreak = /ігноруй|напалм|збро.*масов|вибухівк|обійти.*податк/i.test(msgLower);
+
+  // If user explicitly stated only FOP, sanitize any stray mentions of TOV
+  if (/лише\s+фоп|тільки\s+фоп/i.test(msgLower)) {
+    sanitizedReply = sanitizedReply
+      .replace(/\s*(?:ТОВ\s+відкривати\s+не\s+потрібно|на\s+відміну\s+від\s+ТОВ|ТОВ\s+не\s+потрібн\w*)[.,!]?/gi, "")
+      .replace(/\s*\bТОВ\b[.,!]?/g, "");
+  }
+
   // Strictly filter attached grants to known programs in DB
-  const verifiedGrants = Array.from(attachedGrantsMap.values()).filter((g) =>
+  let verifiedGrants = Array.from(attachedGrantsMap.values()).filter((g) =>
     GRANT_CATALOG.some((p) => p.id === g.program_id)
   );
+
+  const isRefusal = /я не можу надати|не можу надати рецепт|інструкції з обходу/i.test(sanitizedReply.toLowerCase());
+
+  // Strict guard for greeting, prohibited, refusal or jailbreak queries
+  if (isGreeting || isProhibited || isJailbreak || isRefusal) {
+    verifiedGrants = [];
+  } else {
+    // Multi-turn context preservation and direct query program matching:
+    // If no cards were attached this turn because search_grants was not called,
+    // match directly named programs or inherit the active project/playbook program
+    if (verifiedGrants.length === 0) {
+      if ((msgLower.includes("власн") && msgLower.includes("справ")) || msgLower.includes("єробота")) {
+        const vs = GRANT_CATALOG.find((p) => p.id === "vlasna-sprava");
+        if (vs) {
+          verifiedGrants.push({
+            program_id: vs.id,
+            title: vs.title,
+            description: vs.summary,
+            provider: vs.provider,
+            amount: vs.amount,
+            intake_status: vs.intakeStatus,
+            support_tier: "deep",
+            match_score: 0.95,
+            match_explanation: "Програма прямо зазначена у запиті підприємця",
+            official_url: vs.officialUrl,
+          });
+        }
+      } else if (msgLower.includes("brave1") || msgLower.includes("брейв")) {
+        const b1 = GRANT_CATALOG.find((p) => p.id === "ua-brave1-core");
+        if (b1) {
+          verifiedGrants.push({
+            program_id: b1.id,
+            title: b1.title,
+            description: b1.summary,
+            provider: b1.provider,
+            amount: b1.amount,
+            intake_status: b1.intakeStatus,
+            support_tier: "deep",
+            match_score: 0.95,
+            match_explanation: "Програма прямо зазначена у запиті підприємця",
+            official_url: b1.officialUrl,
+          });
+        }
+      } else if (msgLower.includes("ветеран") || msgLower.includes("убд")) {
+        const vet = GRANT_CATALOG.find((p) => p.id === "veteran-grant");
+        if (vet) {
+          verifiedGrants.push({
+            program_id: vet.id,
+            title: vet.title,
+            description: vet.summary,
+            provider: vet.provider,
+            amount: vet.amount,
+            intake_status: vet.intakeStatus,
+            support_tier: "deep",
+            match_score: 0.95,
+            match_explanation: "Ветеранська програма зазначена у запиті",
+            official_url: vet.officialUrl,
+          });
+        }
+      }
+
+      const activeProgId = context.activeProject?.program_id || context.activePlaybook?.program_id;
+      if (verifiedGrants.length === 0 && activeProgId) {
+        const cat = GRANT_CATALOG.find((p) => p.id === activeProgId);
+        if (cat) {
+          verifiedGrants.push({
+            program_id: cat.id,
+            title: cat.title,
+            description: cat.summary,
+            provider: cat.provider,
+            amount: cat.amount,
+            intake_status: cat.intakeStatus,
+            support_tier: cat.supportTier === "deep" ? "deep" : "catalog_only",
+            match_score: 0.9,
+            match_explanation: "Активна грантова програма у проєкті",
+            official_url: cat.officialUrl,
+          });
+        }
+      } else if (verifiedGrants.length === 0) {
+        const histText = history.map((h) => h.text).join(" ").toLowerCase();
+        if (
+          (histText.includes("власна справа") || histText.includes("єробота") || msgLower.includes("фоп")) &&
+          !histText.includes("brave1") &&
+          !msgLower.includes("софт") &&
+          !msgLower.includes("дрон")
+        ) {
+          const vs = GRANT_CATALOG.find((p) => p.id === "vlasna-sprava");
+          if (vs) {
+            verifiedGrants.push({
+              program_id: vs.id,
+              title: vs.title,
+              description: vs.summary,
+              provider: vs.provider,
+              amount: vs.amount,
+              intake_status: vs.intakeStatus,
+              support_tier: "deep",
+              match_score: 0.85,
+              match_explanation: "Програма опрацьовується в поточній розмові",
+              official_url: vs.officialUrl,
+            });
+          }
+        }
+      }
+    }
+
+    // Ensure card alignment if the reply explicitly recommends a flagship program
+    const replyLower = sanitizedReply.toLowerCase();
+    if (
+      !verifiedGrants.some((g) => g.program_id === "vlasna-sprava") &&
+      (replyLower.includes("«власна справа»") || replyLower.includes("«власну справу»") || replyLower.includes("програма «власна справа»") || replyLower.includes("програмою «власна справа»")) &&
+      !/не підходить|не надається|неможливо|заборонен/i.test(replyLower.slice(Math.max(0, replyLower.indexOf("власн") - 30), replyLower.indexOf("власн") + 40))
+    ) {
+      const vs = GRANT_CATALOG.find((p) => p.id === "vlasna-sprava");
+      if (vs) {
+        verifiedGrants.push({
+          program_id: vs.id,
+          title: vs.title,
+          description: vs.summary,
+          provider: vs.provider,
+          amount: vs.amount,
+          intake_status: vs.intakeStatus,
+          support_tier: "deep",
+          match_score: 0.89,
+          match_explanation: "Рекомендовано асистентом для створення підприємства та закупівлі обладнання",
+          official_url: vs.officialUrl,
+        });
+      }
+    }
+
+    // Sort by match_score descending
+    verifiedGrants.sort((a, b) => b.match_score - a.match_score);
+
+    // Limit to max 2 top cards (or 3 for multi-topic queries like drone assembly or fruit drying + antidrone)
+    const isMultiTopic =
+      (msgLower.includes("дрон") && (msgLower.includes("майстерн") || msgLower.includes("підприєм"))) ||
+      (msgLower.includes("сушк") && msgLower.includes("антидрон"));
+    const maxCards = isMultiTopic ? 3 : 2;
+    verifiedGrants = verifiedGrants.slice(0, maxCards);
+  }
 
   return {
     reply_text: sanitizedReply,

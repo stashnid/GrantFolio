@@ -45,6 +45,11 @@
   min-height: 0;
 }
 
+.advisor-page .live-chat-container .chat-turn,
+.advisor-page .live-chat-container .assistant-bubble {
+  scroll-margin-top: 32px;
+}
+
 .advisor-recommendations {
   display: grid;
   gap: 12px;

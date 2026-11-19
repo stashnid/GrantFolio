@@ -74,15 +74,27 @@ function calculateLexicalSynonymScore(
   keywords: string[]
 ): { score: number; explanation: string } {
   const doc = normalize(getProgramSearchDocument(program));
+  const docTokens = new Set(doc.split(/\s+/).filter(Boolean));
   const playbook = PLAYBOOKS[program.id];
-  const allTerms = [...queryWords, ...keywords.map(normalize)];
+  const allTerms = [...queryWords, ...keywords.map(normalize)].filter(
+    (t) => t && t.length >= 2
+  );
 
   let matchedTermsCount = 0;
   const matchedList: string[] = [];
 
   for (const term of allTerms) {
     if (!term || term.length < 2) continue;
-    if (doc.includes(term)) {
+    // For short terms (<= 4 chars, like "авто"), require exact word token match to avoid
+    // false positives on "автоматизація", "авторське"
+    let matched = false;
+    if (term.length <= 4) {
+      matched = docTokens.has(term);
+    } else {
+      matched = docTokens.has(term) || Array.from(docTokens).some((t) => t.startsWith(term) || (t.length >= 5 && term.startsWith(t)));
+    }
+
+    if (matched) {
       matchedTermsCount++;
       matchedList.push(term);
     }
@@ -91,9 +103,11 @@ function calculateLexicalSynonymScore(
   // Exact playbook domain tag / synonym match bonus
   if (playbook) {
     for (const tag of [...playbook.domain_tags, ...playbook.synonyms_uk_en]) {
-      const normTag = normalize(tag);
-      if (allTerms.some((term) => term && (normTag.includes(term) || term.includes(normTag)))) {
-        matchedTermsCount += 2;
+      const normTagTokens = normalize(tag).split(/\s+/).filter(Boolean);
+      for (const term of allTerms) {
+        if (normTagTokens.some((t) => t === term || (term.length >= 5 && t.startsWith(term)))) {
+          matchedTermsCount += 1.5;
+        }
       }
     }
   }
@@ -131,6 +145,15 @@ function calculateTagTraitBonus(
   return Math.min(1, bonus);
 }
 
+const SEARCH_STOP_WORDS = new Set([
+  "для", "який", "яка", "яке", "які", "хочу", "потрібно", "потрібна", "потрібне",
+  "потрібні", "грант", "гранти", "чи", "є", "на", "це", "програми", "програма",
+  "можна", "якщо", "ведення", "роботи", "може", "справа", "бізнес", "підкажи",
+  "скільки", "можуть", "дати", "буде", "буду", "мені", "нам", "про", "без",
+  "від", "до", "під", "що", "як", "та", "і", "й", "але", "або", "там", "тут",
+  "лише", "тільки"
+]);
+
 export async function hybridSearchGrants(
   params: HybridSearchParams
 ): Promise<HybridSearchCandidate[]> {
@@ -139,9 +162,34 @@ export async function hybridSearchGrants(
   const keywords = params.keywords ?? [];
   const applicantTraits = params.applicantTraits ?? [];
 
+  // Zero-result guard for pure greetings and illegal/prohibited activities
+  const isGreetingQuery = /^(привіт|добрий день|доброго дня|вітаю|hello|hi|хай|хто ти|що ти вмієш)[\s!\.,?]*$/i.test(semanticQuery);
+  const isIllegalOrProhibited = /казино|азартн|гральн.*автомат|рулетк|букмекер|лотере/i.test(semanticQuery);
+
+  if (isGreetingQuery || isIllegalOrProhibited) {
+    return [];
+  }
+
   const queryWords = normalize(semanticQuery)
     .split(/\s+/)
-    .filter((w) => w.length > 2 && !["для", "який", "хочу", "потрібно", "грант"].includes(w));
+    .filter((w) => w.length >= 2 && !SEARCH_STOP_WORDS.has(w));
+
+  // Domain intent detectors
+  const hasDefenseIntent = queryWords.some((w) =>
+    ["ппо", "антидрон", "реб", "дрон", "defense", "miltech", "бпла", "нрк", "зброя", "оборон", "військов", "розвідк", "боєприпас"].some((kw) => w.includes(kw))
+  );
+
+  const hasVeteranIntent = queryWords.some((w) =>
+    ["ветеран", "убд", "боparticip", "ветеранськ", "військов", "комбатант"].some((kw) => w.includes(kw))
+  ) || applicantTraits.some((t) => ["veteran", "убд"].includes(t.toLowerCase()));
+
+  const hasAgroIntent = queryWords.some((w) =>
+    ["сад", "теплиц", "ягід", "фермер", "полів", "агро", "врожай", "земл", "трактор"].some((kw) => w.includes(kw))
+  );
+
+  const hasProcessingIntent = queryWords.some((w) =>
+    ["перероб", "заморозк", "сушк", "сировин", "харчов", "борошн", "елеватор", "фасуван"].some((kw) => w.includes(kw))
+  );
 
   // Try generating semantic embedding
   let queryVector: number[] | null = null;
@@ -154,6 +202,20 @@ export async function hybridSearchGrants(
   for (const program of GRANT_CATALOG) {
     const isDeep = program.supportTier === "deep" || Boolean(PLAYBOOKS[program.id]);
     const supportTier: "deep" | "catalog_only" = isDeep ? "deep" : "catalog_only";
+
+    // Domain guarding: do not attach specialized domain programs to irrelevant queries
+    if ((program.id === "ua-brave1-core" || program.id === "ua-bravetech-eu") && !hasDefenseIntent) {
+      continue;
+    }
+    if ((program.id === "veteran-grant" || program.id === "uvf-reimbursement") && !hasVeteranIntent) {
+      continue;
+    }
+    if ((program.id === "agro-gardens" || program.id === "mercy-corps-uasp-agro") && !hasAgroIntent) {
+      continue;
+    }
+    if (program.id === "processing-business" && !hasProcessingIntent && hasDefenseIntent) {
+      continue;
+    }
 
     // 1. Semantic score
     let semanticScore = 0;
@@ -180,23 +242,30 @@ export async function hybridSearchGrants(
       finalScore = 0.70 * lexicalScore + 0.30 * tagBonus;
     }
 
-    // If query contains specific defense keywords, strongly boost Brave1
-    if (
-      program.id === "ua-brave1-core" &&
-      queryWords.some((w) => ["ппо", "антидрон", "реб", "дрон", "defense", "miltech", "бпла", "нрк", "зброя"].includes(w))
-    ) {
+    // Domain boosts
+    if (program.id === "ua-brave1-core" && hasDefenseIntent) {
+      finalScore = Math.max(finalScore, 0.92);
+    }
+    if (program.id === "veteran-grant" && hasVeteranIntent) {
+      finalScore = Math.max(finalScore, 0.92);
+    }
+    if (program.id === "processing-business" && hasProcessingIntent) {
+      finalScore = Math.max(finalScore, 0.90);
+    }
+    if (program.id === "agro-gardens" && hasAgroIntent) {
       finalScore = Math.max(finalScore, 0.88);
     }
-
-    // If query contains veteran keywords, boost veteran-grant
     if (
-      program.id === "veteran-grant" &&
-      queryWords.some((w) => ["ветеран", "убд", "ветеранськ"].includes(w))
+      program.id === "vlasna-sprava" &&
+      (queryWords.some((w) =>
+        ["відкри", "започатк", "майстерн", "збірк", "збор", "складан", "виробництв", "підприєм", "сервіс", "малий", "справ", "послуг", "кав", "пекар", "сто", "шаурм", "цех"].some((kw) => w.includes(kw))
+      ) || (!hasDefenseIntent && !hasAgroIntent))
     ) {
       finalScore = Math.max(finalScore, 0.89);
     }
 
-    if (finalScore > 0.15 || candidates.length < 4) {
+    // Require genuine minimum threshold
+    if (finalScore >= 0.38) {
       candidates.push({
         program_id: program.id,
         title: program.title,

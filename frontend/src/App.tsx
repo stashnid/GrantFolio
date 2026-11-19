@@ -455,13 +455,6 @@ export function App() {
             >
               <NavIcon kind="profile" />Профіль бізнесу
             </button>
-            <button
-              type="button"
-              className="link nav-tab nav-tab--feedback"
-              onClick={() => openFeedback()}
-            >
-              <NavIcon kind="feedback" />Залишити відгук
-            </button>
             <Suspense fallback={null}>
               <FeedbackAdminDrawer user={user} triggerClassName="sidebar-feedback-admin-btn" />
             </Suspense>

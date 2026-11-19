@@ -131,9 +131,10 @@ export async function callGeminiGenerate(
       continue;
     }
 
-    if ((res.status === 503 || res.status === 429) && attempts < 4) {
-      console.warn(`[AI] Upstream HTTP ${res.status} on model ${model}, retrying attempt ${attempts + 1}...`);
-      await new Promise((resolve) => setTimeout(resolve, 1500 * attempts));
+    if ((res.status === 503 || res.status === 429) && attempts < 6) {
+      const delayMs = Math.min(12000, 2000 * Math.pow(1.8, attempts - 1));
+      console.warn(`[AI] Upstream HTTP ${res.status} on model ${model}, retrying attempt ${attempts + 1} after ${delayMs}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
       continue;
     }
 
