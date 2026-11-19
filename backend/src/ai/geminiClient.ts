@@ -64,12 +64,21 @@ export async function callGeminiGenerate(
     ? `https://aiplatform.eu.rep.googleapis.com/v1/projects/${vertexProject}/locations/eu/publishers/google/models/${model}:generateContent`
     : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
 
-  const payload: Record<string, unknown> = {
+  const generationConfig: Record<string, unknown> = {
+    temperature: request.temperature ?? 0.45,
+    maxOutputTokens: request.maxOutputTokens ?? (request.role === "pro" ? 4096 : 3072),
+  };
+
+  const isFlashModel = model.includes("2.5-flash") || model.includes("flash");
+  if (isFlashModel) {
+    generationConfig.thinkingConfig = {
+      thinkingBudget: 2048,
+    };
+  }
+
+  let payload: Record<string, unknown> = {
     contents: request.contents,
-    generationConfig: {
-      temperature: request.temperature ?? 0.3,
-      maxOutputTokens: request.maxOutputTokens ?? (request.role === "pro" ? 4096 : 3072),
-    },
+    generationConfig,
   };
 
   if (request.systemInstruction) {
@@ -95,13 +104,30 @@ export async function callGeminiGenerate(
     headers.set("x-goog-api-key", apiKey!);
   }
 
-  const res = await fetchImpl(url, {
+  let res = await fetchImpl(url, {
     method: "POST",
     headers: Object.fromEntries(headers),
     body: JSON.stringify(payload),
     signal: request.signal,
     redirect: "error",
   });
+
+  if (!res.ok && res.status === 400 && generationConfig.thinkingConfig) {
+    // Safe fallback: retry without thinkingConfig if the endpoint or model version does not support thinking
+    const fallbackGenConfig = { ...generationConfig };
+    delete fallbackGenConfig.thinkingConfig;
+    payload = {
+      ...payload,
+      generationConfig: fallbackGenConfig,
+    };
+    res = await fetchImpl(url, {
+      method: "POST",
+      headers: Object.fromEntries(headers),
+      body: JSON.stringify(payload),
+      signal: request.signal,
+      redirect: "error",
+    });
+  }
 
   if (!res.ok) {
     const text = await res.text().catch(() => "");

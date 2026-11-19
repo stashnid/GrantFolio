@@ -145,7 +145,24 @@ export async function runAgentOrchestrator(
     return runOfflineAgentOrchestrator(options);
   }
 
-  const systemInstruction = buildAssistantSystemPrompt(context);
+  const enrichedContext = { ...context };
+  if (!enrichedContext.missingRequiredFields && enrichedContext.activeProject?.program_id) {
+    const missing = computeMissingRequiredFields(enrichedContext.activeProject.program_id, {
+      title: enrichedContext.activeProject.title,
+      program_id: enrichedContext.activeProject.program_id,
+      details: enrichedContext.activeProject.details as Record<string, unknown> | null,
+      items: enrichedContext.activeProject.items,
+      total_kopecks: enrichedContext.activeProject.total_kopecks,
+      profile: enrichedContext.userProfile as Record<string, unknown> | null,
+    });
+    enrichedContext.missingRequiredFields = {
+      missingFields: missing.missing_fields.map((f) => f.label_uk),
+      totalFields: missing.total_required_count,
+      completedFields: missing.filled_count,
+    };
+  }
+
+  const systemInstruction = buildAssistantSystemPrompt(enrichedContext);
 
   // Prepare multi-turn history (last 16 messages)
   const trimmedHistory = history.slice(-16);

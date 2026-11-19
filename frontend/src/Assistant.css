@@ -350,6 +350,55 @@
   line-height: 1.35;
 }
 
+.live-chat-container .assistant-text .reply-subheading {
+  margin: 16px 0 6px;
+  color: #1e293b;
+  font-size: 1.05em;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1.35;
+}
+
+.live-chat-container .chat-table-wrapper {
+  margin: 14px 0;
+  overflow-x: auto;
+  border-radius: 8px;
+  border: 1px solid #cbd5e1;
+  background: #ffffff;
+}
+
+.live-chat-container .chat-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.live-chat-container .chat-table th {
+  background: #f1f5f9;
+  font-weight: 650;
+  color: #0f172a;
+  padding: 8px 12px;
+  border-bottom: 1px solid #cbd5e1;
+  white-space: nowrap;
+}
+
+.live-chat-container .chat-table td {
+  padding: 8px 12px;
+  border-bottom: 1px solid #e2e8f0;
+  color: #334155;
+  vertical-align: top;
+}
+
+.live-chat-container .chat-table tr:last-child td {
+  border-bottom: none;
+}
+
+.live-chat-container .chat-table tr:nth-child(even) td {
+  background: #f8fafc;
+}
+
 .live-chat-container .assistant-text > :first-child {
   margin-top: 0;
 }

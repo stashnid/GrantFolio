@@ -167,15 +167,28 @@ export function Advisor({
   const [applyingProposalId, setApplyingProposalId] = useState<string | null>(null);
   const [proposalError, setProposalError] = useState<string>("");
 
-  async function applyProposal(prop: { id: string; target: string; field_key: string; proposed_value: unknown }) {
+  async function applyProposal(prop: {
+    id: string;
+    target: string;
+    summary?: string;
+    patch?: Record<string, unknown>;
+    field_key?: string;
+    proposed_value?: unknown;
+  }) {
     setApplyingProposalId(prop.id);
     setProposalError("");
     try {
-      if (prop.target === "profile") {
+      const patchObj = prop.patch && typeof prop.patch === "object"
+        ? prop.patch
+        : prop.field_key
+          ? { [prop.field_key]: prop.proposed_value }
+          : {};
+
+      if (prop.target === "profile" || prop.target === "business_profile") {
         const res = await authenticatedRequest(user, "/api/me/profile");
         const data = res.ok ? await res.json() : {};
         const profile = data.profile || {};
-        const updated = { ...profile, [prop.field_key]: prop.proposed_value };
+        const updated = { ...profile, ...patchObj };
         const putRes = await authenticatedRequest(user, "/api/me/profile", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -192,7 +205,7 @@ export function Advisor({
         const targetCase = casesList[0];
         const updatedDetails = {
           ...targetCase.details,
-          [prop.field_key]: prop.proposed_value,
+          ...patchObj,
         };
         const putRes = await authenticatedRequest(user, `/api/cases/${targetCase.id}/details`, {
           method: "PUT",

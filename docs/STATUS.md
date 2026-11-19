@@ -30,11 +30,12 @@
      - Додано блок «Пакет документів»: пряме завантаження Brief, BOM, Zip та запуск валідатора Brave1.
      - Додано інтерактивний чекліст зовнішніх додатків із збереженням стану чекбоксів у БД.
 
-4. **Перепрошивка AI-асистента**:
-   - Оновлено системний промпт `backend/src/ai/prompts/assistantSystemPrompt.ts`: Consultant & Explainer Mode за замовчуванням, Project Support Mode з викликом `get_missing_fields()`, суворе дотримання OPSEC.
-   - Збільшено `maxOutputTokens` до 3072 (chat) та 4096 (pro) в `backend/src/ai/geminiClient.ts`.
-   - Додано 6-й інструмент `get_missing_fields` до агентного циклу `backend/src/ai/agentOrchestrator.ts`.
-   - В UI (`frontend/src/Advisor.tsx`): додано кнопку «Застосувати до проєкту» для пропозицій ШІ (`pending_proposals`) з прямим записом у базу даних.
+4. **Перепрошивка AI-асистента до рівня флагманського консультанта**:
+   - Впроваджено дослівний еталонний системний промпт `backend/src/ai/prompts/assistantSystemPrompt.ts`: стандарти інтелекту, пояснювально-стратегічний режим за замовчуванням, режим керованого заповнення, заборона шаблонних привітань («ботівщини»), OPSEC, точність інструментів, динамічний контекст та еталонні діалоги (приватне ППО/Brave1 та пекарня Дія.Бізнес).
+   - Налаштовано параметри генерації в `backend/src/ai/geminiClient.ts`: `maxOutputTokens >= 3072` (4096 для pro), `temperature: 0.45`, `thinkingConfig: { thinkingBudget: 2048 }` для flash-моделей з безпечним автоматичним fallback-повтором без нього при HTTP 400.
+   - Додано 6-й інструмент `get_missing_fields` до агентного циклу `backend/src/ai/agentOrchestrator.ts` та автоматичне збагачення контексту пропущеними полями активного проєкту.
+   - Оновлено безпечний рендерер відповідей (`frontend/src/Assistant.tsx`, `frontend/src/Assistant.css`): чистий парсинг Markdown-таблиць (`| col1 | col2 |`), багаторівневих підзаголовків (`###`), списків, жирного та курсивного накреслення без сирих зірочок та злипання тексту.
+   - Замкнено наскрізний цикл пропозицій: `propose_structured_update` → UI-картка в `frontend/src/Advisor.tsx` → збереження через API в PostgreSQL (`/api/me/profile` або `/api/cases/:id/details`) → зміна статусу на «✅ Застосовано до проєкту».
 
 5. **Верифікація**:
    - Додано та успішно пройдено нові тести:

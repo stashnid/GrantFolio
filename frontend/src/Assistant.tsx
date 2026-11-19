@@ -266,7 +266,7 @@ function extractBudgetItemsFromText(text: string): SuggestedBudgetItem[] {
 
 // React renders every unmatched fragment as text; links are restricted to web URLs.
 function formatInline(text: string): ReactNode[] {
-  const parts = text.split(/(`[^`\n]+`|\*\*[^*\n]+\*\*|\[[^\]\n]+\]\(https?:\/\/[^\s)]+\))/g);
+  const parts = text.split(/(`[^`\n]+`|\[[^\]\n]+\]\(https?:\/\/[^\s)]+\)|\*\*\*[^*\n]+\*\*\*|\*\*[^*\n]+\*\*|\*(?!\s)[^*\n]+(?<!\s)\*|_(?!\s)[^_\n]+(?<!\s)_)/g);
   return parts.map((part, index) => {
     if (part.startsWith("`") && part.endsWith("`") && part.length >= 2) {
       return (
@@ -283,8 +283,21 @@ function formatInline(text: string): ReactNode[] {
         </a>
       );
     }
+    if (part.startsWith("***") && part.endsWith("***") && part.length >= 6) {
+      return (
+        <strong key={index}>
+          <em>{part.slice(3, -3)}</em>
+        </strong>
+      );
+    }
     if (part.startsWith("**") && part.endsWith("**") && part.length >= 4) {
       return <strong key={index}>{part.slice(2, -2)}</strong>;
+    }
+    if (
+      (part.startsWith("*") && part.endsWith("*") && part.length >= 2) ||
+      (part.startsWith("_") && part.endsWith("_") && part.length >= 2)
+    ) {
+      return <em key={index}>{part.slice(1, -1)}</em>;
     }
     return part;
   });
@@ -295,6 +308,8 @@ const isDividerLine = (line: string) => /^\s*(?:---+|___+|\*\*\*+)\s*$/.test(lin
 const isBlockquoteLine = (line: string) => /^\s*>\s?/.test(line);
 const isUnorderedListLine = (line: string) => /^\s*[-*•]\s+/.test(line);
 const isOrderedListLine = (line: string) => /^\s*\d+[.)]\s+/.test(line);
+const isTableLine = (line: string) => /^\s*\|(.+)\|\s*$/.test(line);
+const isTableSeparator = (line: string) => /^\s*\|(?:\s*:?-+:?\s*\|)+\s*$/.test(line);
 
 export function FormattedReply({ text }: { text: string }) {
   const lines = text.split("\n");
@@ -311,13 +326,22 @@ export function FormattedReply({ text }: { text: string }) {
       index++;
       continue;
     }
-    const heading = line.match(/^\s{0,3}#{1,6}\s+(.+)$/);
+    const heading = line.match(/^(\s{0,3})(#{1,6})\s+(.+)$/);
     if (heading) {
-      blocks.push(
-        <h3 className="reply-heading" key={index}>
-          {formatInline(heading[1])}
-        </h3>
-      );
+      const level = heading[2].length;
+      if (level >= 3) {
+        blocks.push(
+          <h4 className="reply-subheading" key={index}>
+            {formatInline(heading[3])}
+          </h4>
+        );
+      } else {
+        blocks.push(
+          <h3 className="reply-heading" key={index}>
+            {formatInline(heading[3])}
+          </h3>
+        );
+      }
       index++;
       continue;
     }
@@ -337,6 +361,66 @@ export function FormattedReply({ text }: { text: string }) {
             </span>
           ))}
         </blockquote>
+      );
+      continue;
+    }
+    if (isTableLine(line)) {
+      const start = index;
+      const tableLines: string[] = [];
+      while (index < lines.length && isTableLine(lines[index])) {
+        tableLines.push(lines[index]);
+        index++;
+      }
+
+      const parseCells = (rowStr: string) =>
+        rowStr
+          .trim()
+          .replace(/^\|/, "")
+          .replace(/\|$/, "")
+          .split("|")
+          .map((c) => c.trim());
+
+      let headerCells: string[] = [];
+      const rowCells: string[][] = [];
+
+      if (tableLines.length >= 2 && isTableSeparator(tableLines[1])) {
+        headerCells = parseCells(tableLines[0]);
+        for (let i = 2; i < tableLines.length; i++) {
+          if (!isTableSeparator(tableLines[i])) {
+            rowCells.push(parseCells(tableLines[i]));
+          }
+        }
+      } else {
+        for (const tLine of tableLines) {
+          if (!isTableSeparator(tLine)) {
+            rowCells.push(parseCells(tLine));
+          }
+        }
+      }
+
+      blocks.push(
+        <div className="chat-table-wrapper" key={start}>
+          <table className="chat-table">
+            {headerCells.length > 0 && (
+              <thead>
+                <tr>
+                  {headerCells.map((hc, hIdx) => (
+                    <th key={hIdx}>{formatInline(hc)}</th>
+                  ))}
+                </tr>
+              </thead>
+            )}
+            <tbody>
+              {rowCells.map((r, rIdx) => (
+                <tr key={rIdx}>
+                  {r.map((c, cIdx) => (
+                    <td key={cIdx}>{formatInline(c)}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       );
       continue;
     }
@@ -369,7 +453,8 @@ export function FormattedReply({ text }: { text: string }) {
       !isHeadingLine(lines[index]) &&
       !isBlockquoteLine(lines[index]) &&
       !isUnorderedListLine(lines[index]) &&
-      !isOrderedListLine(lines[index])
+      !isOrderedListLine(lines[index]) &&
+      !isTableLine(lines[index])
     ) {
       paragraph.push(lines[index++]);
     }
