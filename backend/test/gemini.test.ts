@@ -92,7 +92,7 @@ test("configuredGeminiResponder sends exact POST header/body and includes budget
       profileRevision: 0,
       details: { sector: "IT" },
       items: [{ name: "Ноутбук", amount: 30000 }],
-      total_kopecks: "3000000",
+      total_kopecks: "3000037",
       conversation: [{ question: "Попереднє", reply: "Попередня відповідь", revision: 2, stale: false, truncated: false }],
     };
 
@@ -108,13 +108,16 @@ test("configuredGeminiResponder sends exact POST header/body and includes budget
     assert.equal(requestOptions.signal, controller.signal);
 
     const parsedBody = JSON.parse(requestOptions.body);
-    assert.ok(parsedBody.systemInstruction);
+    const consultationPrompt = parsedBody.systemInstruction.parts[0].text;
+    assert.match(consultationPrompt, /зістав названі позиції з підтвердженими категоріями/);
+    assert.match(consultationPrompt, /де знайти офіційну форму і як перейти до подання/);
     assert.ok(parsedBody.contents);
     assert.equal(parsedBody.generationConfig.maxOutputTokens, 1200);
 
     const userText = parsedBody.contents[0].parts[0].text;
     const parsedUserJson = JSON.parse(userText);
     assert.deepEqual(parsedUserJson.savedCase, snapshot);
+    assert.equal(parsedUserJson.savedBudgetTotalUah, "30000,37 грн");
     assert.equal(parsedUserJson.question, "Як покращити заявку?");
     assert.deepEqual(parsedUserJson.grantSourceContext, grantSourceContext);
   } finally {

@@ -88,6 +88,8 @@ const groups: Record<string, string[]> = {
     "обладнан",
     "інструмент",
     "устаткуван",
+    "кавомаш",
+    "холодильн",
     "технік",
     "ремонт",
     "компютер",
@@ -326,8 +328,8 @@ export function searchGrants(query: string, programs: readonly GrantCatalogEntry
     if (p.id === "women-techeu-2-eic" && score > 0) {
       reason = "Програма для комерційних deep-tech стартапів; перевірте стадію технології, вік компанії та вимоги до засновниці в джерелі.";
     }
-    if (p.id === "bloom-sme" && score > 0 && /(?:ще )?не (?:є |маю )?фоп|(?:немає|не маю) (?:зареєстрованого )?фоп/.test(cleaned)) {
-      score = Math.min(score, 20);
+    if (p.id === "bloom-sme" && score > 0 && /(?:ще )?не (?:є |маю )?фоп|(?:немає|не маю) (?:зареєстрованого )?фоп|бізнес (?:ще )?не зареєстрован/.test(cleaned)) {
+      if (!explicitProvider && !includesPhrase("bloom")) continue;
       reason = "Програма для зареєстрованих ФОП або юридичних осіб із соціальним чи екологічним впливом. Ви зазначили, що ще не маєте ФОП; перевірте вимоги до заявника перед підготовкою.";
     }
     if (p.fundingType === "reimbursement" && score > 0 && !pastPurchase) {

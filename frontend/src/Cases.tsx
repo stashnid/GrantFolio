@@ -1,7 +1,9 @@
+import { hasGuidedApplication } from "./grants";
 import { assessBudget, readiness as snapshotReadiness } from "../../backend/src/project-details";
 import {isGrantAvailable} from "../../backend/src/grant-availability";
 import {useGrantPrograms} from "./GrantPrograms";
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { ProjectPayment } from "./ProjectPayment";
 import { createPortal } from "react-dom";
 import type { User } from "firebase/auth";
 import { Assistant } from "./Assistant";
@@ -10,6 +12,8 @@ import { useSessionDraft } from "./useSessionDraft";
 import "./SessionRecovery.css";
 import { authenticatedRequest, readableApiError } from "./api";
 import { CustomSelect } from "./CustomSelect";
+import { useConfirm } from "./ConfirmDialog";
+import { FeedbackPromptBanner } from "./FeedbackPromptBanner";
 import type { GrantProgram } from "./grants";
 import { friendlyTitle } from "../../backend/src/grant-discovery";
 
@@ -145,6 +149,14 @@ const serializeBudget = (
 ) => rows.map(({ name, quantity, price }) => ({ name, quantity, price }));
 const money = (n: number) =>
   `${Math.floor(n / 100).toLocaleString("uk-UA")},${String(n % 100).padStart(2, "0")} грн`;
+function printSourceUrl(value: string) {
+  try {
+    const url = new URL(value);
+    return url.protocol === "https:" && !url.username && !url.password ? url.href : null;
+  } catch {
+    return null;
+  }
+}
 export function Cases({
   user,
   onUnsavedChange,
@@ -157,6 +169,7 @@ export function Cases({
   profileRevision = 0,
   preparationSeed = "",
   preparationId = "",
+  onOpenFeedback,
 }: {
   user: User;
   onUnsavedChange?: (dirty: boolean) => void;
@@ -170,8 +183,17 @@ export function Cases({
   profileRevision?: number;
   preparationSeed?: string;
   preparationId?: string;
+  onOpenFeedback?: (context?: { screen?: "export" | "budget" | "cases"; programId?: string | null }) => void;
 }) {
   const {programs: GRANT_PROGRAMS} = useGrantPrograms();
+  const confirm = useConfirm();
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
   const [cases, setCases] = useState<Case[]>([]),
     [selected, setSelected] = useState<Case | null>(null),
     [draft, setDraft] = useState<DraftItem[]>([]),
@@ -190,7 +212,35 @@ export function Cases({
     [activeStep, setActiveStep] = useState<"basics" | "plan" | "budget" | "review" | "assistant">("assistant"),
     [assistantPrompt, setAssistantPrompt] = useState<string>(""),
     [chatDraft, setChatDraft] = useState(false),
-    [showCreate, setShowCreate] = useState(false);
+    [showCreate, setShowCreate] = useState(false),
+    [contextDrawerOpen, setContextDrawerOpen] = useState(false),
+    [showExportFeedback, setShowExportFeedback] = useState(false);
+  const [paidCaseId, setPaidCaseId] = useState<string | null>(null);
+  const unlockCase = useCallback(() => { if (selected) setPaidCaseId(selected.id); }, [selected?.id]);
+  const isPaid = selected !== null && paidCaseId === selected.id;
+  const contextToggleRef = useRef<HTMLButtonElement>(null);
+  const contextDrawerRef = useRef<HTMLElement>(null);
+  const isAssistantStep = activeStep === "assistant";
+
+  useEffect(() => {
+    if (!isAssistantStep || showCreate) {
+      setContextDrawerOpen(false);
+    }
+  }, [isAssistantStep, showCreate, selected?.id]);
+
+  useEffect(() => {
+    if (!contextDrawerOpen || !isAssistantStep) return;
+    contextDrawerRef.current?.focus();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && !event.defaultPrevented) {
+        event.preventDefault();
+        setContextDrawerOpen(false);
+        contextToggleRef.current?.focus();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [contextDrawerOpen, isAssistantStep]);
   const [pending, setPending] = useState<{
     id: string;
     body: string;
@@ -272,6 +322,9 @@ export function Cases({
     }
   }
   useEffect(() => {
+    if (isPaid && selected) void loadReadiness(selected.id);
+  }, [isPaid, selected?.id]);
+  useEffect(() => {
     if (!dirty && !pending && !chatDraft) return;
     const warn = (event: BeforeUnloadEvent) => {
       event.preventDefault();
@@ -280,22 +333,26 @@ export function Cases({
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
   }, [dirty, pending, chatDraft]);
-  function mayLeaveDraft() {
+  async function mayLeaveDraft() {
     if (pending) {
       setError("Спочатку повторіть збереження, щоб дізнатися його результат.");
       return false;
     }
-    return (
-      (!dirty && !chatDraft) ||
-      window.confirm(
-        "Є незбережені зміни або ненадіслане запитання. Відкрити інший проєкт і втратити їх?",
-      )
-    );
+    if (!dirty && !chatDraft) return true;
+    const confirmed = await confirm({
+      title: "Перейти до іншого проєкту?",
+      message: "Є незбережені зміни або ненадіслане запитання. Якщо відкрити інший проєкт, їх буде втрачено.",
+      confirmLabel: "Перейти без збереження",
+      cancelLabel: "Залишитися",
+      tone: "warning",
+    });
+    return confirmed && mountedRef.current;
   }
   async function select(id: string, discard = false) {
     if (!discard && selected?.id === id) return;
-    if (!discard && !mayLeaveDraft()) return;
+    if (!discard && !(await mayLeaveDraft())) return;
     setBusy(true);
+    setPaidCaseId(null);
     setError("");
     try {
       const r = await request(`/api/cases/${id}`);
@@ -305,7 +362,7 @@ export function Cases({
       setSelected(c);
       setDraft(toDraft(c.items));
       setDetails(c.details || emptyDetails);
-      setActiveStep("assistant");
+      setActiveStep(c.programId && hasGuidedApplication(c.programId) ? "review" : "assistant");
       setAssistantPrompt("");
       void loadReadiness(c.id);
       setConflict(false);
@@ -317,22 +374,58 @@ export function Cases({
       setBusy(false);
     }
   }
+  const handledPreparation = useRef("");
+  const preparationVersion = `${selectedProgram?.id ?? ""}:${preparationId}:${programTarget?.id ?? ""}`;
+  const latestPreparation = useRef(preparationVersion);
+  latestPreparation.current = preparationVersion;
+  const formEpoch = useRef(0);
+  const createInFlight = useRef(false);
   useEffect(() => {
-    if (selectedProgram && programTarget) { setShowCreate(false); return; }
-    if (selectedProgram) {
+    if (!selectedProgram) { handledPreparation.current = ""; return; }
+    if (programTarget) { setShowCreate(false); return; }
+    if (!ready || busy) return;
+    const key = preparationId || `catalog:${selectedProgram.id}`;
+    if (handledPreparation.current === key) return;
+    handledPreparation.current = key;
+    const epoch = formEpoch.current;
+    const version = preparationVersion;
+    void (async () => {
+      const mayLeave = await mayLeaveDraft();
+      if (!mountedRef.current || latestPreparation.current !== version || formEpoch.current !== epoch) return;
+      if (!mayLeave) { onClearProgram?.(); return; }
+      setTitle("");
+      setInitialNeed(preparationSeed.slice(0, 2000));
+      setError("");
       setShowCreate(true);
-      setTitle((current) => (!preparationId && current) || `${preparationSeed ? preparationSeed.slice(0,80) : businessName || "Мій проєкт"} — ${friendlyTitle(selectedProgram)}`.slice(0, 160));
       requestAnimationFrame(() => createTitleInput.current?.focus());
-    }
-  }, [selectedProgram, programTarget, businessName, preparationSeed, preparationId]);
+    })();
+  }, [selectedProgram, programTarget, preparationId, preparationSeed, ready, busy]);
 
-  async function create(e?: React.FormEvent, preparation?: { title: string; programId: string; initialDescription: string }) {
+  async function openNewProject() {
+    const epoch = ++formEpoch.current;
+    if (!(await mayLeaveDraft()) || !mountedRef.current || formEpoch.current !== epoch) return;
+    onClearProgram?.();
+    setTitle("");
+    setInitialNeed("");
+    setError("");
+    setShowCreate(true);
+    requestAnimationFrame(() => createTitleInput.current?.focus());
+  }
+
+  async function create(e?: React.FormEvent) {
     e?.preventDefault();
-    if (programTarget || busy || !ready || (!preparation && !mayLeaveDraft())) return;
-    const targetId = preparation?.programId ?? selectedProgram?.id ?? null;
+    if (createInFlight.current) return;
+    createInFlight.current = true;
+    try { await createProject(); } finally { createInFlight.current = false; }
+  }
+
+  async function createProject() {
+    if (programTarget || busy || !ready || !(await mayLeaveDraft())) return;
+    const targetId = selectedProgram?.id ?? "vlasna-sprava";
     const target = targetId ? GRANT_PROGRAMS.find(p => p.id === targetId) : null;
-    if (targetId && (!target || !isGrantAvailable(target))) { setError("Прийом за цією програмою зараз не підтверджено. Виберіть актуальну програму в каталозі."); return; }
-    const values = preparation ?? { title, programId: target?.id ?? null, initialDescription: initialNeed };
+    if (targetId && (!target || !hasGuidedApplication(target.id))) { setError("Для цієї програми доступний пошук і перегляд умов. Виберіть програму з анкетою або створіть загальну чернетку."); return; }
+    if (!title.trim()) { setError("Введіть власну назву проєкту."); createTitleInput.current?.focus(); return; }
+    const values = { title: title.trim(), programId: target?.id ?? null, initialDescription: initialNeed };
     const body = JSON.stringify(values);
     if (!createAttempt.current || createAttempt.current.body !== body) createAttempt.current = { body, id: crypto.randomUUID() };
     setBusy(true);
@@ -349,10 +442,11 @@ export function Cases({
       createAttempt.current = null;
       rememberCase(c.id);
       setCases([c, ...cases.filter(existing => existing.id !== c.id)]);
+      setPaidCaseId(null);
       setSelected(c);
       setDraft([]);
       setDetails(c.details || emptyDetails);
-      setActiveStep("assistant");
+      setActiveStep(c.programId && hasGuidedApplication(c.programId) ? "review" : "assistant");
       setAssistantPrompt("");
       void loadReadiness(c.id);
       setTitle("");
@@ -368,22 +462,10 @@ export function Cases({
     }
   }
 
-  const handledPreparation = useRef("");
-  useEffect(() => {
-    if (programTarget || !preparationId || handledPreparation.current === preparationId || !selectedProgram || !ready || busy) return;
-    handledPreparation.current = preparationId;
-    if (!mayLeaveDraft()) { setShowCreate(false); onClearProgram?.(); return; }
-    void create(undefined, {
-      title: `${preparationSeed ? preparationSeed.slice(0, 80) : businessName || "Мій проєкт"} — ${friendlyTitle(selectedProgram)}`.slice(0, 160),
-      programId: selectedProgram.id,
-      initialDescription: preparationSeed,
-    });
-  }, [preparationId, selectedProgram, programTarget, ready, busy, preparationSeed, businessName]);
-
   async function attachProgram() {
     if (!programTarget || !selectedProgram || !selected || selected.id !== programTarget.id || selected.revision !== programTarget.revision || busy || dirty || pending || conflict || sessionDraft.recovery) return;
     const currentProgram = GRANT_PROGRAMS.find(p => p.id === selectedProgram.id);
-    if (!currentProgram || !isGrantAvailable(currentProgram)) { setError("Прийом за цією програмою зараз не підтверджено. Перевірте актуальні умови."); return; }
+    if (!currentProgram || !hasGuidedApplication(currentProgram.id)) { setError("Для цієї програми доступний пошук і перегляд умов."); return; }
     setBusy(true);
     setError("");
     try {
@@ -625,6 +707,7 @@ export function Cases({
         revokeTimer.current = null;
       }, 1000);
       setNotice("Чернетку підготовлено до завантаження.");
+      setShowExportFeedback(true);
     } catch (error) {
       setError(readableApiError(error, "Не вдалося завантажити чернетку. Спробуйте ще раз."));
     } finally {
@@ -633,14 +716,22 @@ export function Cases({
   }
   async function deleteDraft() {
     if (!selected || sessionDraft.recovery) return;
-    if (!window.confirm(`Видалити чернетку «${selected.title}»? Цю дію неможливо скасувати.`)) return;
+    const targetCase = selected;
+    const confirmed = await confirm({
+      title: "Видалити проєкт?",
+      message: `Чернетку «${targetCase.title}» буде видалено. Цю дію неможливо скасувати.`,
+      confirmLabel: "Видалити",
+      cancelLabel: "Скасувати",
+      tone: "danger",
+    });
+    if (!confirmed || !mountedRef.current || sessionDraft.recovery) return;
     setBusy(true);
     setError("");
     setNotice("");
     try {
-      const r = await request(`/api/cases/${selected.id}`, { method: "DELETE" });
+      const r = await request(`/api/cases/${targetCase.id}`, { method: "DELETE" });
       if (!r.ok && r.status !== 404) throw Error();
-      setCases((old) => old.filter((c) => c.id !== selected.id));
+      setCases((old) => old.filter((c) => c.id !== targetCase.id));
       setSelected(null);
       setDraft([]);
       setDetails(emptyDetails);
@@ -724,49 +815,145 @@ export function Cases({
 
   const printReadiness = selected ? snapshotReadiness({ revision: selected.revision, details: selected.details, items: selected.items, total_kopecks: selected.totalKopecks }) : null;
   const printBudget = selected ? assessBudget(selected.items, selected.totalKopecks) : null;
+  const printBlocked = busy || dirty || !!pending || conflict || !!sessionDraft.recovery;
+  const printFields = [...basicsFields, ...planFields].filter(({ key }) => selected?.details[key]?.trim());
+  const printMissingChecks = printReadiness?.checks.filter(check => check.status === "missing") ?? [];
 
   const isStep1Done = Boolean(details.projectDescription.trim() && details.customers.trim());
   const isStep2Done = Boolean(details.implementationPlan.trim());
   const isStep3Done = draft.length > 0;
 
 
+  const readinessCompleteCount = readiness
+    ? readiness.checks.filter((check) => check.status === "complete").length
+    : null;
+  const readinessTotalCount = readiness ? readiness.checks.length : null;
+  const hasUnifiedPicker = cases.length > 0 && !showCreate;
+
   return (
-    <div className="card cases-card">
-      {selected && createPortal(
-        <article className="print-document" aria-label="Чернетка проєкту для друку">
-          <p>GrantFolio · Робоча чернетка</p>
+    <div className={`card cases-card${selected && !showCreate && isAssistantStep ? " cases-card--assistant" : ""}`}>
+      {isPaid && selected && selected.programId !== "vlasna-sprava" && !printBlocked && createPortal(
+        <article className="print-document" lang="uk" aria-label="Робоча чернетка проєкту">
+          <header className="print-document-header">
+            <div className="print-brand">GrantFolio</div>
+            <p>РОБОЧА ЧЕРНЕТКА · ЗВІРТЕ З ОФІЦІЙНОЮ ФОРМОЮ</p>
+          </header>
           <h1>{selected.title}</h1>
-          <p>{activeProgram ? `Цільова програма: ${activeProgram.title} (${activeProgram.provider})` : "Фінансування підберемо далі"}</p>
-          <p>Збережена версія: {selected.revision}. Документ не замінює офіційної форми заявки.</p>
-          <p>Джерело відомостей про проєкт і бюджет: збережені дані заявника. Перевірте факти та узгодженість перед використанням.</p>
-          {printReadiness && <p>{printReadiness.checks.some(check => check.status === "missing") ? `Потребує доопрацювання: ${printReadiness.checks.filter(check => check.status === "missing").map(check => check.label).join(", ")}.` : "Базову перевірку заповнення пройдено; зміст і факти ще потрібно перевірити."}</p>}
-          {[...basicsFields, ...planFields].map((field) => (
+          <p className="print-document-lead">Опис проєкту та кошторис зі збережених даних заявника.</p>
+          <table className="print-metadata" aria-label="Відомості про проєкт"><tbody>
+            <tr><th scope="row">Цільова програма</th><td>{activeProgram ? `${activeProgram.title} · ${activeProgram.provider}` : "Не обрано"}</td></tr>
+            <tr><th scope="row">Збережена версія</th><td>{selected.revision}</td></tr>
+            <tr><th scope="row">Дата формування</th><td>{new Date().toLocaleDateString("uk-UA", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Kyiv" })}</td></tr>
+          </tbody></table>
+          <h2>Опис і план проєкту</h2>
+          {printReadiness && <p className="print-document-note">{printMissingChecks.length ? `Потребує доопрацювання: ${printMissingChecks.map(check => check.label).join(", ")}.` : "Базову перевірку заповнення пройдено. Перевірте факти та узгодженість."}</p>}
+          {printFields.map((field) => (
             <section key={field.key}>
-              <h2>{field.label}</h2>
-              <p className="print-paragraph">{selected.details[field.key] || "Не заповнено"}</p>
+              <h3>{field.label}</h3>
+              <p className="print-paragraph">{selected.details[field.key]}</p>
             </section>
           ))}
-          <h2>{"Бюджет"}</h2>
-          {printBudget?.validItems && selected.items.length > 0 ? <table>
-            <thead><tr><th>Витрата</th><th>Кількість</th><th>Ціна за одиницю</th><th>Сума</th></tr></thead>
+          <h2>Бюджет</h2>
+          {printBudget?.validItems && selected.items.length > 0 ? <table className="print-budget" aria-label="Кошторис проєкту">
+            <thead><tr><th scope="col">Стаття витрат</th><th scope="col">Кількість</th><th scope="col">Ціна за одиницю</th><th scope="col">Сума</th></tr></thead>
             <tbody>{selected.items.map((item, index) => <tr key={index}><td>{item.name}</td><td>{item.quantity}</td><td>{money(item.unitPriceKopecks)}</td><td>{money(item.quantity * item.unitPriceKopecks)}</td></tr>)}</tbody>
-          </table> : <p>{printBudget?.validItems ? "Не вказано" : "Позиції бюджету пошкоджені; перевірте та збережіть кошторис повторно."}</p>}
-          <p><strong>{printBudget?.totalMatches ? `Разом: ${money(selected.totalKopecks)}` : "Підсумок потребує перевірки: збережена сума не збігається з позиціями або бюджет пошкоджений."}</strong></p>
+          </table> : <p className="print-document-note">{printBudget?.validItems ? "Витрати ще не додано." : "Позиції бюджету пошкоджені. Перевірте та збережіть кошторис повторно."}</p>}
+          {printBudget?.totalMatches
+            ? <p className="print-total">Загальна сума бюджету <strong>{money(selected.totalKopecks)}</strong></p>
+            : <p className="print-document-note">Підсумок потребує перевірки. Збережена сума має збігатися із сумою позицій.</p>}
           {activeProgram && <><h2>Документи та наступні кроки</h2>
           <ul>{activeProgram.details.documents.map(document => <li key={document}>{document}</li>)}</ul>
           <ol>{activeProgram.details.steps.map(step => <li key={step}>{step}</li>)}</ol>
           <h2>Офіційні джерела</h2>
-          {activeProgram.details.sources.map(source => <p key={source.url}>{source.title}: {source.url} (перевірено {source.checkedAt})</p>)}</>}
-          <p>Умови участі, актуальний прийом, формат документів і дозволені витрати перевіряйте у конкретному конкурсі. Це робоча чернетка, не підтвердження офіційного подання.</p>
+          {activeProgram.details.sources.map(source => {
+            const url = printSourceUrl(source.url);
+            return <p className="print-source" key={source.url}>
+              <strong>{source.title}</strong>{" "}
+              <small>· Перевірено {source.checkedAt}</small>
+              {url && <><br /><a href={url}>{url}</a></>}
+            </p>;
+          })}</>}
+          <footer className="print-document-footer">
+            <strong>Перевірка перед поданням</strong>
+            <p>Звірте умови участі, актуальний прийом, перелік документів і дозволені витрати на сайті організатора. Перенесіть перевірені матеріали до актуальної форми заявки.</p>
+          </footer>
         </article>, document.body
       )}
-      <div className="cases-toolbar">
-        <div><h2>Мої проєкти</h2><p>Підготовка матеріалів з асистентом</p></div>
-        <button type="button" className="secondary-btn" disabled={!ready || !!programTarget} onClick={() => { setShowCreate((open) => !open); if (showCreate) onClearProgram?.(); else requestAnimationFrame(() => createTitleInput.current?.focus()); }} aria-expanded={showCreate} aria-controls="create-case-panel">
-          {showCreate ? "Закрити" : "+ Новий проєкт"}
-        </button>
+      <div className="cases-unified-bar">
+        {hasUnifiedPicker ? (
+          <div className="cases-unified-picker">
+            <h2 className="sr-only">Мої проєкти</h2>
+            <label htmlFor="case-switcher-select" className="cases-unified-label">
+              Проєкт
+            </label>
+            <div className="cases-unified-select">
+              <CustomSelect
+                id="case-switcher-select"
+                className="case-switcher-select"
+                ariaLabel="Обраний проєкт"
+                placeholder="Оберіть проєкт"
+                value={selected?.id ?? ""}
+                disabled={busy}
+                options={cases.map((item) => ({ value: item.id, label: item.title }))}
+                onChange={(val) => void select(val)}
+              />
+            </div>
+          </div>
+        ) : (
+          <div className="cases-unified-heading">
+            <h2>Мої проєкти</h2>
+          </div>
+        )}
+        <div className="cases-unified-actions">
+          {selected && !showCreate && <button type="button" className="secondary-btn" onClick={() => setPaidCaseId(null)}>Оплата</button>}
+          {isPaid && selected && !showCreate && isAssistantStep && (
+            <button
+              ref={contextToggleRef}
+              type="button"
+              className={`cases-context-toggle${contextDrawerOpen ? " is-active" : ""}`}
+              onClick={() => setContextDrawerOpen((open) => !open)}
+              aria-expanded={contextDrawerOpen}
+              aria-controls="case-context-drawer"
+              aria-label="Дані проєкту"
+            >
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="1.9" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9" />
+                <path d="M12 16v-4M12 8h.01" />
+              </svg>
+              <span className="cases-context-toggle-label">Дані проєкту</span>
+              <span className="cases-context-toggle-short" aria-hidden="true">Дані</span>
+              {readinessCompleteCount !== null && readinessTotalCount !== null && (
+                <span className="cases-context-badge" aria-hidden="true">
+                  {readinessCompleteCount}/{readinessTotalCount}
+                </span>
+              )}
+              {(dirty || pending) && <span className="cases-dirty-dot" title="Є незбережені зміни" aria-hidden="true" />}
+            </button>
+          )}
+          <button
+            type="button"
+            className="secondary-btn cases-new-btn"
+            disabled={!ready || !!programTarget}
+            onClick={() => {
+              if (showCreate) { formEpoch.current++; setShowCreate(false); onClearProgram?.(); }
+              else void openNewProject();
+            }}
+            aria-expanded={showCreate}
+            aria-controls="create-case-panel"
+            aria-label={showCreate ? "Закрити створення проєкту" : "Новий проєкт"}
+          >
+            {showCreate ? (
+              "Закрити"
+            ) : (
+              <>
+                <span className="cases-new-btn-full">+ Новий проєкт</span>
+                <span className="cases-new-btn-short" aria-hidden="true">+ Новий</span>
+              </>
+            )}
+          </button>
+        </div>
       </div>
-      {selectedProgram && programTarget && <section className="create-case-disclosure" aria-label="Вибір програми для проєкту">
+      {isPaid && selectedProgram && programTarget && <section className="create-case-disclosure" aria-label="Вибір програми для проєкту">
         <h3>Обрати «{friendlyTitle(selectedProgram)}» для «{programTarget.title}»</h3>
         <p>Програма буде додана до цього проєкту, а його матеріали залишаться на місці.</p>
         {selected?.id !== programTarget.id && <p>Спочатку відкрийте потрібний проєкт. <button type="button" disabled={busy} onClick={() => void select(programTarget.id)}>Відкрити проєкт</button></p>}
@@ -809,17 +996,18 @@ export function Cases({
             <h3 id="case-empty-title">У вас ще немає проєктів</h3>
             <p>Тут з’являться ваші чернетки. Почніть з розмови в розділі «Асистент» або створіть проєкт самостійно.</p>
             <div className="case-load-actions">
-              <button type="button" className="primary" onClick={() => { setShowCreate(true); requestAnimationFrame(() => createTitleInput.current?.focus()); }}>Створити проєкт</button>
+              <button type="button" className="primary" onClick={() => void openNewProject()}>Створити проєкт</button>
             </div>
           </section>
         </div>
       )}
       <div id="create-case-panel" hidden={!showCreate} className="create-case-disclosure">
         <h3>Новий проєкт</h3>
-        <p>{selectedProgram ? `Готуємо новий проєкт для програми «${selectedProgram.title}». Перевірте назву й почніть роботу з асистентом.` : "Назвіть проєкт і, за бажанням, опишіть потребу. Фінансування можна підібрати пізніше."}</p>
+        <p>{selectedProgram ? `Готуємо новий проєкт для програми «${selectedProgram.title}». Введіть власну назву. Після оплати відкриється «Готовність та експорт».` : "Назвіть проєкт і, за бажанням, опишіть потребу. Відкриється робоча анкета «Власна справа» у вкладці «Готовність та експорт»."}</p>
+      <p>Доступ до роботи над проєктом коштує 5 грн одноразово. Після створення ви перейдете до оплати.</p>
       <form onSubmit={create} className="create-case-form">
         <label>
-          Назва чернетки
+          Назва проєкту
           <input
             ref={createTitleInput}
             value={title}
@@ -834,44 +1022,60 @@ export function Cases({
         </label>
         {selectedProgram && <p>Обрана програма: {friendlyTitle(selectedProgram)}</p>}
         <button type="submit" className="primary" disabled={busy || !ready}>
-          Створити чернетку <span>↗</span>
+          Створити та перейти до оплати <span>↗</span>
         </button>
       </form>
       </div>
-      {cases.length > 0 && (
-        <div className="case-switcher" hidden={showCreate}>
-          <label htmlFor="case-switcher-select" style={{ display: "inline", font: "inherit", color: "inherit" }}>
-            Проєкт
-          </label>
-          <div style={{ flex: "1 1 220px", maxWidth: "340px", minWidth: 0 }}>
-            <CustomSelect
-              id="case-switcher-select"
-              className="case-switcher-select"
-              ariaLabel="Обраний проєкт"
-              placeholder="Оберіть проєкт"
-              value={selected?.id ?? ""}
-              disabled={busy}
-              options={cases.map((item) => ({ value: item.id, label: item.title }))}
-              onChange={(val) => void select(val)}
+      {selected && !showCreate && !isPaid && <ProjectPayment key={selected.id} user={user} caseId={selected.id} onActive={unlockCase} />}
+      {selected && isPaid && (
+        <div className={`case-workspace${isAssistantStep ? " case-workspace--assistant" : ""}`} hidden={showCreate}>
+          {isAssistantStep && contextDrawerOpen && (
+            <button
+              type="button"
+              className="case-context-scrim"
+              aria-label="Закрити панель даних проєкту"
+              onClick={() => {
+                setContextDrawerOpen(false);
+                contextToggleRef.current?.focus();
+              }}
             />
-          </div>
-        </div>
-      )}
-      {selected && (
-        <div className="case-workspace" hidden={showCreate}>
-          <aside className="case-context" aria-label="Дані проєкту">
-            <h3>Проєкт</h3>
+          )}
+          <aside
+            id="case-context-drawer"
+            ref={contextDrawerRef}
+            tabIndex={isAssistantStep ? -1 : undefined}
+            className={`case-context${isAssistantStep ? " case-context--drawer" : ""}${isAssistantStep && contextDrawerOpen ? " is-open" : ""}`}
+            aria-label="Дані проєкту"
+            aria-hidden={isAssistantStep && !contextDrawerOpen ? true : undefined}
+            inert={isAssistantStep && !contextDrawerOpen ? true : undefined}
+          >
+            <div className="case-context-head">
+              <h3>Проєкт</h3>
+              {isAssistantStep && (
+                <button
+                  type="button"
+                  className="case-context-close"
+                  aria-label="Закрити дані проєкту"
+                  onClick={() => {
+                    setContextDrawerOpen(false);
+                    contextToggleRef.current?.focus();
+                  }}
+                >
+                  ×
+                </button>
+              )}
+            </div>
             <strong>{selected.title}</strong>
             <span className="case-revision">Збережена версія {selected.revision}</span>
             <div className="context-item"><span>Програма</span><strong>{activeProgram ? friendlyTitle(activeProgram) : "Фінансування підберемо далі"}</strong></div>
-            {onFindFunding && <button type="button" onClick={() => onFindFunding(details.projectDescription, { id: selected.id, title: selected.title, revision: selected.revision })}>Підібрати фінансування</button>}
+            {onFindFunding && <button type="button" onClick={() => { setContextDrawerOpen(false); onFindFunding(details.projectDescription, { id: selected.id, title: selected.title, revision: selected.revision }); }}>Підібрати фінансування</button>}
             <div className="context-item"><span>Збережений бюджет</span><strong>{money(selected.totalKopecks)}</strong></div>
-            <div className="context-item"><span>Готовність</span><strong>{readiness ? `${readiness.checks.filter((check) => check.status === "complete").length} з ${readiness.checks.length} перевірок` : readinessError ? "Не вдалося завантажити" : "Завантаження…"}</strong></div>
+            <div className="context-item"><span>Готовність</span><strong>{readiness ? `${readinessCompleteCount} з ${readinessTotalCount} перевірок` : readinessError ? "Не вдалося завантажити" : "Завантаження…"}</strong></div>
             {(dirty || pending) && <p className="context-unsaved">Є незбережені зміни</p>}
             <div className="context-actions">
-              <button type="button" onClick={() => setActiveStep("basics")}>{"Редагувати опис"}</button>
-              <button type="button" onClick={() => setActiveStep("budget")}>Редагувати бюджет</button>
-              <button type="button" onClick={() => setActiveStep("review")}>Перевірка та експорт</button>
+              <button type="button" onClick={() => { setContextDrawerOpen(false); setActiveStep("basics"); }}>{"Редагувати опис"}</button>
+              <button type="button" onClick={() => { setContextDrawerOpen(false); setActiveStep("budget"); }}>Редагувати бюджет</button>
+              <button type="button" onClick={() => { setContextDrawerOpen(false); setActiveStep("review"); }}>Перевірка та експорт</button>
             </div>
           </aside>
           <div className="case-main">
@@ -882,10 +1086,21 @@ export function Cases({
               <p>Щоб редагувати або зберігати проєкт, спочатку відновіть або видаліть цю копію.</p>
               {sessionDraft.recovery.pendingUnknown && <p>Результат попереднього збереження невідомий. Перевірте актуальну версію; повторне збереження не запускається автоматично.</p>}
               {sessionDraft.recovery.baseRevision === selected.revision && !sessionDraft.recovery.pendingUnknown ? (
-                <button type="button" disabled={busy || !!pending || conflict} onClick={() => {
-                  if (dirty && !window.confirm("Замінити поточні незбережені зміни знайденою копією?")) return;
-                  setDetails(sessionDraft.recovery!.details);
-                  setDraft(hydrateDraft(sessionDraft.recovery!.budget));
+                <button type="button" disabled={busy || !!pending || conflict} onClick={async () => {
+                  const recovery = sessionDraft.recovery;
+                  if (!recovery) return;
+                  if (dirty) {
+                    const confirmed = await confirm({
+                      title: "Відновити знайдену копію?",
+                      message: "Поточні незбережені зміни у формі буде замінено знайденою копією.",
+                      confirmLabel: "Відновити",
+                      cancelLabel: "Скасувати",
+                      tone: "warning",
+                    });
+                    if (!confirmed || !mountedRef.current) return;
+                  }
+                  setDetails(recovery.details);
+                  setDraft(hydrateDraft(recovery.budget));
                   sessionDraft.resolved();
                   setNotice("Зміни відновлено у формі. Перевірте й збережіть їх.");
                 }}>Відновити зміни</button>
@@ -898,24 +1113,6 @@ export function Cases({
             </section>
           )}
           {sessionDraft.storageFailed && <p className="session-recovery-warning" role="status">Не вдалося зберегти резервну копію в цій вкладці. Щоб не втратити зміни, збережіть проєкт або скопіюйте текст.</p>}
-          <div className="mobile-case-step">
-            <label htmlFor="mobile-case-step-select" style={{ font: "inherit", color: "inherit" }}>
-              Розділ проєкту
-            </label>
-            <CustomSelect
-              id="mobile-case-step-select"
-              ariaLabel="Розділ проєкту"
-              value={activeStep}
-              options={[
-                { value: "assistant", label: "Асистент" },
-                { value: "basics", label: "Ідея та клієнти" },
-                { value: "plan", label: "План запуску" },
-                { value: "budget", label: "Бюджет проєкту" },
-                { value: "review", label: "Готовність та експорт" },
-              ]}
-              onChange={(val) => setActiveStep(val as typeof activeStep)}
-            />
-          </div>
           {activeProgram?.currency && activeProgram.currency!=="UAH" && <p className="currency-note" role="note">Фінансування програми зазначене в {activeProgram.currency}. Робочий кошторис нижче ведеться у гривнях; автоматичної конвертації немає. Узгодьте валюту та формат офіційної заявки з організатором.</p>}
           {activeProgram?.fundingType==="reimbursement" && <p className="currency-note" role="note">Ця програма відшкодовує вже понесені витрати. Підготуйте документи про фактичні покупки; план майбутніх витрат не є заявою на компенсацію.</p>}
           <div className="case-steps-nav" role="group" aria-label="Розділи проєкту">
@@ -1051,7 +1248,7 @@ export function Cases({
                 <button
                   type="button"
                   className="link ai-call-btn"
-                  onClick={() => askAssistant("Допоможи скласти план підготовки та очікувані результати за обраною програмою. Робочі місця враховуй лише якщо їх вимагає конкретний напрям; для навчання зосередься на навчальному плані.")}
+                  onClick={() => askAssistant("Допоможи скласти план підготовки та очікувані результати за обраною програмою. Робочі місця враховуй лише якщо їх вимагає конкретний напрям.")}
                 >
                   Запитати ШІ-асистента ↗
                 </button>
@@ -1276,7 +1473,8 @@ export function Cases({
               </div>
 
               {selected.programId && <GrantApplication key={selected.id} user={user} caseId={selected.id}
-                caseRevision={selected.revision} disabled={dirty || !!pending || conflict || !!sessionDraft.recovery} />}
+                caseRevision={selected.revision} programId={selected.programId}
+                disabled={dirty || !!pending || conflict || !!sessionDraft.recovery} />}
 
               <section className="readiness" aria-labelledby="readiness-heading">
                 <h4 id="readiness-heading">Заповненість чернетки проєкту</h4>
@@ -1318,7 +1516,7 @@ export function Cases({
                 <h4 id="preparation-documents-title">Документи та офіційне подання</h4>
                 <p>{"Підготовлені тут текст і кошторис допоможуть оформити заявку. Остаточний перелік і формат документів визначає обраний конкурс."}</p>
                 {activeProgram ? <ol className="preparation-route">
-                  <li><strong>Звірте конкурс та вимоги</strong><p>{activeProgram.keyCondition}</p><button type="button" className="link" onClick={() => { window.location.hash = `grants/${activeProgram.id}`; }}>Відкрити умови в GrantFolio</button></li>
+                  <li><strong>Звірте конкурс та вимоги</strong><p>{isGrantAvailable(activeProgram) ? activeProgram.keyCondition : "Поточний прийом не підтверджено. Перевірте статус у надавача перед поданням."}</p><button type="button" className="link" onClick={() => { window.location.hash = `grants/${activeProgram.id}`; }}>Відкрити умови в GrantFolio</button></li>
                   <li><strong>Зберіть потрібні матеріали</strong><ul>{activeProgram.details.documents.map(document => <li key={document}>{document}</li>)}</ul><button type="button" className="link" onClick={() => askAssistant("Допоможи перевірити, які матеріали ще потрібні до офіційної форми. Не оголошуй їх готовими без перевірки й допоможи підготувати наступний розділ.")}>Допоможи підготувати документи</button></li>
                   <li><strong>Зіставте чернетку з офіційною формою</strong><p>Завантажте збережені матеріали нижче та перенесіть їх у форму організатора. Перевірте зміст, мову, формат файлів і потрібний підпис.</p></li>
                   <li><strong>Подайте за правилами організатора</strong><ol>{activeProgram.details.steps.map(step => <li key={step}>{step}</li>)}</ol><a href={activeProgram.officialUrl} target="_blank" rel="noopener noreferrer">{"Відкрити офіційне подання ↗"}</a><p>Статус «подано» підтверджує організатор; GrantFolio не надсилає заявку від вашого імені.</p></li>
@@ -1330,6 +1528,9 @@ export function Cases({
                 <p>
                   Сформований файл містить структуровані відповіді та бюджет. Перенесіть перевірений текст у форму обраного організатора.
                 </p>
+                {selected.programId === "vlasna-sprava"
+                  ? <p><a href="#export-payment" onClick={event => { event.preventDefault(); document.getElementById("export-payment")?.scrollIntoView({ behavior: "smooth" }); }}>Завантажити PDF та XLSX</a></p>
+                  : <p>Для PDF зі збереженим описом і кошторисом виберіть «Зберегти як PDF» у вікні друку.</p>}
                 <div className="export-buttons-group">
                   <button
                     type="button"
@@ -1346,17 +1547,26 @@ export function Cases({
                   >
                     Завантажити чернетку (.txt) <span>↗</span>
                   </button>
-                  <button
+                  {selected.programId !== "vlasna-sprava" && <button
                     type="button"
                     className="secondary-btn print-pdf-btn"
-                    disabled={busy || dirty || !!pending || conflict}
+                    disabled={printBlocked}
                     onClick={() => window.print()}
                   >
-                    📄 Зберегти як PDF / Друк ↗
-                  </button>
+                    Відкрити друк / PDF
+                  </button>}
                 </div>
                 {(dirty || pending) && (
                   <p className="error">Перед завантаженням збережіть зміни в описі та бюджеті.</p>
+                )}
+                {showExportFeedback && onOpenFeedback && (
+                  <FeedbackPromptBanner
+                    milestoneKey="cases-export"
+                    title="Документи сформовано. Чи все було зручно?"
+                    description="Напишіть, чи все було зрозуміло та що варто зробити простішим для подання заявки."
+                    actionLabel="Оцінити сервіс"
+                    onOpenFeedback={() => onOpenFeedback({ screen: "export", programId: selected.programId })}
+                  />
                 )}
               </section>
 
@@ -1396,6 +1606,7 @@ export function Cases({
                 goalText={selected.details.projectDescription}
                 nextStep={nextStep}
                 onReviewDocuments={openDocuments}
+                embedded
               />
           </section>
 
@@ -1404,13 +1615,18 @@ export function Cases({
               type="button"
               className="link"
               disabled={busy}
-              onClick={() => {
-                if (
-                  window.confirm(
-                    "Завантажити актуальну версію? Незбережені зміни буде втрачено.",
-                  )
-                )
-                  void select(selected.id, true);
+              onClick={async () => {
+                const targetId = selected.id;
+                const confirmed = await confirm({
+                  title: "Завантажити актуальну версію?",
+                  message: "Поточні незбережені зміни буде втрачено, а форму оновлено з сервера.",
+                  confirmLabel: "Завантажити",
+                  cancelLabel: "Скасувати",
+                  tone: "warning",
+                });
+                if (confirmed && mountedRef.current) {
+                  void select(targetId, true);
+                }
               }}
             >
               Завантажити актуальну версію

@@ -5,7 +5,7 @@ import { initializeApp } from "firebase-admin/app";
 import pg from "pg";
 import express from "express";
 import { createApp } from "./app.js";
-import { configuration } from "./config.js";
+import { configuration, configuredPayment } from "./config.js";
 const config = configuration();
 initializeApp({ projectId: config.projectId });
 const db = new pg.Pool({ connectionString: config.databaseUrl, max: 5 });
@@ -23,14 +23,22 @@ try {
   await fundingMonitor.hydrate();
   if (config.runCatalogTimers) fundingMonitor.start();
 } catch { console.warn("New funding discovery unavailable; apply database migrations."); }
-const app = createApp(db, async () => {
-  await grantSync.hydrate();
-  await fundingMonitor.hydrate();
-  return [
-    ...grantSync.status().map(s=>({programId:s.programId,url:s.sourceUrl,lastAttemptAt:s.lastAttemptAt,lastSuccessAt:s.availability?.checkedAt??null,error:s.lastError})),
-    ...fundingMonitor.status().map(s=>({programId:s.programId,url:s.sourceUrl,lastAttemptAt:s.lastAttemptAt,lastSuccessAt:s.lastSuccessAt,error:s.lastError,counts:s.counts,truncated:s.truncated})),
-  ];
-});
+const app = createApp(
+  db,
+  async () => {
+    await grantSync.hydrate();
+    await fundingMonitor.hydrate();
+    return [
+      ...grantSync.status().map(s=>({programId:s.programId,url:s.sourceUrl,lastAttemptAt:s.lastAttemptAt,lastSuccessAt:s.availability?.checkedAt??null,error:s.lastError})),
+      ...fundingMonitor.status().map(s=>({programId:s.programId,url:s.sourceUrl,lastAttemptAt:s.lastAttemptAt,lastSuccessAt:s.lastSuccessAt,error:s.lastError,counts:s.counts,truncated:s.truncated})),
+    ];
+  },
+  undefined,
+  async () => {
+    await grantSync.hydrate();
+  },
+  configuredPayment(),
+);
 app.use(express.static("frontend/dist"));
 app.get("/{*path}", (_req, res) =>
   res.sendFile("index.html", { root: "frontend/dist" }),

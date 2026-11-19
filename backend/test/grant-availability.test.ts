@@ -1,3 +1,4 @@
+import { confirmedTestRound } from "./grant-availability-fixture.js";
 import { GRANT_SOURCE_RULES } from "../src/grant-source-rules.js";
 import test from "node:test";
 import assert from "node:assert/strict";
@@ -7,7 +8,8 @@ import { searchGrants } from "../src/grant-discovery.js";
 const now = new Date("2026-11-16T15:00:00Z");
 test("catalog hides unknown, stale, closed, future and deadline-expired opportunities", () => {
   const original = GRANT_CATALOG.find((p) => p.id === "vlasna-sprava")!;
-  assert(isGrantAvailable(original, now));
+  assert(!isGrantAvailable(original, now));
+  assert(isGrantAvailable({ ...original, availability: confirmedTestRound }, now));
   for (const change of [
     { state: "closed" },
     { state: "unknown" },
@@ -20,7 +22,7 @@ test("catalog hides unknown, stale, closed, future and deadline-expired opportun
   ]) {
     const p = {
       ...original,
-      availability: { ...original.availability!, ...change },
+      availability: { ...confirmedTestRound, ...change },
     } as typeof original;
     assert.equal(isGrantAvailable(p, now), false);
     assert.equal(searchGrants("авто", [p], now).matches.length, 0);
@@ -49,7 +51,7 @@ test("source-specific funding and veteran support do not disappear with an old r
     now,
   ).matches;
   assert(results.some((m) => m.programId === "uvf-reimbursement"));
-  assert(results.some((m) => m.programId === "vlasna-sprava"));
+  assert(!results.some((m) => m.programId === "vlasna-sprava"));
   assert(!results.some((m) => m.programId === "veteran-grant"));
   assert(
     searchGrants("міська мобільність", GRANT_CATALOG, now).matches.some(
@@ -85,7 +87,7 @@ test("deployed source rules capture exact English deadlines with required time z
 
 
 test("discovery review and umbrella programme cannot claim verified open even with source availability", () => {
-  const base=GRANT_CATALOG.find(p=>p.id==="vlasna-sprava")!;
+  const base={...GRANT_CATALOG.find(p=>p.id==="vlasna-sprava")!, availability: confirmedTestRound};
   assert.equal(isGrantAvailable({...base,reviewStatus:"needs-review"},now),false);
   assert.equal(isGrantAvailable({...base,programKind:"program"},now),false);
 });

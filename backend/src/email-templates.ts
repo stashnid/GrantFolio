@@ -7,13 +7,6 @@ import { searchGrants } from "./grant-discovery.js";
 const APP_ORIGIN = "https://grantfolio.pp.ua";
 const DEFAULT_SUPPORT_EMAIL = "grantfoliomanager@gmail.com";
 
-const LEGAL_FORM_LABELS: Record<string, string> = {
-  idea: "Ідея / старт",
-  fop: "ФОП",
-  company: "Компанія (ТОВ)",
-  ngo: "Громадська організація",
-};
-
 const FUNDING_TYPE_LABELS: Record<string, string> = {
   grant: "Безповоротний грант",
   microgrant: "Мікрогрант",
@@ -164,7 +157,7 @@ function formatProgramDeadline(program: GrantProgram): string {
     : program.deadline;
 }
 
-function toDigestProgram(program: GrantProgram, customReason?: string, isPrimary = false): DigestProgramItem {
+function toDigestProgram(program: GrantProgram, customReason?: string): DigestProgramItem {
   const fundingLabel =
     FUNDING_TYPE_LABELS[program.fundingType ?? "grant"] ?? "Програма фінансування";
   return {
@@ -175,7 +168,7 @@ function toDigestProgram(program: GrantProgram, customReason?: string, isPrimary
     fundingLabel,
     deadlineLabel: formatProgramDeadline(program),
     reason: customReason || program.summary,
-    statusLabel: isPrimary ? "Рекомендовано за профілем" : "Відкритий прийом",
+    statusLabel: "Відкритий прийом",
     url: `${APP_ORIGIN}/#grants/${encodeURIComponent(program.id)}`,
   };
 }
@@ -190,8 +183,6 @@ export function selectDigestPrograms(profile: DigestProfileInput): DigestProgram
   const queryParts = [
     profile.industry,
     profile.fundingPurpose,
-    profile.businessName,
-    profile.legalForm ? LEGAL_FORM_LABELS[profile.legalForm] : "",
   ]
     .filter((v): v is string => Boolean(v && v.trim()))
     .join(" ");
@@ -206,25 +197,8 @@ export function selectDigestPrograms(profile: DigestProfileInput): DigestProgram
       const program = eligible.find((p) => p.id === match.programId);
       if (!program || seen.has(program.id)) continue;
       seen.add(program.id);
-      picked.push(toDigestProgram(program, match.reason || program.summary, picked.length === 0));
+      picked.push(toDigestProgram(program, match.reason || program.summary));
     }
-  }
-
-  const defaults = ["vlasna-sprava", "bloom-sme"];
-  for (const id of defaults) {
-    if (picked.length >= 2) break;
-    if (seen.has(id)) continue;
-    const program = eligible.find((p) => p.id === id);
-    if (!program) continue;
-    seen.add(program.id);
-    picked.push(toDigestProgram(program, program.summary, picked.length === 0));
-  }
-
-  for (const program of eligible) {
-    if (picked.length >= 2) break;
-    if (seen.has(program.id)) continue;
-    seen.add(program.id);
-    picked.push(toDigestProgram(program, program.summary, picked.length === 0));
   }
 
   return picked;
@@ -306,22 +280,14 @@ export function renderGrantDigestEmail(
 
   const criteriaItems = [
     profile.industry?.trim() ? `Сфера: ${profile.industry.trim()}` : "",
-    profile.city?.trim() || profile.region?.trim()
-      ? `Локація: ${profile.city?.trim() || profile.region?.trim()}`
-      : "",
-    profile.legalForm && LEGAL_FORM_LABELS[profile.legalForm]
-      ? `Форма: ${LEGAL_FORM_LABELS[profile.legalForm]}`
-      : "",
-    profile.requestedAmount?.trim()
-      ? `Орієнтовна сума: ${profile.requestedAmount.trim()} грн`
-      : "",
+    profile.fundingPurpose?.trim() ? `Потреба: ${profile.fundingPurpose.trim()}` : "",
   ].filter(Boolean);
 
   const criteriaHtml = criteriaItems.length
     ? `<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 24px 0;background-color:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;">
         <tr>
           <td style="padding:12px 16px;font-family:${font};font-size:12px;line-height:1.6;color:#475569;">
-            <strong style="color:#0f1d32;font-weight:700;">Критерії вашого профілю:</strong>
+            <strong style="color:#0f1d32;font-weight:700;">Дані для пошуку:</strong>
             ${escapeHtml(criteriaItems.join("  ·  "))}
           </td>
         </tr>
@@ -341,7 +307,7 @@ export function renderGrantDigestEmail(
             <tr>
               <td align="center" style="border-radius:9px;background-color:#0f1d32;">
                 <a href="${escapeHtml(p.url)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:11px 20px;font-family:${font};font-size:13px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:9px;">
-                  Підготувати заявку в GrantFolio &rarr;
+                  Переглянути умови програми &rarr;
                 </a>
               </td>
             </tr>
@@ -381,7 +347,7 @@ export function renderGrantDigestEmail(
             <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#f8fafc;border-left:3px solid #315fd7;border-radius:0 8px 8px 0;">
               <tr>
                 <td style="padding:10px 14px;font-family:${font};font-size:13px;line-height:1.55;color:#334155;">
-                  <strong style="color:#0f1d32;">Чому підходить:</strong> ${escapeHtml(p.reason)}
+                  <strong style="color:#0f1d32;">Пояснення збігу:</strong> ${escapeHtml(p.reason)}
                 </td>
               </tr>
             </table>
@@ -392,17 +358,17 @@ export function renderGrantDigestEmail(
     })
     .join("");
 
-  const countLabel =
-    programs.length === 1
-      ? "1 актуальну програму"
-      : `${programs.length} актуальні програми`;
+  const countLabel = programs.length === 1 ? "1 можливість" : `${programs.length} можливості`;
+  const introduction = programs.length
+    ? `Знайдено ${countLabel} за словами вашого запиту. Перевірте умови участі, витрати та строки в офіційному джерелі.`
+    : "За наданими даними зараз не знайдено можливостей із підтвердженим відкритим прийомом. Уточніть потребу або перегляньте каталог.";
 
   const bodyHtml = `
     <p style="margin:0 0 8px 0;font-family:${font};font-size:18px;font-weight:700;letter-spacing:-0.02em;color:#0f1d32;">
       Вітаємо, ${escapeHtml(greetingName)}!
     </p>
     <p style="margin:0 0 22px 0;font-family:${font};font-size:14.5px;line-height:1.6;color:#475569;">
-      Ми підібрали <strong style="color:#0f1d32;">${escapeHtml(countLabel)}</strong> фінансування з відкритим прийомом, які відповідають параметрам вашого бізнес-профілю.
+      ${escapeHtml(introduction)}
     </p>
     ${criteriaHtml}
     ${programCardsHtml}
@@ -443,7 +409,7 @@ export function renderGrantDigestEmail(
   `;
 
   const html = emailShell({
-    preheader: `Підібрано ${countLabel} для «${displayTarget}» — перевірте умови та строки подання.`,
+    preheader: introduction,
     badgeText: "Персональний дайджест",
     bodyHtml,
     footerNoteHtml,
@@ -452,13 +418,13 @@ export function renderGrantDigestEmail(
   const textLines = [
     `Вітаємо, ${greetingName}!`,
     "",
-    `Підібрано ${countLabel} фінансування для «${displayTarget}»:`,
+    introduction,
     ...(criteriaItems.length ? [`(${criteriaItems.join(" · ")})`, ""] : [""]),
     ...programs.flatMap((p, i) => [
       `${i + 1}. ${p.title} (${p.provider})`,
       `   Сума: ${p.amount} · ${p.fundingLabel}`,
       `   Строк: ${p.deadlineLabel}`,
-      `   Чому підходить: ${p.reason}`,
+      `   Пояснення збігу: ${p.reason}`,
       `   Деталі: ${p.url}`,
       "",
     ]),
@@ -546,5 +512,268 @@ export function renderLoginCodeEmail(code: string): RenderedEmail {
     headers: {
       "Auto-Submitted": "auto-generated",
     },
+  };
+}
+
+export interface FeedbackNotificationEmailInput {
+  id: string;
+  rating: number;
+  task: string;
+  comment: string;
+  ratingUx?: number | null;
+  ratingUsefulness?: number | null;
+  ratingAi?: number | null;
+  taskOutcome?: string | null;
+  wouldRecommend?: boolean | null;
+  willingnessToPay?: string | null;
+  suggestedPriceUah?: number | null;
+  categoryTags?: string[] | null;
+  testerRole?: string | null;
+  contactConsent?: boolean;
+  contactInfo?: string | null;
+  contextSnapshot?: Record<string, unknown> | null;
+  createdAt: string | Date;
+  isUpdate?: boolean;
+  adminUrl?: string;
+  businessName?: string | null;
+  region?: string | null;
+}
+
+const FEEDBACK_TASK_LABELS: Record<string, string> = {
+  project: "Весь сайт загалом",
+  catalog: "Каталог грантів",
+  assistant: "Поради помічника",
+  budget: "Бюджет",
+  profile: "Дані про бізнес",
+  export: "Завантаження документів",
+};
+
+const FEEDBACK_OUTCOME_LABELS: Record<string, string> = {
+  completed: "Завдання виконано",
+  partial: "Вийшло частково",
+  failed: "Не вдалося виконати",
+  unspecified: "Не вказано",
+};
+
+const FEEDBACK_WTP_LABELS: Record<string, string> = {
+  none: "Не вказано",
+  free_only: "Лише безкоштовно",
+  pay_per_application: "Оплата за заявку",
+  monthly_subscription: "Щомісячна підписка",
+  donation_ready: "Готовність до донату",
+  already_paid: "Уже підтримано / оплачено",
+};
+
+const FEEDBACK_ROLE_LABELS: Record<string, string> = {
+  entrepreneur: "Підприємець / власник справи",
+  fop: "ФОП",
+  startup_founder: "Планує розпочати власну справу",
+  accountant: "Бухгалтер або юрист",
+  student_business: "Студент або початківець",
+  volunteer: "Волонтер / ГО",
+  other: "Інше",
+};
+
+function feedbackRatingPalette(rating: number): {
+  bg: string;
+  border: string;
+  text: string;
+  dot: string;
+  label: string;
+} {
+  if (rating <= 2) {
+    return {
+      bg: "#fef2f2",
+      border: "#fecaca",
+      text: "#991b1b",
+      dot: "#dc2626",
+      label: "Низька оцінка",
+    };
+  }
+  if (rating === 3) {
+    return {
+      bg: "#fffbeb",
+      border: "#fde68a",
+      text: "#92400e",
+      dot: "#d97706",
+      label: "Нейтральна оцінка",
+    };
+  }
+  return {
+    bg: "#ecfdf5",
+    border: "#a7f3d0",
+    text: "#065f46",
+    dot: "#10b981",
+    label: "Висока оцінка",
+  };
+}
+
+function formatFeedbackDate(value: string | Date): string {
+  const parsed = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(parsed.getTime())) return String(value);
+  return parsed.toLocaleString("uk-UA", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "Europe/Kyiv",
+  });
+}
+
+function resolveSafeAdminUrl(raw?: string): string {
+  const candidate = raw?.trim();
+  if (candidate && /^https?:\/\/[^\s]+$/i.test(candidate)) {
+    return candidate;
+  }
+  return `${APP_ORIGIN}/#admin/feedback`;
+}
+
+export function renderFeedbackNotificationEmail(
+  input: FeedbackNotificationEmailInput,
+): { subject: string; text: string; html: string } {
+  const font =
+    "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif";
+  const taskLabel = FEEDBACK_TASK_LABELS[input.task] ?? input.task;
+  const actionPrefix = input.isUpdate ? "Оновлений відгук" : "Новий відгук";
+  const subject = assertHeaderSafe(
+    `${actionPrefix} (${input.rating}/5 · ${taskLabel}) — GrantFolio`,
+    "Subject",
+  );
+
+  const palette = feedbackRatingPalette(input.rating);
+  const outcomeLabel =
+    FEEDBACK_OUTCOME_LABELS[input.taskOutcome ?? "unspecified"] ??
+    input.taskOutcome ??
+    "Не вказано";
+  const wtpLabel =
+    FEEDBACK_WTP_LABELS[input.willingnessToPay ?? "none"] ??
+    input.willingnessToPay ??
+    "Не вказано";
+  const roleLabel =
+    FEEDBACK_ROLE_LABELS[input.testerRole ?? "entrepreneur"] ??
+    input.testerRole ??
+    "Підприємець";
+  const createdLabel = formatFeedbackDate(input.createdAt);
+  const adminHref = resolveSafeAdminUrl(input.adminUrl);
+  const tags = (input.categoryTags ?? []).map((t) => t.trim()).filter(Boolean);
+  const safeContact =
+    input.contactConsent && input.contactInfo?.trim() ? input.contactInfo.trim() : null;
+
+  const subRatings = [
+    input.ratingUx != null ? `Зручність сайту: ${input.ratingUx}/5` : "",
+    input.ratingUsefulness != null ? `Користь для справи: ${input.ratingUsefulness}/5` : "",
+    input.ratingAi != null ? `Поради помічника: ${input.ratingAi}/5` : "",
+  ].filter(Boolean);
+
+  const contextParts = Object.entries(input.contextSnapshot ?? {})
+    .filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== "")
+    .map(([key, value]) => `${key}: ${String(value)}`);
+
+  const metaRows: Array<{ label: string; value: string }> = [
+    { label: "Розділ", value: taskLabel },
+    { label: "Результат завдання", value: outcomeLabel },
+    { label: "Роль тестувальника", value: roleLabel },
+    ...(subRatings.length ? [{ label: "Детальні оцінки", value: subRatings.join(" · ") }] : []),
+    ...(input.wouldRecommend != null
+      ? [{ label: "Рекомендує іншим", value: input.wouldRecommend ? "Так" : "Ні" }]
+      : []),
+    {
+      label: "Готовність платити",
+      value:
+        input.suggestedPriceUah != null
+          ? `${wtpLabel} (${input.suggestedPriceUah} грн)`
+          : wtpLabel,
+    },
+    ...(input.businessName?.trim()
+      ? [{ label: "Бізнес", value: input.businessName.trim() }]
+      : []),
+    ...(input.region?.trim() ? [{ label: "Регіон", value: input.region.trim() }] : []),
+    ...(tags.length ? [{ label: "Теги", value: tags.join(", ") }] : []),
+    ...(safeContact ? [{ label: "Контакт (за згодою)", value: safeContact }] : []),
+    ...(contextParts.length ? [{ label: "Контекст", value: contextParts.join(" · ") }] : []),
+    { label: "Час", value: createdLabel },
+    { label: "ID запису", value: input.id },
+  ];
+
+  const metaHtml = metaRows
+    .map(
+      (row) => `<tr>
+        <td style="padding:7px 12px;border-bottom:1px solid #e2e8f0;font-family:${font};font-size:12.5px;font-weight:700;color:#475569;white-space:nowrap;vertical-align:top;width:165px;">
+          ${escapeHtml(row.label)}
+        </td>
+        <td style="padding:7px 12px;border-bottom:1px solid #e2e8f0;font-family:${font};font-size:13px;color:#0f1d32;vertical-align:top;word-break:break-word;">
+          ${escapeHtml(row.value)}
+        </td>
+      </tr>`,
+    )
+    .join("");
+
+  const bodyHtml = `
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 18px 0;">
+      <tr>
+        <td align="left" valign="middle">
+          <span style="display:inline-block;padding:5px 12px;border-radius:999px;background-color:${palette.bg};border:1px solid ${palette.border};color:${palette.text};font-family:${font};font-size:12px;font-weight:700;line-height:1.2;">
+            <span style="color:${palette.dot};">&bull;</span>&nbsp;Оцінка ${escapeHtml(String(input.rating))}/5 &middot; ${escapeHtml(palette.label)}
+          </span>
+        </td>
+        <td align="right" valign="middle" style="font-family:${font};font-size:12px;font-weight:600;color:#64748b;white-space:nowrap;">
+          ${escapeHtml(createdLabel)}
+        </td>
+      </tr>
+    </table>
+    <p style="margin:0 0 8px 0;font-family:${font};font-size:18px;font-weight:800;letter-spacing:-0.02em;color:#0f1d32;">
+      ${escapeHtml(actionPrefix)}: ${escapeHtml(taskLabel)}
+    </p>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 20px 0;background-color:#f8fafc;border-left:3px solid ${palette.dot};border-radius:0 10px 10px 0;">
+      <tr>
+        <td style="padding:14px 16px;font-family:${font};font-size:14px;line-height:1.6;color:#0f1d32;white-space:pre-wrap;word-break:break-word;">
+          ${escapeHtml(input.comment)}
+        </td>
+      </tr>
+    </table>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="margin:0 0 22px 0;background-color:#ffffff;border:1px solid #e2e8f0;border-radius:10px;border-collapse:separate;">
+      ${metaHtml}
+    </table>
+    <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+      <tr>
+        <td align="center" style="border-radius:9px;background-color:#0f1d32;">
+          <a href="${escapeHtml(adminHref)}" target="_blank" rel="noopener noreferrer" style="display:inline-block;padding:11px 20px;font-family:${font};font-size:13px;font-weight:700;color:#ffffff;text-decoration:none;border-radius:9px;">
+            Відкрити в панелі відгуків &rarr;
+          </a>
+        </td>
+      </tr>
+    </table>
+  `;
+
+  const footerNoteHtml = `
+    <p style="margin:0;font-family:${font};font-size:12px;line-height:1.55;color:#64748b;">
+      Автоматичне службове сповіщення для команди розробки GrantFolio про зворотний зв'язок користувача.
+    </p>
+  `;
+
+  const html = emailShell({
+    preheader: `${actionPrefix} (${input.rating}/5 · ${taskLabel}): ${input.comment.slice(0, 120)}`,
+    badgeText: input.isUpdate ? "Оновлення відгуку" : "Відгук користувача",
+    bodyHtml,
+    footerNoteHtml,
+  });
+
+  const textLines = [
+    `${actionPrefix} — GrantFolio`,
+    `Оцінка: ${input.rating}/5 (${palette.label})`,
+    "",
+    "Коментар:",
+    input.comment,
+    "",
+    ...metaRows.map((row) => `${row.label}: ${row.value}`),
+    "",
+    `Панель відгуків: ${adminHref}`,
+  ];
+
+  return {
+    subject,
+    text: textLines.join("\n"),
+    html,
   };
 }

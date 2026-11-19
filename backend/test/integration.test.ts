@@ -27,6 +27,11 @@ await once(server, "listening");
 const address = server.address();
 if (!address || typeof address === "string") throw new Error("No test port");
 const base = `http://127.0.0.1:${address.port}`;
+async function unlockTestCase(caseId: string) {
+  const code = `GF-${crypto.randomUUID().replaceAll("-", "").slice(0, 10).toUpperCase()}`;
+  await db.query("INSERT INTO jar_orders (case_id, code, manual_unlocked_at) VALUES ($1, $2, now())", [caseId, code]);
+}
+
 async function signup() {
   const response = await fetch(
     `http://${process.env.FIREBASE_AUTH_EMULATOR_HOST}/identitytoolkit.googleapis.com/v1/accounts:signUp?key=demo`,
@@ -145,6 +150,7 @@ test("cases isolate owners and serialize budget commands", async () => {
   const created = await call(a, "/api/cases", "POST", { title: "Чернетка" });
   assert.equal(created.status, 201);
   const c = ((await created.json()) as { case: { id: string } }).case;
+  await unlockTestCase(c.id);
   const path = `/api/cases/${c.id}`;
   assert.equal((await call(b, path)).status, 404);
   assert.deepEqual(
@@ -282,6 +288,7 @@ test("case details persist privately, replay safely, and drive general readiness
       case: { id: string; details: Record<string, string> };
     }
   ).case;
+  await unlockTestCase(c.id);
   const path = `/api/cases/${c.id}`;
   const empty = {
     projectDescription: "",
@@ -414,6 +421,7 @@ test("draft export is private and reflects the saved details and budget revision
     });
   const created = await call(a, "/api/cases", "POST", { title: "Майстерня" });
   const id = ((await created.json()) as { case: { id: string } }).case.id;
+  await unlockTestCase(id);
   const path = `/api/cases/${id}`;
   assert.equal((await call(undefined, `${path}/draft-export`)).status, 401);
   assert.equal((await call(b, `${path}/draft-export`)).status, 404);
@@ -519,6 +527,7 @@ test("deleting a case removes it and its related data; other users cannot delete
   const create = await fetch(`${base}/api/cases`, { method: "POST", headers: { Authorization: `Bearer ${a}`, "Content-Type": "application/json" }, body: JSON.stringify({ title: "ToDelete" }) });
   assert.equal(create.status, 201);
   const { case: c } = await create.json() as { case: { id: string } };
+  await unlockTestCase(c.id);
   // save some budget so cascade is tested
   const budget = await fetch(`${base}/api/cases/${c.id}/budget`, { method: "PUT", headers: { Authorization: `Bearer ${a}`, "Content-Type": "application/json" }, body: JSON.stringify({ expectedRevision: 0, idempotencyKey: crypto.randomUUID(), items: [{ name: "Item", quantity: 1, unitPriceKopecks: 100 }] }) });
   assert.equal(budget.status, 200);
@@ -549,6 +558,7 @@ test("case preserves programId, allows updating program and validates allowed pr
   assert.equal(createDefault.status, 201);
   const caseDefault = ((await createDefault.json()) as { case: { id: string; programId: string } }).case;
   assert.equal(caseDefault.programId, null);
+  await unlockTestCase(caseDefault.id);
   const genericExport = await (await fetch(`${base}/api/cases/${caseDefault.id}/draft-export`, {headers: {Authorization: `Bearer ${a}`}})).text();
   assert.match(genericExport, /Фінансування: підберемо далі/);
   assert.doesNotMatch(genericExport, /Власна справа/);
@@ -561,6 +571,7 @@ test("case preserves programId, allows updating program and validates allowed pr
   });
   assert.equal(createVeteran.status, 201);
   const caseVeteran = ((await createVeteran.json()) as { case: { id: string; programId: string } }).case;
+  await unlockTestCase(caseVeteran.id);
   assert.equal(caseVeteran.programId, "veteran-grant");
 
   // Invalid programId rejected
@@ -670,10 +681,18 @@ test("grant applications isolate owners, reject concurrent writes and invalidate
   const created = await call(owner, "/api/cases", "POST", { title: "Тестова пекарня", programId: "vlasna-sprava" });
   assert.equal(created.status, 201);
   const id = (await created.json()).case.id;
+  await unlockTestCase(id);
   const path = `/api/cases/${id}/grant-application`;
+  const template = await call(owner, `${path}/working-example`);
+  assert.equal(template.status, 200);
+  assert.match(template.headers.get("content-type") ?? "", /spreadsheetml/);
+  assert.equal((await template.arrayBuffer()).byteLength > 0, true);
+  assert.equal((await call(stranger, `${path}/working-example`)).status, 404);
   const initial = await call(owner, path);
   assert.equal(initial.headers.get("cache-control"), "no-store");
-  assert.equal((await initial.json()).application.nextQuestion.id, "track");
+  const initialBody = await initial.json();
+  assert.equal(initialBody.application.nextQuestion.id, "track");
+  assert(initialBody.documentCoverage.missingOfficialInputs.length > 0);
   assert.equal((await call(stranger, path)).status, 404);
   const command = { expectedRevision: 0, expectedCaseRevision: 0, answers: { track: "start" } };
   assert.equal((await call(stranger, path, "PUT", command)).status, 404);
@@ -682,6 +701,15 @@ test("grant applications isolate owners, reject concurrent writes and invalidate
   const confirmed = await call(owner, path, "PUT", { ...command, expectedRevision: 1, answers: { ...command.answers, confirmAccuracy: true } });
   assert.equal(confirmed.status, 200);
   assert.equal((await confirmed.json()).answers.confirmAccuracy, true);
+  const exportPath = `/api/cases/${id}/draft-export`;
+  assert.equal((await call(stranger, exportPath)).status, 404);
+  const exported = await (await call(owner, exportPath)).text();
+  assert.match(exported, /Анкета програми · версія 2/);
+  assert.match(exported, /Напрям гранту:\nЗапочаткування/);
+  assert.match(exported, /Тип заявника:\nНе вказано/);
+  assert.equal((await call(owner, `${path}/diia-draft/export`, "POST", {
+    expectedRevision: 2, expectedCaseRevision: 0,
+  })).status, 422);
   assert.equal((await call(owner, `/api/cases/${id}/program`, "PUT", { programId: null, expectedRevision: 0 })).status, 200);
   assert.equal((await call(owner, path, "PUT", { ...command, expectedRevision: 2 })).status, 409);
   assert.equal((await (await call(owner, path)).json()).application, null);
@@ -706,14 +734,26 @@ test("financial plans reconcile a private snapshot and block stale exports", asy
   assert.equal(created.status, 201);
   const id = (await created.json()).case.id;
   const path = `/api/cases/${id}`;
+  await unlockTestCase(id);
   const financialPath = `${path}/grant-financial-plan`;
   const applicationPath = `${path}/grant-application`;
-  const answers = { track: "start", requestedGrantKopecks: 100_500, ownContributionKopecks: 50_000 };
+  const answers = { track: "start", requestedGrantKopecks: 100_500, ownContributionKopecks: 50_000, taxProfile: "fop_simplified" as const };
   assert.equal((await call(owner, applicationPath, "PUT", { answers, expectedRevision: 0, expectedCaseRevision: 0 })).status, 200);
 
   const first = { salesKopecks: 20_000, grantKopecks: 100_500, ownKopecks: 50_000, operatingCostsKopecks: 0, payrollKopecks: 0, taxesKopecks: 500, capitalCostsKopecks: 171_000 };
   const empty = { salesKopecks: 0, grantKopecks: 0, ownKopecks: 0, operatingCostsKopecks: 0, payrollKopecks: 0, taxesKopecks: 0, capitalCostsKopecks: 0 };
-  const plan = { openingBalanceKopecks: 0, months: [first, ...Array.from({ length: 23 }, () => empty)] };
+  const emptyRows = {
+    additionalSalesKopecks: 0, assetSaleIncomeKopecks: 0, otherIncomeKopecks: 0,
+    propertyPurchaseKopecks: 0, premisesRentKopecks: 0, equipmentRentalKopecks: 0, otherBusinessCostsKopecks: 0,
+    utilitiesKopecks: 0, insuranceKopecks: 0, marketingKopecks: 0, communicationsKopecks: 0, equipmentKopecks: 0,
+    repairsKopecks: 0, transportKopecks: 0, professionalServicesKopecks: 0, applicantSalaryKopecks: 0,
+    existingStaffSalaryKopecks: 0, newStaffSalaryKopecks: 0, simplifiedTaxKopecks: 0, simplifiedMilitaryLevyKopecks: 0,
+    fopTaxableIncomeKopecks: 0, fopIncomeTaxKopecks: 0, fopMilitaryLevyKopecks: 0, fopEsvKopecks: 0,
+    ecologicalTaxKopecks: 0, rentPaymentKopecks: 0,
+  };
+  const firstRows = { ...emptyRows, equipmentKopecks: 171_000, simplifiedTaxKopecks: 500 };
+  const businessPlanRows = [firstRows, ...Array.from({ length: 23 }, () => emptyRows)];
+  const plan = { openingBalanceKopecks: 0, months: [first, ...Array.from({ length: 23 }, () => empty)], businessPlanRows };
   const revisions = { expectedCaseRevision: 0, expectedApplicationRevision: 1, expectedPlanRevision: 0 };
   assert.equal((await call(stranger, financialPath)).status, 404);
   assert.equal((await call(stranger, financialPath, "PUT", { ...revisions, plan })).status, 404);
@@ -725,6 +765,7 @@ test("financial plans reconcile a private snapshot and block stale exports", asy
   assert.equal(saved.planRevision, 1);
   const attempt = { ...revisions, expectedPlanRevision: 1 };
   assert.equal((await call(stranger, `${financialPath}/export`, "POST", attempt)).status, 404);
+
 
   if (process.env.LIBREOFFICE_TEST) {
     const archive = await call(owner, `${financialPath}/export`, "POST", attempt);
@@ -741,4 +782,22 @@ test("financial plans reconcile a private snapshot and block stale exports", asy
   assert.equal((await call(owner, `${financialPath}/export`, "POST", { ...attempt, expectedApplicationRevision: 2 })).status, 409);
   assert.equal((await call(owner, path, "DELETE")).status, 200);
   assert.equal((await db.query("SELECT 1 FROM grant_financial_plans WHERE case_id=$1", [id])).rowCount, 0);
+});
+
+test("an unpaid project denies private operations until its own access is unlocked", async () => {
+  const [owner, stranger] = await Promise.all([signup(), signup()]);
+  const call = (token: string, path: string, method = "GET") => fetch(`${base}${path}`, { method, headers: { Authorization: `Bearer ${token}` } });
+  const create = async () => {
+    const response = await fetch(`${base}/api/cases`, { method: "POST", headers: { Authorization: `Bearer ${owner}`, "Content-Type": "application/json" }, body: JSON.stringify({ title: "Payment test" }) });
+    assert.equal(response.status, 201);
+    return (await response.json()).case.id as string;
+  };
+  const first = await create(), second = await create();
+  assert.equal((await call(owner, `/api/cases/${first}/readiness`)).status, 402);
+  assert.equal((await call(stranger, `/api/cases/${first}/readiness`)).status, 404);
+  assert.equal((await call(owner, `/api/cases/${first}/draft-export`)).status, 402);
+  await unlockTestCase(first);
+  assert.equal((await call(owner, `/api/cases/${first}/readiness`)).status, 200);
+  assert.equal((await call(owner, `/api/cases/${second}/readiness`)).status, 402);
+  assert.equal((await call(stranger, `/api/cases/${first}/readiness`)).status, 404);
 });

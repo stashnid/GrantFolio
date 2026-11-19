@@ -1,8 +1,16 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { hasGuidedApplication } from "./grants";
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type MouseEvent,
+} from "react";
 import { GRANT_PROGRAMS, type GrantProgram } from "./grants";
 import "./GrantCatalog.css";
 import { CustomSelect, type SelectOption } from "./CustomSelect";
 import { useGrantPrograms } from "./GrantPrograms";
+import { MonitorAdminDrawer } from "./MonitorAdminDrawer";
 import { isGrantAvailable } from "../../backend/src/grant-availability";
 import {
   searchGrants,
@@ -374,6 +382,21 @@ export function GrantCatalog({
   const back = () => {
     window.location.hash = "grants";
   };
+  const handleCardClick = (event: MouseEvent<HTMLElement>, id: string) => {
+    if (event.defaultPrevented) return;
+    if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+    const target =
+      event.target instanceof Element
+        ? event.target
+        : event.target instanceof Node
+          ? event.target.parentElement
+          : null;
+    if (target?.closest("a, button, input, select, textarea, [role='button']")) {
+      return;
+    }
+    if (window.getSelection()?.toString().trim()) return;
+    open(id);
+  };
   const selected = useMemo(
     () => programs.find((p) => p.id === selectedId),
     [programs, selectedId],
@@ -562,6 +585,7 @@ export function GrantCatalog({
       );
     const d = selected.details;
     const available = confirmedIds.has(selected.id);
+    const guided = hasGuidedApplication(selected.id);
     const sectionId = (section: string) =>
       `grant-section-${selected.id}-${section}`;
     const jumpTo = (section: string) => {
@@ -615,20 +639,19 @@ export function GrantCatalog({
           >
             Перейти до надавача ↗
           </a>
-          {available ? (
+          {guided ? (
             <>
               <button
                 type="button"
                 className="primary grant-prepare"
                 onClick={() => {
-                  if (confirmedIds.has(selected.id) && canPrepare(selected))
-                    onApplyProgram?.(selected, search.trim());
+                  onApplyProgram?.(selected, search.trim());
                 }}
               >
-                Підготувати проєкт
+                Підготувати робочу чернетку
               </button>
               <p className="grant-action-note">
-                Перед поданням перевірте умови в офіційному джерелі.
+                {available ? "Доступні анкета, перевірки та робочий експорт. Звірте вимоги перед поданням." : "Можна почати підготовку заздалегідь. Перевірте, чи відновлено прийом, перш ніж подавати документи."}
               </p>
             </>
           ) : (
@@ -637,7 +660,7 @@ export function GrantCatalog({
                 ? "Нову можливість знайдено автоматично. Умови та право українського бізнесу на участь ще потребують перевірки."
                 : selected.programKind === "program"
                   ? "Це програма підтримки. Перевірте в надавача доступні конкурси та інструменти."
-                  : "Підготовка нової заявки недоступна, доки актуальний прийом не підтверджено."}
+                  : "GrantFolio показує умови та джерела цієї можливості. Для підготовки матеріалів скористайтеся інструкціями надавача."}
             </p>
           )}
         </header>
@@ -740,7 +763,7 @@ export function GrantCatalog({
             </ul>
           </section>
         </div>
-        {available && (
+        {guided && (
           <div className="grant-bottom-action">
             <h3>Готові почати?</h3>
             <p>Підготуйте матеріали для цієї програми.</p>
@@ -748,11 +771,10 @@ export function GrantCatalog({
               type="button"
               className="primary grant-prepare"
               onClick={() => {
-                if (confirmedIds.has(selected.id) && canPrepare(selected))
-                  onApplyProgram?.(selected, search.trim());
+                onApplyProgram?.(selected, search.trim());
               }}
             >
-              Підготувати проєкт
+              Підготувати робочу чернетку
             </button>
           </div>
         )}
@@ -762,7 +784,10 @@ export function GrantCatalog({
   return (
     <div className="grant-catalog">
       <header className="grant-list-header">
-        <p className="catalog-eyebrow">Каталог грантів</p>
+        <div className="catalog-header-top">
+          <p className="catalog-eyebrow">Каталог грантів</p>
+          <MonitorAdminDrawer active={active} onCatalogMutated={reload} />
+        </div>
         <h2>Знайдіть фінансування для своєї ідеї</h2>
         <p className="catalog-subtitle">
           Гранти, премії, кредити й інші інструменти для українського бізнесу.
@@ -995,7 +1020,11 @@ export function GrantCatalog({
       )}
       <div className="grant-list">
         {filtered.map(({ program: p, match }) => (
-          <article className="grant-list-item" key={p.id}>
+          <article
+            className="grant-list-item grant-list-item-clickable"
+            key={p.id}
+            onClick={(event) => handleCardClick(event, p.id)}
+          >
             <div>
               <p className="grant-category">
                 {p.categoryLabel} · {p.provider}

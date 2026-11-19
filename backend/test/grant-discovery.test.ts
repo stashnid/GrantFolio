@@ -3,7 +3,12 @@ import assert from "node:assert/strict";
 import { searchGrants as discover, friendlyTitle } from "../src/grant-discovery.js";
 import { GRANT_CATALOG } from "../src/grant-catalog-data.js";
 
-const searchGrants = (query:string) => discover(query, GRANT_CATALOG, new Date("2026-11-16T15:00:00Z"));
+import { confirmedTestRound } from "./grant-availability-fixture.js";
+
+const confirmedCatalog = GRANT_CATALOG.map(program =>
+  program.id === "vlasna-sprava" ? { ...program, availability: confirmedTestRound } : program,
+);
+const searchGrants = (query:string) => discover(query, confirmedCatalog, new Date("2026-11-16T15:00:00Z"));
 
 test("business needs, transport, typos and unrelated requests", () => {
   for (const q of ["авто", "автмо", "потрібен фургон для доставки"]) {
@@ -82,8 +87,13 @@ test("business queries tolerate common variants and guard eligibility", () => {
  const candidates=searchGrants('кавярня').matches;const restricted=candidates.find(m=>m.programId==='bloom-sme');if(restricted)assert.match(restricted.reason,/соціальн/);
 });
 test("retrieval uses sourced applicant, cost, document and donor fields without treating exclusions as approval", () => {
- const base=GRANT_CATALOG.find(p=>p.id==='vlasna-sprava')!;const p={...base,id:'fixture-search',title:'Програма підтримки',provider:'Організатор Azurium',searchTerms:[],eligibleCosts:['Енергоефективні котли'],targetAudience:'Пасічники',details:{...base.details,costs:['Енергоефективні котли'],eligibility:['Пасічники'],documents:['Довідка про експорт'],exclusions:['Азартні заклади'],funding:[],obligations:[],steps:[],overview:'Фінансування розвитку'}};
+ const base=confirmedCatalog.find(p=>p.id==='vlasna-sprava')!;const p={...base,id:'fixture-search',title:'Програма підтримки',provider:'Організатор Azurium',searchTerms:[],eligibleCosts:['Енергоефективні котли'],targetAudience:'Пасічники',details:{...base.details,costs:['Енергоефективні котли'],eligibility:['Пасічники'],documents:['Довідка про експорт'],exclusions:['Азартні заклади'],funding:[],obligations:[],steps:[],overview:'Фінансування розвитку'}};
  const at=new Date('2026-11-16T15:00:00Z');for(const q of ['azurium','пасічники','котли','експорт'])assert.equal(discover(q,[p],at).matches[0]?.programId,'fixture-search',q);
  assert.equal(discover('азартні заклади',[p],at).matches.length,0);
  const expired={...p,availability:{...p.availability!,validUntil:'2026-01-01T00:00:00Z'}};assert.equal(discover('котли',[expired],at).matches.length,0);
+});
+
+test("published calendar alone does not recommend an unconfirmed round", () => {
+  const result = discover("Хочу відкрити кав’ярню", GRANT_CATALOG, new Date("2026-11-16T15:00:00Z"));
+  assert(!result.matches.some(match => match.programId === "vlasna-sprava"));
 });
