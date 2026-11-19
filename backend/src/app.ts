@@ -1,3 +1,4 @@
+import { hydrateProgramKnowledge } from "./playbooks/index.js";
 import { monobankJarWebhookRouter } from "./monobank-jar.js";
 import { monobankWebhookRouter, type PaymentConfig } from "./grant-preparation-pilot.js";
 import { configuredGeminiResponder } from "./gemini.js";
@@ -62,7 +63,10 @@ export function createApp(
   app.use("/api/monobank/acquiring/webhook", express.raw({ type: "application/json", limit: "16kb", inflate: false }), monobankWebhookRouter(db, payment));
   app.use("/api/payments/monobank", monobankJarWebhookRouter(db));
   app.use(express.json({ limit: "128kb" }));
-  app.get("/api/grants", async (_req,res,next) => {try { const sources=await catalogStatus();res.set("Cache-Control","no-store").json({programs:GRANT_CATALOG,sources}); }catch(e){next(e);} });
+  app.get("/api/grants", async (_req,res,next) => {try { const sources=await catalogStatus();
+    const hydrated = await hydrateProgramKnowledge(db, GRANT_CATALOG);
+    const programs = hydrated.map(({ embeddingVector: _vector, embeddingModel: _model, embeddingHash: _hash, ...program }) => program);
+    res.set("Cache-Control","no-store").json({programs,sources}); }catch(e){next(e);} });
   app.get("/api/health", async (_req, res) => {
     try {
       await db.query("SELECT 1");

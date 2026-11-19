@@ -540,3 +540,5 @@ Terra реалізував backend checkout/webhook і customer UI; Sol пере
 Реліз main33ef694 завершився успішно: Actions44392170655, Cloud Run `grantfolio-web-gh-44392170655-1`. HTTPS і GET webhook200, summary0. У browser підтверджено гейт «Оплата проєкту». Далі — token-ввід власником через make mono-webhook та реальний переказ5грн для перевірки доставки; ці кроки не виконані агентом.
 
 19.11: виправлено автоматичну назву й обхід актуальної анкети при створенні проєкту. Typecheck/build/diff-check PASS; [передача](agents/2026-11-19-project-start-flow.md).
+
+- 19.11.2026: етап 2 master-upgrade — playbooks/knowledge migration 026/sync, support tier і фільтр каталогу. Typecheck, 7 тестів із PostgreSQL пройшли; production без змін.

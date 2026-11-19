@@ -342,6 +342,7 @@ export function GrantCatalog({
   const [category, setCategory] = useState("all");
   const [funding, setFunding] = useState("all");
   const [onlyOpen, setOnlyOpen] = useState(false);
+  const [onlyDeep, setOnlyDeep] = useState(false);
   const [showAllCategories, setShowAllCategories] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(catalogId);
   const lastCard = useRef<string | null>(null);
@@ -482,7 +483,7 @@ export function GrantCatalog({
   const hasActiveFilters =
     category !== "all" ||
     funding !== "all" ||
-    onlyOpen ||
+    onlyOpen || onlyDeep ||
     search.trim().length > 0;
   const searchIndex = useMemo(
     () =>
@@ -506,6 +507,9 @@ export function GrantCatalog({
               ...p.eligibleCosts,
               ...p.details.eligibility,
               ...p.details.funding,
+              ...(p.searchTags ?? []),
+              ...(p.searchSynonyms ?? []),
+              ...(p.useCaseExamples ?? []),
               ...(p.tags ?? []),
               ...(p.searchTerms ?? []),
             ].join(" "),
@@ -538,6 +542,7 @@ export function GrantCatalog({
         if (funding !== "all" && (p.fundingType ?? "unknown") !== funding)
           return false;
         if (onlyOpen && !confirmedIds.has(p.id)) return false;
+        if (onlyDeep && p.supportTier !== "deep") return false;
         if (!trimmedSearch) return true;
         if (matches.has(p.id)) return true;
         const text = searchIndex.get(p.id) ?? "";
@@ -552,6 +557,7 @@ export function GrantCatalog({
     category,
     funding,
     onlyOpen,
+    onlyDeep,
     confirmedIds,
     search,
     result,
@@ -562,6 +568,7 @@ export function GrantCatalog({
     setCategory("all");
     setFunding("all");
     setOnlyOpen(false);
+    setOnlyDeep(false);
   };
   const list = (items: readonly string[]) => (
     <ul>
@@ -615,6 +622,7 @@ export function GrantCatalog({
             Офіційна програма: {selected.title}
           </p>
           <div className="grant-badges">
+            <span>{selected.supportTier === "deep" ? "Поглиблена підготовка" : "Огляд програми"}</span>
             <span>{fundingLabel(selected)}</span>
             <span>
               {selected.programKind === "program"
@@ -622,6 +630,13 @@ export function GrantCatalog({
                 : "Конкурс / набір"}
             </span>
           </div>
+          {selected.playbook && <section aria-label="Можливості підготовки">
+            <p>Версія правил: {selected.playbook.rulesVersion}. Перевірено {formatDate(selected.playbook.observedOn)}.</p>
+            <p>{selected.playbook.capabilities.officialPackageVerified
+              ? "Офіційний пакет перевірено."
+              : "Офіційний пакет не підтверджено. Доступні матеріали — робочі чернетки для перевірки."}</p>
+            {selected.playbook.gaps.length > 0 && <ul>{selected.playbook.gaps.map((gap) => <li key={gap}>{gap}</li>)}</ul>}
+          </section>}
           <p className="grant-page-amount">{selected.amount}</p>
           <p className="grant-official-name">
             Умови й суми опрацьовано {formatDate(selected.checkedAt)}.
@@ -921,6 +936,11 @@ export function GrantCatalog({
                 placeholder="Усі типи"
               />
             </div>
+            <button type="button" role="switch" aria-checked={onlyDeep}
+              className="catalog-switch-btn" onClick={() => setOnlyDeep((value) => !value)}>
+              <span className="catalog-switch-track" aria-hidden="true"><span className="catalog-switch-thumb" /></span>
+              <span className="catalog-switch-label">Флагманські програми · поглиблена підготовка</span>
+            </button>
             <button
               type="button"
               role="switch"
@@ -1030,6 +1050,7 @@ export function GrantCatalog({
                 {p.categoryLabel} · {p.provider}
               </p>
               <div className="grant-badges">
+                <span>{p.supportTier === "deep" ? "Поглиблена підготовка" : "Огляд програми"}</span>
                 <span>{fundingLabel(p)}</span>
                 <span>
                   {p.programKind === "program"

@@ -1,3 +1,4 @@
+import type { ProgramPlaybook } from "./playbooks/schema.js";
 import { EXPANDED_FUNDING_CATALOG } from "./expanded-funding-catalog.js";
 import { GLOBAL_FUNDING_ADDITIONS } from "./global-funding-additions.js";
 /** Shared, curated program information. Not an automated eligibility decision. */
@@ -30,6 +31,11 @@ export type GrantCatalogEntry = {
   programKind?: "program" | "call";
   eligibilityUkraine?: string;
   reviewStatus?: "curated" | "needs-review";
+  supportTier?: "deep" | "catalog_only";
+  searchTags?: string[];
+  searchSynonyms?: string[];
+  useCaseExamples?: string[];
+  playbook?: ProgramPlaybook;
   tags?: string[];
   searchTerms?: string[];
   /** Curated identity spellings, not generic funding topics. */
