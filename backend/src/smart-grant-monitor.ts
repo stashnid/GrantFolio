@@ -1,3 +1,4 @@
+import { getAiConfig, geminiEndpoint } from "./ai/aiConfig.js";
 import { applicationDefault } from "firebase-admin/app";
 import type { Pool, PoolClient } from "pg";
 import {
@@ -126,16 +127,15 @@ export function configuredGeminiExtractor(
   if (vertexProject && !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(vertexProject)) {
     return undefined;
   }
-  const model = process.env.GEMINI_MODEL ?? ALLOWED_GEMINI_MODEL;
-  if (model !== ALLOWED_GEMINI_MODEL) return undefined;
+  let model: string;
+  try { model = getAiConfig().utility; } catch { return undefined; }
+  if (!process.env.GEMINI_UTILITY_MODEL && process.env.GEMINI_MODEL && model !== ALLOWED_GEMINI_MODEL) return undefined;
 
   const retryDelays = options.retryDelayMs ?? DEFAULT_LLM_RETRY_DELAYS_MS;
   const getAccessToken = vertexProject
     ? accessTokenProvider ?? (() => applicationDefault().getAccessToken())
     : undefined;
-  const endpoint = vertexProject
-    ? `https://aiplatform.eu.rep.googleapis.com/v1/projects/${vertexProject}/locations/eu/publishers/google/models/${model}:generateContent`
-    : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const endpoint = geminiEndpoint(model, vertexProject);
 
   return async (profile, normalizedText, now, externalSignal) => {
     const prompt = buildExtractionPrompt(profile, normalizedText, now);

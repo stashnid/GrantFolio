@@ -1,3 +1,5 @@
+import { getAiConfig, geminiEndpoint, type AiRole } from "./ai/aiConfig.js";
+import { buildAssistantSystemPrompt } from "./ai/prompts/assistantSystemPrompt.js";
 import { applicationDefault } from "firebase-admin/app";
 import type { AssistantResponder } from "./assistant.js";
 import { getGrantSourceContext, getProgramDetails } from "./grant-sources.js";
@@ -70,22 +72,18 @@ const SYSTEM_PROMPT = `Ти — активний, уважний і фахови
 export function configuredGeminiResponder(
   fetchImpl: typeof fetch = fetch,
   accessTokenProvider?: () => Promise<{ access_token: string }>,
+  role: Exclude<AiRole, "embedding"> = "chat",
 ): AssistantResponder | undefined {
   const vertexProject = process.env.GEMINI_VERTEX_PROJECT?.trim();
   const apiKey = process.env.GEMINI_API_KEY?.trim();
   if (!vertexProject && !apiKey) return undefined;
   if (vertexProject && !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(vertexProject)) return undefined;
-  const model = process.env.GEMINI_MODEL ?? "gemini-3.5-flash-lite";
-  if (model !== "gemini-3.5-flash-lite") {
-    return undefined;
-  }
-
+  let config;
+  try { config = getAiConfig(); } catch { return undefined; }
   const getAccessToken = vertexProject
     ? accessTokenProvider ?? (() => applicationDefault().getAccessToken())
     : undefined;
-  const url = vertexProject
-    ? `https://aiplatform.eu.rep.googleapis.com/v1/projects/${vertexProject}/locations/eu/publishers/google/models/${model}:generateContent`
-    : `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+  const url = geminiEndpoint(config[role], vertexProject);
 
   return async (snapshot, message, signal) => {
     const program = !snapshot.mode && snapshot.program_id && GRANT_CATALOG.some(p => p.id === snapshot.program_id) ? getProgramDetails(snapshot.program_id) : null;
@@ -96,7 +94,7 @@ export function configuredGeminiResponder(
 
     const payload = {
       systemInstruction: {
-        parts: [{ text: snapshot.mode === "preparation-ideas" ? PREPARATION_IDEAS_PROMPT : snapshot.mode === "discovery" ? DISCOVERY_PROMPT : SYSTEM_PROMPT }],
+        parts: [{ text: [snapshot.mode === "preparation-ideas" ? PREPARATION_IDEAS_PROMPT : snapshot.mode === "discovery" ? DISCOVERY_PROMPT : SYSTEM_PROMPT, buildAssistantSystemPrompt({ mode: snapshot.mode ?? "project", override: config.promptOverride })].join("\n\n") }],
       },
       contents: [
         {

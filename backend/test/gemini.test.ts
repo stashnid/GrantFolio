@@ -26,7 +26,7 @@ test("Vertex configuration uses the EU endpoint and only the runtime bearer toke
     expires_in: 3600,
   }));
   const respond = configuredGeminiResponder(async (url, options) => {
-    assert.equal(url, "https://aiplatform.eu.rep.googleapis.com/v1/projects/test-grantfolio/locations/eu/publishers/google/models/gemini-3.5-flash-lite:generateContent");
+    assert.equal(url, "https://aiplatform.eu.rep.googleapis.com/v1/projects/test-grantfolio/locations/eu/publishers/google/models/gemini-3.5-flash:generateContent");
     const headers = new Headers(options?.headers);
     assert.equal(headers.get("authorization"), "Bearer test-token");
     assert.equal(headers.has("x-goog-api-key"), false);
@@ -44,8 +44,9 @@ test("configuredGeminiResponder returns undefined when API key is missing or mod
     assert.equal(configuredGeminiResponder(), undefined);
 
     process.env.GEMINI_API_KEY = "test-key";
-    process.env.GEMINI_MODEL = "gemini-1.5-pro";
+    process.env.GEMINI_CHAT_MODEL = "gemini-3.5-flash-lite";
     assert.equal(configuredGeminiResponder(), undefined);
+    delete process.env.GEMINI_CHAT_MODEL;
   } finally {
     if (origKey !== undefined) process.env.GEMINI_API_KEY = origKey;
     else delete process.env.GEMINI_API_KEY;
@@ -100,7 +101,7 @@ test("configuredGeminiResponder sends exact POST header/body and includes budget
     const reply = await responder(snapshot, "Як покращити заявку?", controller.signal);
 
     assert.equal(reply, "Це відповідь асистента");
-    assert.equal(requestedUrl, "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:generateContent");
+    assert.equal(requestedUrl, "https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash:generateContent");
     assert.equal(requestOptions.method, "POST");
     assert.equal(requestOptions.headers["content-type"], "application/json");
     assert.equal(requestOptions.headers["x-goog-api-key"], "secret-gemini-key");
