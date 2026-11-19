@@ -1,5 +1,16 @@
 # Поточний стан GrantFolio
 
+## Реліз MASTER SPEC на публічний сайт (Cloud Run) — 19.11.2026
+
+- **Коміт релізу**: `0bb26ef24817a6932211d00ac0f0e5e9354c0866` на гілці `main`.
+- **GitHub Actions**: workflow `Prototype checks`, run [44577605074](https://github.com/stashnid/GrantFolio/actions/runs/44577605074) (завдання `verify` — 2m24s, завдання `Deploy to Cloud Run` — 2m20s, обидва успішні).
+- **Cloud Run ревізія**: `grantfolio-web-gh-44577605074-1` (образ `europe-west1-docker.pkg.dev/grantfolio-pp-ua/grantfolio/web@sha256:904046ce67e912f2b196efb875d78562ba30f58a923a3570de3510ef87101afb`).
+- **Міграції БД**: успішно виконано завдання `grantfolio-migrate` (включно з міграцією 026 та плейбуками).
+- **Публічна верифікація**:
+  - `https://grantfolio.pp.ua/api/health` повертає `{"status":"ok"}`.
+  - `https://grantfolio.pp.ua/api/grants` повертає актуальний каталог із 104 програмами.
+  - Клієнтські бандли оновлено (`GrantCatalog`, `Advisor` із підтримкою SSE `/api/advisor/stream`, бейджами флагманських програм та захищеним експортом).
+
 ## Комплексний апгрейд AI-асистента, каталогу, плейбуків, фінансової моделі та формуло-безпечного Excel-експорту (MASTER SPEC) — 19.11.2026
 
 1. **Етап 1: Конфігурація моделей (Model Router) та базовий System Prompt**:
