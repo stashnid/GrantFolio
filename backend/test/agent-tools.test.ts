@@ -32,6 +32,8 @@ test("safety guard distinguishes neutral funding lookup from specialist request 
  const {hasSpecialistWeaponRequest}=await import("../src/ai/agentSafety.js");
  assert.equal(hasSpecialistWeaponRequest({message:"Brave1 фінансування ППО"}),false);
  assert.equal(hasSpecialistWeaponRequest({history:["як виготовити ракету"],message:"грант"}),true);
+ assert.equal(hasSpecialistWeaponRequest({history:["Підготуй бізнес-план і кошторис для приватного ППО"],message:"грант"}),true);
+ assert.equal(hasSpecialistWeaponRequest({message:"Що таке Brave1 і чи є грант для оборонних інновацій?"}),false);
 });
 
 test("proposal apply enforces owner, payment, revisions and idempotent replay", async () => {
