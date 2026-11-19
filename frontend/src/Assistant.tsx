@@ -1,3 +1,5 @@
+import { progressLabel, type AgentRequestInit } from "./agent-progress";
+import { AgentProposals, type PendingProposal } from "./AgentProposals";
 import { ReplyReveal } from "./ReplyReveal";
 import { useConfirm } from "./ConfirmDialog";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
@@ -33,7 +35,8 @@ type Props = {
   blocked: boolean;
   blockedReason?: string;
   onRevisionConflict?: () => void;
-  request: (path: string, init?: RequestInit) => Promise<Response>;
+  onProposalApplied?: () => void;
+  request: (path: string, init?: AgentRequestInit) => Promise<Response>;
   prefilledPrompt?: string;
   onClearPrefilled?: () => void;
   onDraftChange?: (hasDraft: boolean) => void;
@@ -203,6 +206,7 @@ type Exchange = {
   createdAt: string;
   stale: boolean;
   suggestions?: DraftSuggestion[];
+  pending_proposals?: PendingProposal[];
 };
 type History = {
   exchanges: Exchange[];
@@ -394,6 +398,7 @@ export function Assistant({
   blocked,
   blockedReason,
   onRevisionConflict,
+  onProposalApplied,
   request,
   prefilledPrompt,
   onClearPrefilled,
@@ -438,6 +443,7 @@ export function Assistant({
   const copyTimerRef = useRef<number | null>(null);
   const noticeTimerRef = useRef<number | null>(null);
   const [pendingQuestion, setPendingQuestion] = useState("");
+  const [agentProgress, setAgentProgress] = useState("Опрацьовую запит…");
   const [copyError, setCopyError] = useState("");
   const [preview, setPreview] = useState<{ suggestion: DraftSuggestion; exchangeId: string; current: string } | null>(null);
   const [previewError, setPreviewError] = useState("");
@@ -617,6 +623,7 @@ export function Assistant({
     setIsAtBottom(true);
     scrollToBottom.current = true;
     setPendingQuestion(submittedMessage);
+    setAgentProgress("Опрацьовую запит…");
     setLoading(true);
     setError("");
     setImportedNotice("");
@@ -624,6 +631,7 @@ export function Assistant({
       const response = await requestRef.current(`/api/cases/${caseId}/assistant`, {
         method: "POST",
         signal: controller.signal,
+        onAgentProgress: event => setAgentProgress(progressLabel(event)),
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           expectedRevision: submittedRevision,
@@ -851,6 +859,7 @@ export function Assistant({
                     </button>
                   </div>
                 )}
+                {exchange.pending_proposals?.length ? <AgentProposals proposals={exchange.pending_proposals} request={request} blocked={blocked || loading || exchange.stale || exchange.revision !== revision} onApplied={onProposalApplied} /> : null}
                 {revealingId !== exchange.id && exchange.suggestions && exchange.suggestions.length > 0 && (
                   <div className="chat-actionable-card suggestion-list">
                     <strong>Текст для заявки</strong>
@@ -917,7 +926,7 @@ export function Assistant({
                   <span />
                   <span />
                 </span>
-                <span className="chat-pending-text">Готую відповідь…</span>
+                <span className="chat-pending-text">{agentProgress}</span>
               </div>
             </div>
           </div>

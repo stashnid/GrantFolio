@@ -1,3 +1,4 @@
+import { consumeAgentStream, type AgentRequestInit } from "./agent-progress";
 import type { User } from "firebase/auth";
 
 export class ApiError extends Error {
@@ -8,7 +9,7 @@ export class ApiError extends Error {
 }
 
 // Bound token refresh as well as fetch; never replay a mutation automatically.
-export async function authenticatedRequest(user: User, path: string, init: RequestInit = {}, timeoutMs = 15000): Promise<Response> {
+export async function authenticatedRequest(user: User, path: string, init: AgentRequestInit = {}, timeoutMs = 15000): Promise<Response> {
   if (init.signal?.aborted) throw init.signal.reason ?? new DOMException("Request cancelled", "AbortError");
   const controller = new AbortController();
   let timedOut = false;
@@ -26,7 +27,10 @@ export async function authenticatedRequest(user: User, path: string, init: Reque
     const token = await Promise.race([user.getIdToken(), interrupted]);
     const headers = new Headers(init.headers);
     headers.set("Authorization", `Bearer ${token}`);
-    const response = await Promise.race([fetch(path, { ...init, headers, signal: controller.signal }), interrupted]);
+    const { onAgentProgress, ...fetchInit } = init;
+    if (onAgentProgress) headers.set("Accept", "text/event-stream");
+    let response = await Promise.race([fetch(path, { ...fetchInit, headers, signal: controller.signal }), interrupted]);
+    if (onAgentProgress) response = await Promise.race([consumeAgentStream(response, onAgentProgress), interrupted]);
     // These bounded JSON/text API replies are consumed before clearing the deadline.
     const body = await Promise.race([response.arrayBuffer(), interrupted]);
     return new Response([204, 205, 304].includes(response.status) || init.method === "HEAD" ? null : body,

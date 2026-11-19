@@ -55,3 +55,20 @@ test("catalog embedding synchronization is resumable and handles entries without
  const result=await hybridSearch("агро",{db:client as never,programs:selected,embedder});assert.equal(result.retrieval,"hybrid");
  }finally{await client.query("ROLLBACK");client.release();await pool.end();}
 });
+test("exact identity outranks a fuzzy identity even when alphabetically later",async()=>{
+ const a={...program,id:"fixture-alphea",title:"fixture-alphea",aliases:[]};const b={...program,id:"fixture-alphex",title:"fixture-alphex",aliases:[]};
+ assert.equal((await hybridSearch("fixture-alphex",{programs:[a,b],embedder:null})).matches[0].programId,b.id);
+});
+test("invalid opted-in embedding configuration retains lexical search",async()=>{
+ const old={enabled:process.env.GEMINI_EMBEDDINGS_ENABLED,key:process.env.GEMINI_API_KEY,model:process.env.GEMINI_EMBEDDING_MODEL};
+ try{process.env.GEMINI_EMBEDDINGS_ENABLED="true";process.env.GEMINI_API_KEY="mock";process.env.GEMINI_EMBEDDING_MODEL="bad/model";
+ assert.equal((await hybridSearch("agro-gardens")).retrieval,"lexical");
+ }finally{for(const[key,value]of Object.entries({GEMINI_EMBEDDINGS_ENABLED:old.enabled,GEMINI_API_KEY:old.key,GEMINI_EMBEDDING_MODEL:old.model})){if(value===undefined)delete process.env[key];else process.env[key]=value;}}
+});
+test("semantic scores cannot bypass specialized deep-tech safeguards",async()=>{
+ const women=GRANT_CATALOG.find(p=>p.id==="women-techeu-2-eic")!;
+ const db={query:async()=>({rows:[{program_id:women.id,embedding_vector:[1,0],embedding_hash:catalogSearchKnowledge(women).hash}]})};
+ const result=await hybridSearch("відкрити звичайну кав'ярню",{db:db as never,embedder:{model:"mock",embed:async()=>[1,0]}});
+ assert.ok(!result.matches.some(m=>m.programId===women.id));
+ assert.equal((await hybridSearch(women.id,{db:db as never,embedder:{model:"mock",embed:async()=>[1,0]}})).matches[0].programId,women.id);
+});

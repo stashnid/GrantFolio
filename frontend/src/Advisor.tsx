@@ -1,3 +1,5 @@
+import { progressLabel } from "./agent-progress";
+import { AgentProposals, type PendingProposal } from "./AgentProposals";
 import { grantIntake, grantSupport } from "../../backend/src/grant-discovery";
 import { isGrantAvailable } from "../../backend/src/grant-availability";
 import { hasGuidedApplication } from "./grants";
@@ -29,6 +31,7 @@ type Message = {
   mode: string;
   search: SearchResult;
   seed: string;
+  pending_proposals?: PendingProposal[];
   selectedProgramId?: string;
   extractedFacts?: ExtractedProfileFact[];
   fallbackReason?: "not_configured" | "rate_limited" | "timeout" | "provider_error" | "invalid_response";
@@ -139,6 +142,7 @@ export function Advisor({
     [cursor, setCursor] = useState<string | null>(null);
   const [revealingId, setRevealingId] = useState<string | null>(null);
   const [pendingQuestion, setPendingQuestion] = useState("");
+  const [agentProgress, setAgentProgress] = useState("Опрацьовую запит…");
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [copyError, setCopyError] = useState("");
   const copyTimerRef = useRef<number | null>(null);
@@ -504,6 +508,7 @@ export function Advisor({
     const question = text.trim(),
       id = conversation;
     setPendingQuestion(question);
+    setAgentProgress("Опрацьовую запит…");
     nearBottom.current = true;
     setIsAtBottom(true);
     setBusy(true);
@@ -518,6 +523,7 @@ export function Advisor({
         "/api/advisor",
         {
           method: "POST",
+          onAgentProgress: event => setAgentProgress(progressLabel(event)),
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             id: attempts.current[id].id,
@@ -1079,6 +1085,7 @@ export function Advisor({
                         {(visible) => <FormattedReply text={visible} />}
                       </ReplyReveal>
                     </div>
+                    {m.pending_proposals?.length ? <AgentProposals proposals={m.pending_proposals} request={(path,init) => authenticatedRequest(user,path,init)} blocked={busy} /> : null}
                     {revealingId !== m.id && (
                       <div className="assistant-bubble-actions">
                         <button
@@ -1222,7 +1229,7 @@ export function Advisor({
                       <span />
                       <span />
                     </span>
-                    <span className="chat-pending-text">Аналізую запит і шукаю можливі програми…</span>
+                    <span className="chat-pending-text">{agentProgress}</span>
                   </div>
                 </div>
               </div>

@@ -12,7 +12,8 @@ export function configuredEmbedder(fetchImpl: typeof fetch = fetch, tokenProvide
   const key = process.env.GEMINI_API_KEY?.trim();
   if (!project && !key) return undefined;
   if (project && !/^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(project)) return undefined;
-  const model = getAiConfig().embedding;
+  let model: string;
+  try { model = getAiConfig().embedding; } catch { return undefined; }
   // Embedding 001 does not support the EU multi-region. Keep this workload in europe-west4.
   const url = project
     ? `https://europe-west4-aiplatform.googleapis.com/v1/projects/${project}/locations/europe-west4/publishers/google/models/${model}:predict`

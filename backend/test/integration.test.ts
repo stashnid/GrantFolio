@@ -463,7 +463,7 @@ test("assistant history isolates owners, paginates tied timestamps, and preserve
   let calls = 0;
   const app = express(); app.use(express.json());
   app.use(async (req, res, next) => { try { res.locals.uid = (await getAuth().verifyIdToken((req.header("authorization") ?? "").replace(/^Bearer /, ""))).uid; next(); } catch { res.sendStatus(401); } });
-  app.use(assistantRouter(db, async (snapshot) => { calls++; assert.equal(snapshot.conversation?.length, 2); assert.ok(snapshot.conversation?.every(turn => turn.question === "Q" && turn.reply === "A" && !turn.stale && !turn.truncated)); await db.query("UPDATE cases SET revision=revision+1 WHERE id=$1", [id]); return "Generated"; }));
+  app.use(assistantRouter(db, async (snapshot) => { calls++; assert.equal(snapshot.conversation?.length, 10); assert.ok(snapshot.conversation?.every(turn => turn.question === "Q" && turn.reply === "A" && !turn.stale && !turn.truncated)); await db.query("UPDATE cases SET revision=revision+1 WHERE id=$1", [id]); return "Generated"; }));
   const historyServer = app.listen(0, "127.0.0.1"); await once(historyServer, "listening");
   const port = (historyServer.address() as {port: number}).port;
   const call = (token: string, path: string, method = "GET", body?: unknown) => fetch(`http://127.0.0.1:${port}/${path}`, { method, headers: { Authorization: `Bearer ${token}`, ...(body ? { "Content-Type": "application/json" } : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) });

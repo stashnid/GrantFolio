@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import type { Pool } from "pg";
 import { GRANT_CATALOG, type GrantCatalogEntry } from "../grant-catalog-data.js";
-import { findNamedPrograms, grantIntake, grantSupport, normalize, searchGrants, type GrantMatch, type SearchResult } from "../grant-discovery.js";
+import { findNamedPrograms, isSpecializedProgramRelevant, grantIntake, grantSupport, normalize, searchGrants, type GrantMatch, type SearchResult } from "../grant-discovery.js";
 import { PLAYBOOKS } from "../playbooks/data.js";
 import { programKnowledgeHash } from "../playbooks/sync.js";
 import { configuredEmbedder, validVector, type Embedder } from "./embeddings.js";
@@ -52,7 +52,7 @@ export async function hybridSearch(query: string, options: Options = {}): Promis
   const studyOnly = legacy.intents.includes("study") && !legacy.intents.some(intent => ["business", "production", "equipment", "garden"].includes(intent));
   const scored = programs.filter(program => named.has(program.id) || (
     !(program.fundingType === "reimbursement" && futureOnlyPurchase) &&
-    !personalOnly && !studyOnly
+    !personalOnly && !studyOnly && isSpecializedProgramRelevant(program, boundedQuery)
   )).map(program => {
     const knowledge = catalogSearchKnowledge(program);
     const text = normalize([program.title, program.provider, program.summary, ...knowledge.searchSynonyms, ...knowledge.useCaseExamples].join(" "));
@@ -67,9 +67,9 @@ export async function hybridSearch(query: string, options: Options = {}): Promis
     const semantic = compatible ? cosineSimilarity(queryVector!, vector!) : 0;
     // Keep the specified weights. Offline confidence is separately labeled, not fabricated semantic similarity.
     const score = 0.60 * semantic + 0.25 * lex + 0.15 * tags;
-    return { program, existing, lex, semantic, score, direct: named.has(program.id) };
+    return { program, existing, lex, semantic, score, direct: named.has(program.id), identityScore: existing?.matchKind === "direct" ? existing.score : 0 };
   }).filter(row => row.direct || row.lex > 0 || row.semantic >= 0.45)
-    .sort((a,b) => Number(b.direct)-Number(a.direct) || b.score-a.score || a.program.id.localeCompare(b.program.id));
+    .sort((a,b) => Number(b.direct)-Number(a.direct) || (a.direct && b.direct ? b.identityScore-a.identityScore : 0) || b.score-a.score || a.program.id.localeCompare(b.program.id));
   const matches: GrantMatch[] = scored.slice(0, Math.max(1, Math.min(10, options.limit ?? 10))).map(({program,existing,score,direct}) => ({
     ...(existing ?? { programId: program.id, title: program.title, reason: "Збіг із збереженим описом і пошуковими ознаками; відповідність потребує перевірки.", caution: "Перевірте умови й актуальний прийом у надавача.", evidenceUrl: program.officialUrl }),
     score: Math.round(score * 1000) / 10, matchKind: direct ? "direct" : "thematic", ...grantIntake(program, options.now), ...grantSupport(program.id),

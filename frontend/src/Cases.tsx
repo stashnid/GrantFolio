@@ -1,3 +1,4 @@
+import type { AgentRequestInit } from "./agent-progress";
 import { hasGuidedApplication } from "./grants";
 import { assessBudget, readiness as snapshotReadiness } from "../../backend/src/project-details";
 import {isGrantAvailable} from "../../backend/src/grant-availability";
@@ -246,7 +247,7 @@ export function Cases({
     body: string;
     kind: "budget" | "details";
   } | null>(null);
-  async function request(path: string, init: RequestInit = {}) {
+  async function request(path: string, init: AgentRequestInit = {}) {
     const timeoutMs = path.endsWith("/assistant") && init.method === "POST" ? 40000 : 15000;
     return authenticatedRequest(user, path, init, timeoutMs);
   }
@@ -1593,6 +1594,7 @@ export function Cases({
                 blocked={dirty || !!pending || busy || conflict}
                 blockedReason={conflict ? "Проєкт змінився в іншій вкладці. Завантажте актуальну версію, щоб продовжити." : pending ? "Потрібно повторити попереднє збереження й підтвердити його результат." : busy ? "Зачекайте завершення поточної дії." : undefined}
                 onRevisionConflict={() => setConflict(true)}
+                onProposalApplied={() => void select(selected.id, true)}
                 request={request}
                 prefilledPrompt={assistantPrompt}
                 onClearPrefilled={() => setAssistantPrompt("")}

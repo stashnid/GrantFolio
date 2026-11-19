@@ -1,7 +1,10 @@
 import { hydrateProgramKnowledge } from "./playbooks/index.js";
 import { monobankJarWebhookRouter } from "./monobank-jar.js";
 import { monobankWebhookRouter, type PaymentConfig } from "./grant-preparation-pilot.js";
-import { configuredGeminiResponder } from "./gemini.js";
+import { configuredAgentRuntime } from "./ai/agentRuntime.js";
+import { agentProposalsRouter } from "./ai/agentProposals.js";
+import { agentProgressMiddleware } from "./ai/agentProgress.js";
+import { hybridSearch } from "./matching/hybridSearch.js";
 import {GRANT_CATALOG} from "./grant-catalog-data.js";
 import express, { type ErrorRequestHandler } from "express";
 import { getAuth } from "firebase-admin/auth";
@@ -58,7 +61,7 @@ export function createApp(
   payment?: PaymentConfig,
 ) {
   const app = express();
-  const privateRoutes = ["/api/advisor", "/api/me", "/api/cases", "/api/feedback", "/api/donations", "/api/admin/monitor", "/api/admin/feedback"];
+  const privateRoutes = ["/api/agent-proposals", "/api/advisor", "/api/me", "/api/cases", "/api/feedback", "/api/donations", "/api/admin/monitor", "/api/admin/feedback"];
   app.disable("x-powered-by");
   app.use("/api/monobank/acquiring/webhook", express.raw({ type: "application/json", limit: "16kb", inflate: false }), monobankWebhookRouter(db, payment));
   app.use("/api/payments/monobank", monobankJarWebhookRouter(db));
@@ -383,8 +386,14 @@ export function createApp(
       next(error);
     }
   });
-  app.use("/api/advisor", advisorRouter(db, configuredGeminiResponder()));
-  app.use("/api/cases", casesRouter(db, payment));
+  const native = configuredAgentRuntime(db, (args, context) => hybridSearch(
+    [args.semanticQuery, ...args.keywords, ...(args.applicantTraits ?? [])].join(" "),
+    { db, signal: context.signal, limit: args.limit },
+  ));
+  app.use(agentProgressMiddleware);
+  app.use("/api/agent-proposals", agentProposalsRouter(db));
+  app.use("/api/advisor", advisorRouter(db, undefined, undefined, native ?? null));
+  app.use("/api/cases", casesRouter(db, payment, native ?? null));
   app.use("/api/feedback", feedbackRouter(db));
   app.use("/api/donations", donationsRouter(db));
   app.use("/api/admin/monitor", monitorAdminRouter(db, { onAvailabilityApproved: onCatalogMutated }));

@@ -181,6 +181,15 @@ export type SearchResult = {
   questions: string[];
   explanation: string;
 };
+/** Shared hard domain guard for lexical and semantic thematic ranking. Direct lookup remains informational. */
+export function isSpecializedProgramRelevant(program: GrantCatalogEntry, query: string): boolean {
+  if (program.id !== "women-techeu-2-eic") return true;
+  const cleaned = normalize(query);
+  const phrase = (value: string) => (` ${cleaned} `).includes(` ${normalize(value)} `);
+  return phrase(program.title) || phrase(program.provider) || phrase(program.id) ||
+    /(?:^| )(?:women ?techeu|women techeu 2 eic)(?: |$)/.test(cleaned) ||
+    /deep[ -]?tech|діп[ -]?тех|глибок(?:і|их|ими) технолог|trl[ -]?[4-6]/.test(cleaned);
+}
 export function searchGrants(query: string, programs: readonly GrantCatalogEntry[] = GRANT_CATALOG, now = new Date(), options: {includeUnavailable?: boolean} = {}): SearchResult {
   const cleaned = normalize(query).slice(-1500);
   const namedIds = new Set(findNamedPrograms(query, programs).map(p => p.id));
@@ -316,9 +325,7 @@ export function searchGrants(query: string, programs: readonly GrantCatalogEntry
     };
     const explicitProvider = includesPhrase(p.title) || includesPhrase(p.provider) ||
       includesPhrase(p.id) || (p.id === "uvf-reimbursement" && /(?:^| )(?:uvf|увф)(?: |$)/.test(cleaned));
-    const explicitWomenTech = p.id === "women-techeu-2-eic" && /(?:^| )(?:women ?techeu|women techeu 2 eic)(?: |$)/.test(cleaned);
-    const deepTechNeed = /deep[ -]?tech|діп[ -]?тех|глибок(?:і|их|ими) технолог|trl[ -]?[4-6]/.test(cleaned);
-    if (!direct && cleaned && p.id === "women-techeu-2-eic" && !explicitProvider && !explicitWomenTech && !deepTechNeed) continue;
+    if (!direct && cleaned && !isSpecializedProgramRelevant(p, query)) continue;
     if (!direct && p.fundingType === "reimbursement" && (futurePurchase || explicitlyNotPurchased) && !pastPurchase) continue;
     if (p.fundingType === "reimbursement" && !intents.includes("veteran") && !explicitProvider) { score=0; reason=""; }
     else if(named||costs||applicants||context) {
