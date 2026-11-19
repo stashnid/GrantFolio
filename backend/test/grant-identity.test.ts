@@ -39,3 +39,11 @@ test("negative eligibility does not erase explicit informational lookup", () => 
   assert.ok(direct);
   assert.match(direct.caution, /відповідність/);
 });
+
+test("fresh monitored reopening overrides a static paused label", () => {
+  const reopened = {...base, intakeStatus: "paused" as const,
+    availability: {state: "open" as const, checkedAt: "2026-11-19T00:00:00Z", validUntil: "2026-11-20T00:00:00Z", sourceUrl: base.officialUrl, evidence: "Synthetic reopening", deadlineAt: null, rolling: true}};
+  assert.equal(grantIntake(reopened, now).intake, "open");
+  assert.equal(searchGrants("обладнання", [reopened], now).matches[0]?.intake, "open");
+  assert.equal(grantIntake({...reopened, availability: undefined}, now).intake, "paused");
+});

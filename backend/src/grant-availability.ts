@@ -3,7 +3,7 @@ export function isGrantAvailable(
   program: GrantCatalogEntry,
   now = new Date(),
 ): boolean {
-  if (program.reviewStatus === "needs-review" || program.programKind === "program" || program.intakeStatus === "paused" || program.intakeStatus === "archived") return false;
+  if (program.reviewStatus === "needs-review" || program.programKind === "program") return false;
   const a = program.availability;
   if (!a || a.state !== "open") return false;
   const time = now.getTime();

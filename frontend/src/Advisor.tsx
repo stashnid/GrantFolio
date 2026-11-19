@@ -31,7 +31,8 @@ type Message = {
   seed: string;
   selectedProgramId?: string;
   extractedFacts?: ExtractedProfileFact[];
-  fallbackReason?: "not_configured" | "timeout" | "provider_error" | "invalid_response";
+  fallbackReason?: "not_configured" | "rate_limited" | "timeout" | "provider_error" | "invalid_response";
+  hasPreparationIdea?: boolean;
 };
 type Conversation = { id: string; title: string };
 
@@ -1064,7 +1065,7 @@ export function Advisor({
                       <strong className="author-name">GrantFolio Асистент</strong>
                       <span className="revision-badge">
                         {m.mode === "guided"
-                          ? m.fallbackReason ? "Модель недоступна · довідка за каталогом" : "Довідка за каталогом"
+                          ? m.fallbackReason ? "Довідка за каталогом · ідею ШІ не додано" : m.hasPreparationIdea ? "Довідка за каталогом та ідея ШІ" : "Довідка за каталогом"
                           : "Раніше збережена відповідь ШІ"}
                       </span>
                     </div>
@@ -1166,6 +1167,12 @@ export function Advisor({
                         onOpenFeedback={() => onOpenFeedback({ programId: m.search.matches[0]?.programId ?? null })}
                       />
                     )}
+                    {revealingId !== m.id && selectedProgram &&
+                      <aside className="advisor-grant" aria-label="Статус обраної програми">
+                        <p><strong>Прийом:</strong> {grantIntake(selectedProgram).intakeLabel}</p>
+                        <p><strong>Допомога GrantFolio:</strong> {grantSupport(selectedProgram.id).supportLabel}</p>
+                        <a href={selectedProgram.officialUrl} target="_blank" rel="noopener noreferrer">Офіційне джерело ↗</a>
+                      </aside>}
                     {revealingId !== m.id && selectedProgram && hasGuidedApplication(selectedProgram.id) &&
                       <div className="advisor-grant-actions">
                         <button type="button" className="advisor-grant-primary" onClick={() => onPrepare(selectedProgram, m.seed)}>

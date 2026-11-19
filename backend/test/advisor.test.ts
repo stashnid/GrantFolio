@@ -317,7 +317,10 @@ test("unconfirmed rounds stay unconfirmed when a model is configured", async (t)
     assert.equal(modelCalls, 0);
     const message = (await response.json()).message;
     assert.equal(message.mode, "guided");
-    assert(!message.search.matches.some((match: { programId: string }) => match.programId === "vlasna-sprava"));
+    const match = message.search.matches.find((match: { programId: string }) => match.programId === "vlasna-sprava");
+    assert(match, "Explicit programme questions are informational lookups even without verified intake");
+    assert.equal(match.intake, "unconfirmed");
+    assert.equal(match.matchKind, "direct");
     assert.doesNotMatch(message.reply, /прийом (?:зараз )?відкрит|27 листопада/i);
   } finally {
     listener.close();

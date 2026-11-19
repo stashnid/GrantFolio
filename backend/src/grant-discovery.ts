@@ -147,12 +147,12 @@ export function findNamedPrograms(query: string, programs: readonly GrantCatalog
 }
 
 export function grantIntake(program: GrantCatalogEntry, now = new Date()): {intake: NonNullable<GrantMatch["intake"]>; intakeLabel: string} {
-  if (program.intakeStatus === "paused") return {intake: "paused", intakeLabel: "У каталозі прийом позначено призупиненим; поточний стан перевірте в організатора."};
-  if (isGrantAvailable(program, now)) return {intake: "open", intakeLabel: "Прийом підтверджений збереженим джерелом; перевірте його перед поданням."};
   const a = program.availability;
   const fresh = a && Number.isFinite(now.getTime()) && Date.parse(a.checkedAt) <= now.getTime() && Date.parse(a.validUntil) > now.getTime();
-  if (fresh && a.startsAt && Date.parse(a.startsAt) > now.getTime()) return {intake: "upcoming", intakeLabel: "За збереженим джерелом прийом ще не почався."};
   if (fresh && (a.state === "closed" || (a.deadlineAt && Date.parse(a.deadlineAt) <= now.getTime()))) return {intake: "closed", intakeLabel: "За збереженим джерелом прийом закритий; перевірте наступний конкурс."};
+  if (isGrantAvailable(program, now)) return {intake: "open", intakeLabel: "Прийом підтверджений збереженим джерелом; перевірте його перед поданням."};
+  if (program.intakeStatus === "paused") return {intake: "paused", intakeLabel: "У каталозі прийом позначено призупиненим; поточний стан перевірте в організатора."};
+  if (fresh && a.startsAt && Date.parse(a.startsAt) > now.getTime()) return {intake: "upcoming", intakeLabel: "За збереженим джерелом прийом ще не почався."};
   return {intake: "unconfirmed", intakeLabel: "Поточний прийом не підтверджений. Наявність програми в каталозі не означає відкритого конкурсу."};
 }
 
