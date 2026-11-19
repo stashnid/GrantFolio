@@ -9,3 +9,6 @@
 
 ## Публікація та реліз
 PR32 https://github.com/stashnid/GrantFolio/pull/32, head97b598c. CI run44468163983: перший запуск мав 401 у concurrent donation auth-emulator test; обидва donations tests локально PASS; rerun failed verify job завершився SUCCESS без змін цього коду. Merge PR32 автоматично відхилено approval review: routine authorization не включає merge/default branch та запуск deployment, потрібно явне погодження саме PR32. Merge і deployment цієї зміни не виконані; production лишається попередньою версією. Код і докази готові до погодження.
+
+## Оновлення сайту погоджено й виконано
+Після прямої команди користувача «Онови сайт» PR32 злитий у mainc526c90. CI останнього head96517c9 SUCCESS; main run44469339066 verify і Deploy to Cloud Run SUCCESS. Live `grantfolio-web-gh-44469339066-1` отримує100% трафіку; public HTTPS healthok. Browser production: «Готувати робочу чернетку» відкриває форму з порожнім полем «Назва проєкту», seed лише в описі. Після закриття і натискання «Новий проєкт» знову порожні назва й опис, пояснено робочу анкету пілота та перехід до готовності після оплати. Новий production запис або платіж під час перевірки не створювався. Готовність після створення визначається перевіреним кодом create/select; повний цикл нового платного проєкту повторно через гроші не виконувався.
