@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { calculateFinancialPlan, financialPlanSchema } from "../src/grant-financial-plan.js";
+import { calculateFinancialPlan, financialPlanSchema, missingFinancialInputs } from "../src/grant-financial-plan.js";
 
 const empty = { salesKopecks: 0, grantKopecks: 0, ownKopecks: 0, operatingCostsKopecks: 0, payrollKopecks: 0, taxesKopecks: 0, capitalCostsKopecks: 0 };
 test("monthly cash flow carries deficits and reconciles totals without rounding", () => {
@@ -20,4 +20,14 @@ test("accepts only complete supported periods and nonnegative integer inputs", (
   assert(!financialPlanSchema.safeParse({ openingBalanceKopecks: 0, months: [empty] }).success);
   assert(!financialPlanSchema.safeParse({ openingBalanceKopecks: 0, months: Array.from({ length: 24 }, () => ({ ...empty, taxesKopecks: 0.5 })) }).success);
   assert(!financialPlanSchema.safeParse({ openingBalanceKopecks: -1, months: Array.from({ length: 24 }, () => empty) }).success);
+});
+
+test("unknown values stay unknown while explicit zero and legacy numeric plans calculate", () => {
+  const legacy = { openingBalanceKopecks: 0, months: Array.from({ length: 24 }, () => ({ ...empty })) };
+  assert.deepEqual(missingFinancialInputs(legacy), []);
+  assert.equal(calculateFinancialPlan(legacy).totals.closingBalanceKopecks, 0);
+  const incomplete = { ...legacy, openingBalanceKopecks: null, months: legacy.months.map((month, i) => i === 2 ? { ...month, taxesKopecks: null } : month) };
+  assert(financialPlanSchema.safeParse(incomplete).success);
+  assert.deepEqual(missingFinancialInputs(incomplete), [{ month: null, field: "openingBalanceKopecks" }, { month: 3, field: "taxesKopecks" }]);
+  assert.throws(() => calculateFinancialPlan(incomplete), /Incomplete financial plan/);
 });

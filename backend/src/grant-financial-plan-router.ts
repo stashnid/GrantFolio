@@ -3,7 +3,7 @@ import type { Pool } from "pg";
 import { z } from "zod";
 import { grantApplicationVersions } from "./grant-application.js";
 import type { GrantApplicationAnswers } from "./grant-application.js";
-import { financialPlanSchema, calculateFinancialPlan } from "./grant-financial-plan.js";
+import { financialPlanSchema, calculateFinancialPlan, missingFinancialInputs } from "./grant-financial-plan.js";
 import type { FinancialPlan } from "./grant-financial-plan.js";
 import { createFinancialExport } from "./grant-financial-export.js";
 
@@ -36,14 +36,15 @@ const queryProject = `SELECT c.title, c.program_id, c.revision AS case_revision,
   WHERE c.id=$1 AND c.owner_id=$2`;
 
 function view(row: Row) {
-  const forecast = row.plan ? calculateFinancialPlan(row.plan) : null;
+  const missingInputs = row.plan ? missingFinancialInputs(row.plan) : [];
+  const forecast = row.plan && missingInputs.length === 0 ? calculateFinancialPlan(row.plan) : null;
   const grant = row.answers?.requestedGrantKopecks ?? null;
   const own = row.answers?.ownContributionKopecks ?? null;
   const reconciled = forecast !== null && grant !== null && own !== null &&
     forecast.totals.grantKopecks === grant && forecast.totals.ownKopecks === own;
   const stale = row.plan !== null && (row.saved_case_revision !== row.case_revision || row.saved_application_revision !== row.application_revision);
   return {
-    plan: row.plan, forecast, grant, own, reconciled, stale,
+    plan: row.plan, forecast, missingInputs, grant, own, reconciled, stale,
     caseRevision: row.case_revision,
     applicationRevision: row.application_revision ?? 0,
     planRevision: row.plan_revision ?? 0,
@@ -120,6 +121,7 @@ export function grantFinancialPlanRouter(db: Pool) {
       if (row.program_id !== "vlasna-sprava") { res.status(422).json({ error: "financial_plan_unavailable" }); return; }
       const state = view(row);
       if (!matches(row, command.data) || state.stale) { res.status(409).json({ error: "revision_conflict" }); return; }
+      if (state.missingInputs.length) { res.status(422).json({ error: "financial_plan_incomplete", missingInputs: state.missingInputs }); return; }
       if (!state.forecast || !state.reconciled) { res.status(422).json({ error: "financial_plan_not_reconciled" }); return; }
       if (exporting) { res.status(429).json({ error: "financial_export_busy" }); return; }
       exporting = true;

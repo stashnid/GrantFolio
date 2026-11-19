@@ -7,6 +7,7 @@ import { authenticatedRequest, readableApiError } from "./api";
 type View = {
   plan: FinancialPlan | null;
   forecast: ReturnType<typeof calculateFinancialPlan> | null;
+  missingInputs: { month: number | null; field: string }[];
   grant: number | null;
   own: number | null;
   reconciled: boolean;
@@ -31,12 +32,13 @@ type Draft = { opening: string; months: DraftMonth[] };
 
 function emptyMonth(): DraftMonth {
   return {
-    salesKopecks: "0", grantKopecks: "0", ownKopecks: "0", operatingCostsKopecks: "0",
-    payrollKopecks: "0", taxesKopecks: "0", capitalCostsKopecks: "0",
+    salesKopecks: "", grantKopecks: "", ownKopecks: "", operatingCostsKopecks: "",
+    payrollKopecks: "", taxesKopecks: "", capitalCostsKopecks: "",
   };
 }
 
-function inputMoney(kopecks: number) {
+function inputMoney(kopecks: number | null) {
+  if (kopecks === null) return "";
   return (kopecks / 100).toFixed(2).replace(".", ",");
 }
 
@@ -48,10 +50,11 @@ function readDraft(plan: FinancialPlan | null): Draft {
       for (const [field] of fields) result[field] = inputMoney(month[field]);
       return result;
     }),
-  } : { opening: "0", months: Array.from({ length: 24 }, emptyMonth) };
+  } : { opening: "", months: Array.from({ length: 24 }, emptyMonth) };
 }
 
 function kopecks(text: string) {
+  if (!text.trim()) return null;
   const amount = /^(\d{1,11})(?:[.,](\d{1,2}))?$/.exec(text.trim());
   if (!amount) throw new Error("Уведіть невід’ємну суму з точністю до копійок.");
   const value = Number(amount[1]) * 100 + Number((amount[2] ?? "").padEnd(2, "0"));
@@ -197,7 +200,7 @@ export function GrantFinancialPlan({ user, caseId, caseRevision, applicationRevi
 
   return <section className="readiness" aria-labelledby="grant-financial-title">
     <h4 id="grant-financial-title">Помісячний фінансовий план</h4>
-    <p>Вкажіть надходження й витрати за місяцями в гривнях. Нуль означає відсутність відповідної операції. Внесіть податки за власними перевіреними розрахунками.</p>
+    <p>Вкажіть надходження й витрати за місяцями в гривнях. Порожнє поле означає невідоме значення; введіть 0 лише коли операції немає. Для розрахунку та експорту заповніть усі поля кожного місяця. Внесіть податки за власними перевіреними розрахунками.</p>
     {error && <p role="alert" className="error">{error}</p>}
     {notice && <p role="status">{notice}</p>}
     {stale && <button type="button" className="link" onClick={() => {
@@ -215,7 +218,7 @@ export function GrantFinancialPlan({ user, caseId, caseRevision, applicationRevi
           <label>Період
             <select value={draft.months.length} onChange={event => {
               const count = Number(event.target.value);
-              if (draft.months.slice(count).some(item => Object.values(item).some(amount => !/^0(?:[.,]00)?$/.test(amount))) &&
+              if (draft.months.slice(count).some(item => Object.values(item).some(amount => amount.trim() !== "")) &&
                 !window.confirm("Скорочення періоду видалить введені дані останніх місяців. Продовжити?")) return;
               updateDraft({ ...draft, months: Array.from({ length: count }, (_, i) => draft.months[i] ?? emptyMonth()) });
               setMonth(Math.min(month, count - 1));
@@ -243,6 +246,7 @@ export function GrantFinancialPlan({ user, caseId, caseRevision, applicationRevi
           <button type="submit" className="secondary-btn">{busy ? "Зачекайте…" : "Зберегти фінансовий план"}</button>
         </fieldset>
       </form>
+      {view.plan && view.missingInputs.length > 0 && <p role="status">Не заповнено полів: {view.missingInputs.length}. {view.missingInputs[0].month === null ? "Вкажіть початковий залишок." : `Перевірте місяць ${view.missingInputs[0].month}: ${fields.find(([field]) => field === view.missingInputs[0].field)?.[1] ?? "сума"}.`} Збережіть доповнений план для розрахунку та експорту.</p>}
       {view.forecast && <>
         <p>Збережена версія {view.planRevision}. Надходження {displayMoney.format(view.forecast.totals.incomeKopecks / 100)}, витрати {displayMoney.format(view.forecast.totals.expensesKopecks / 100)}, кінцевий залишок {displayMoney.format(view.forecast.totals.closingBalanceKopecks / 100)}.</p>
         {view.forecast.deficitMonths.length > 0 && <p>Дефіцит коштів у місяцях {view.forecast.deficitMonths.join(", ")}.</p>}

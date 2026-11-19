@@ -717,13 +717,22 @@ test("financial plans reconcile a private snapshot and block stale exports", asy
   const revisions = { expectedCaseRevision: 0, expectedApplicationRevision: 1, expectedPlanRevision: 0 };
   assert.equal((await call(stranger, financialPath)).status, 404);
   assert.equal((await call(stranger, financialPath, "PUT", { ...revisions, plan })).status, 404);
-  const saves = await Promise.all([call(owner, financialPath, "PUT", { ...revisions, plan }), call(owner, financialPath, "PUT", { ...revisions, plan })]);
+  const incompletePlan = { ...plan, openingBalanceKopecks: null, months: plan.months.map((month, i) => i === 1 ? { ...month, taxesKopecks: null } : month) };
+  assert.equal((await call(owner, financialPath, "PUT", { ...revisions, plan: incompletePlan })).status, 200);
+  const incomplete = await (await call(owner, financialPath)).json();
+  assert.equal(incomplete.forecast, null);
+  assert.equal(incomplete.missingInputs.length, 2);
+  const incompleteExport = await call(owner, `${financialPath}/export`, "POST", { ...revisions, expectedPlanRevision: 1 });
+  assert.equal(incompleteExport.status, 422);
+  assert.equal((await incompleteExport.json()).error, "financial_plan_incomplete");
+  const nextRevisions = { ...revisions, expectedPlanRevision: 1 };
+  const saves = await Promise.all([call(owner, financialPath, "PUT", { ...nextRevisions, plan }), call(owner, financialPath, "PUT", { ...nextRevisions, plan })]);
   assert.deepEqual(saves.map(result => result.status).sort(), [200, 409]);
   const saved = await (await call(owner, financialPath)).json();
   assert.equal(saved.reconciled, true);
   assert.equal(saved.forecast.totals.closingBalanceKopecks, -1000);
-  assert.equal(saved.planRevision, 1);
-  const attempt = { ...revisions, expectedPlanRevision: 1 };
+  assert.equal(saved.planRevision, 2);
+  const attempt = { ...revisions, expectedPlanRevision: 2 };
   assert.equal((await call(stranger, `${financialPath}/export`, "POST", attempt)).status, 404);
 
   if (process.env.LIBREOFFICE_TEST) {
