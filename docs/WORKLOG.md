@@ -505,3 +505,7 @@ Terra реалізував backend checkout/webhook і customer UI; Sol пере
 18.11 — реалізація оплати проєкту на банку з персональним webhook: Terra backend/UI, Sol інтеграція guard/export. Справи можна резервувати, робота в них потребує підтвердження. У production gcloud session вимагає повторної авторизації. [Передача](agents/2026-11-18-jar-project-payment.md).
 
 Підготовлено реальну Jar конфігурацію у Secret Manager/Cloud Run без трафіку; виправлено платіжні fixtures, повний regression 209/210 PASS (1 skip). Інструкції переказу стануть доступними лише після успішної реєстрації webhook. Персональний token не отримувався/не зберігався.
+
+Реліз main33ef694 завершився успішно: Actions44392170655, Cloud Run `grantfolio-web-gh-44392170655-1`. HTTPS і GET webhook200, summary0. У browser підтверджено гейт «Оплата проєкту». Далі — token-ввід власником через make mono-webhook та реальний переказ5грн для перевірки доставки; ці кроки не виконані агентом.
+
+19.11: виправлено автоматичну назву й обхід актуальної анкети при створенні проєкту. Typecheck/build/diff-check PASS; [передача](agents/2026-11-19-project-start-flow.md).

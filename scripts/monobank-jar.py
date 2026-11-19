@@ -31,7 +31,16 @@ try:
             raise SystemExit('Monobank did not confirm registration; payments remain disabled.')
         print('Monobank webhook registered. Enabling payment instructions...')
         subprocess.run(['gcloud', 'run', 'services', 'update', 'grantfolio-web', '--project=grantfolio-pp-ua', '--region=europe-west1', '--update-env-vars=MONOBANK_JAR_ENABLED=true', '--quiet'], check=True)
-        print('Payment instructions enabled.')
+        service = json.loads(subprocess.check_output(['gcloud', 'run', 'services', 'describe', 'grantfolio-web', '--project=grantfolio-pp-ua', '--region=europe-west1', '--format=json'], text=True))
+        revision = service['status']['latestCreatedRevisionName']
+        # A service pinned to a named revision does not move traffic on env updates.
+        subprocess.run(['gcloud', 'run', 'services', 'update-traffic', 'grantfolio-web', '--project=grantfolio-pp-ua', '--region=europe-west1', '--set-tags=payment-candidate=' + revision, '--quiet'], check=True)
+        candidate = json.loads(subprocess.check_output(['gcloud', 'run', 'revisions', 'describe', revision, '--project=grantfolio-pp-ua', '--region=europe-west1', '--format=json'], text=True))
+        conditions = {c['type']: c['status'] for c in candidate['status']['conditions']}
+        if not all(conditions.get(c) == 'True' for c in ['Ready', 'Active', 'ContainerHealthy']):
+            raise SystemExit('Candidate is not healthy. Live traffic unchanged.')
+        subprocess.run(['gcloud', 'run', 'services', 'update-traffic', 'grantfolio-web', '--project=grantfolio-pp-ua', '--region=europe-west1', '--to-revisions=' + revision + '=100', '--quiet'], check=True)
+        print('Payment instructions enabled on the active revision.')
     elif mode == 'payments':
         print(request(url + '/summary'))
     elif mode == 'unlock':
