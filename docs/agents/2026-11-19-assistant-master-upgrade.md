@@ -37,3 +37,9 @@ Terra опублікував `4a2c177`, інтегровано як `19eb297`: �
 ## Етап 2 — інтегровано
 
 Sol опублікував `551cb17`, інтегровано як `90b592a`: чотири strict Zod playbooks, міграція `026_grant_program_knowledge`, атомарний ідемпотентний sync і перевірка embedding cache. UI/API показують support tier, версію/прогалини й фільтр поглибленої підготовки; вектори не відправляються публічному клієнту. Typecheck PASS; 7/7 playbook/catalog tests PASS, включно з реальною ізольованою PostgreSQL. Джерельні правила мають перевагу над застарілими числами вкладення. Етап 3 дозволено після цього gate.
+
+## Етап 3 — hybrid search
+
+Координатор додав `matching/hybridSearch.ts`, explicit opt-in direct/Vertex embedding adapter і resumable catalog cache sync. Ваги .60 semantic/.25 lexical/.15 tags, top10, прямі ідентичності першими; актуальність прийому не приховує релевантний результат. Неактуальні/нечислові вектори не використовуються; збій embeddings повертає явний lexical mode. Міграція 028 дозволяє cache-only записи без вигаданого playbook. 6/6 scoped tests з реальною ізольованою PostgreSQL та typecheck PASS; усі модельні відповіді mock. Нативний оркестратор і UI ще у роботі.
+
+Джерела embedding API (перевірено 19.11): https://aistudio.google.com/api-reference/embeddings та https://docs.cloud.google.com/gemini-enterprise-agent-platform/models/embeddings/get-text-embeddings . Для gemini-embedding-001 Vertex використовується europe-west4, оскільки EU multi-region для нього не підтримується.

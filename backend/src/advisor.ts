@@ -1,3 +1,4 @@
+import type { NativeAgent } from "./ai/agentRuntime.js";
 import { Router } from "express";
 import { z } from "zod";
 import type { Pool } from "pg";
@@ -173,7 +174,7 @@ async function preparationIdea(
   }
 }
 
-export function advisorRouter(db: Pool, responder?: AssistantResponder, limiter = postgresAssistantLimiter(db)) {
+export function advisorRouter(db: Pool, responder?: AssistantResponder, limiter = postgresAssistantLimiter(db), native?: NativeAgent | null) {
   const router = Router();
   const active = new Set<string>();
   router.get("/conversations", async (_req, res, next) => {
@@ -348,6 +349,23 @@ export function advisorRouter(db: Pool, responder?: AssistantResponder, limiter 
           [uid, p.conversationId],
         );
         const prior = history.rows.reverse();
+        if (native !== undefined) {
+          if (!native) { res.status(503).json({error:"assistant_unavailable"}); return; }
+          const lease = await limiter.acquire(uid, 85000);
+          if (!lease) { res.status(429).json({error:"rate_limited"}); return; }
+          const controller = new AbortController(); const timer=setTimeout(()=>controller.abort(),25000);
+          try {
+            const profile = await db.query('SELECT business_name AS "businessName",description,region,details,revision FROM profiles WHERE owner_id=$1',[uid]);
+            const raw=profile.rows[0]; const details=raw?.details ?? {};
+            const safe=Object.fromEntries(["legalForm","industry","fundingPurpose","requestedAmount","teamSize"].filter(k=>typeof details[k]==="string").map(k=>[k,details[k]]));
+            const snapshot=raw?{businessName:raw.businessName,description:raw.description,region:raw.region,details:safe}:undefined;
+            const result=await Promise.race([native({scope:{ownerId:uid,expectedProfileRevision:raw?.revision??0},message:p.message,onProgress:res.locals.agentProgress,history:prior.slice(-10).flatMap((r)=>[{role:"user" as const,parts:[{text:r.question}]},{role:"model" as const,parts:[{text:r.reply}]}]),snapshot},controller.signal),new Promise<never>((_,reject)=>controller.signal.addEventListener("abort",()=>reject(Error("timeout")),{once:true}))]);
+            const payload={mode:"ai",reply_text:result.reply_text,attached_grants:result.attached_grants,pending_proposals:result.pending_proposals,search:{matches:result.attached_grants,intents:[],questions:[],explanation:"",query:p.message},seed:p.message};
+            const saved=await db.query(`INSERT INTO advisor_messages(id,conversation_id,owner_id,question,reply,payload) VALUES($1,$2,$3,$4,$5,$6::jsonb) ON CONFLICT(id) DO NOTHING RETURNING *`,[p.id,p.conversationId,uid,p.message,result.reply,JSON.stringify(payload)]);
+            if(!saved.rowCount){res.status(409).json({error:"message_conflict"});return;} res.json({message:view(saved.rows[0])}); return;
+          } catch { res.status(controller.signal.aborted?504:502).json({error:controller.signal.aborted?"assistant_timeout":"assistant_error"}); return; }
+          finally {clearTimeout(timer);await limiter.release(uid,lease).catch(()=>{});}
+        }
         const previousSeed: string =
           typeof prior.at(-1)?.payload?.seed === "string"
             ? prior.at(-1).payload.seed

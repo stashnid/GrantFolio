@@ -1,3 +1,4 @@
+import type { NativeAgent } from "./ai/agentRuntime.js";
 import { jarAccessRouter } from "./monobank-jar.js";
 import { grantPreparationPilotRouter, type PaymentConfig } from "./grant-preparation-pilot.js";
 import {GRANT_CATALOG} from "./grant-catalog-data.js";
@@ -52,7 +53,7 @@ function view(row: CaseRow) {
     totalKopecks: Number(row.total_kopecks),
   };
 }
-export function casesRouter(db: Pool, payment?: PaymentConfig) {
+export function casesRouter(db: Pool, payment?: PaymentConfig, native?: NativeAgent | null) {
   const router = Router();
   router.use((_req, res, next) => {
     res.set("Cache-Control", "no-store");
@@ -76,7 +77,7 @@ export function casesRouter(db: Pool, payment?: PaymentConfig) {
     } catch (error) { next(error); }
   });
   router.use(grantPreparationPilotRouter(db, payment));
-  router.use(assistantRouter(db, configuredGeminiResponder()));
+  router.use(assistantRouter(db, configuredGeminiResponder(), undefined, undefined, native));
   router.use(grantApplicationRouter(db));
   router.use(grantFinancialPlanRouter(db));
   router.get("/", async (_req, res, next) => {

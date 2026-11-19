@@ -1,0 +1,11 @@
+import { z } from "zod";
+const money = z.number().int().nonnegative().max(1_000_000_000_000).nullable();
+const count = z.number().int().nonnegative().max(1_000_000).nullable();
+const staff = z.object({ existingCount: count, newCount: count, grossMonthlyKopecks: money, employerEsvRateBasisPoints: z.number().int().min(0).max(10000).nullable(), exceptionReason: z.string().trim().min(1).max(1000).nullable() }).strict();
+const overrides = z.object({ singleTaxKopecks: money.optional(), militaryLevyKopecks: money.optional(), selfEsvKopecks: money.optional(), employerEsvKopecks: money.optional(), employeeIncomeTaxKopecks: money.optional(), employeeMilitaryLevyKopecks: money.optional() }).strict();
+const month = z.object({ salesKopecks: money, additionalIncomeKopecks: money, grantKopecks: money, ownKopecks: money, operatingCostsKopecks: money, capitalCostsKopecks: money, taxableRevenueKopecks: money, paidTaxKopecks: money, eligiblePaidTaxKopecks: money, eligibleTaxBasis: z.string().trim().min(1).max(1000).nullable(), staff: z.array(staff).max(100), overrides }).strict().superRefine((v, ctx) => {
+  if (v.eligiblePaidTaxKopecks !== null && v.paidTaxKopecks !== null && v.eligiblePaidTaxKopecks > v.paidTaxKopecks) ctx.addIssue({ code: "custom", message: "eligible tax exceeds paid tax" });
+  if (v.eligiblePaidTaxKopecks !== null && v.eligiblePaidTaxKopecks > 0 && !v.eligibleTaxBasis) ctx.addIssue({ code: "custom", message: "eligible tax basis required" });
+});
+export const FinancialAssumptionsSchema = z.object({ schemaVersion: z.literal(1), startMonth: z.string().regex(/^\d{4}-(?:0[1-9]|1[0-2])$/), horizonMonths: z.union([z.literal(24), z.literal(36), z.literal(60)]), openingBalanceKopecks: money, tax: z.object({ profile: z.enum(["fop2", "fop3", "other"]).nullable(), vat: z.enum(["registered", "not_registered"]).nullable(), localSingleTaxKopecks: money, selfEsv: z.enum(["standard", "exempt", "unknown"]), exemptionReason: z.string().trim().min(1).max(1000).nullable(), futureRates: z.literal("hold_2026_as_scenario").nullable() }).strict(), months: z.array(month).max(60) }).strict().refine((v) => v.months.length === v.horizonMonths, { message: "month count must equal horizon", path: ["months"] });
+export type FinancialAssumptions = z.infer<typeof FinancialAssumptionsSchema>;
