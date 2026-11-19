@@ -1,5 +1,13 @@
 # Журнал роботи
 
+## 19.11.2026 — Відкат до попередньої версії сторінки входу
+
+- За запитом користувача відкочено експериментальний маркетинговий хук:
+  - `frontend/src/App.tsx` відновлено до точного попереднього стану (коміт `c526c90`).
+  - Видалено `frontend/src/PublicLanding.tsx` та `frontend/src/PublicLanding.css`.
+  - Усі перевірки пройдено: `npm run typecheck` (0 помилок), `npm run build` (PASS).
+
+
 ## 19.11.2026 — Маркетинговий хук та преміальна сторінка входу GrantFolio
 
 - Створено висококонверсійний маркетинговий лендінг та преміальний портал авторизації (`frontend/src/PublicLanding.tsx`, `frontend/src/PublicLanding.css`, `frontend/src/App.tsx`):
