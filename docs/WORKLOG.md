@@ -511,3 +511,5 @@ Terra реалізував backend checkout/webhook і customer UI; Sol пере
 19.11: виправлено автоматичну назву й обхід актуальної анкети при створенні проєкту. Typecheck/build/diff-check PASS; [передача](agents/2026-11-19-project-start-flow.md).
 
 19.11: після явного погодження PR32 злитий і deployed (Actions44469339066). Live browser перевірив форми від «Готувати робочу чернетку» та «Новий проєкт»: автоматична назва відсутня. Production-даних і платежів перевіркою не створено.
+
+19.11: read-only перевірка live Jar payment: confirmed3/sum15грн, webhook GET200, явний non-payment POST200. Виявлено platform500 о07:13 через disabled billing, поточний billingTrue. Власнику передано необхідність перевірити/перепідключити bank webhook; реальних переказів агент не виконував. [Звіт](agents/2026-11-19-payment-live-check.md).
