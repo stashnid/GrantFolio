@@ -5,7 +5,7 @@ import { searchGrants } from "./grant-discovery.js";
 import { GRANT_CATALOG } from "./grant-catalog-data.js";
 import { configuredGeminiResponder } from "./gemini.js";
 import type { AssistantResponder } from "./assistant.js";
-import { extractProfileFromText } from "./profile-extractor.js";
+import { buildDialogueQuery } from "./advisor-dialogue.js";
 const input = z
   .object({
     id: z.string().uuid(),
@@ -51,7 +51,7 @@ export function nextQuestion(query: string, intents: string[], hasMatches: boole
     /(?:мені|вік|віком)\s*\d{1,3}(?:\s*рок(?:и|ів|у)?)?/g,
     "",
   );
-  if (!/(\d|тисяч|тис\b|мільйон)/.test(withoutAge))
+  if (!/(?:^|\s)\d+(?:[.,]\d+)?(?:\s|$)|тисяч|тис\b|мільйон/.test(withoutAge))
     return "Яка орієнтовна сума вам потрібна?";
   if (
     !/(регіон|област|ки(?:їв|єв)|льв(?:ів|ов)|одес|хар(?:ків|ков)|дніпр|запоріж|полтав|вінниц|черкас|черніг|чернів|житомир|сум|терноп|луц(?:ьк|к)|рівн|ужгород|микола(?:їв|єв)|херсон|кропивницьк|івано|хмельницьк)/.test(
@@ -168,24 +168,13 @@ export function advisorRouter(
             : prior.map((r) => r.question).join(" ");
         const current = searchGrants(p.message);
         const previous = searchGrants(previousSeed);
-        const explicitChange =
-          /(а тепер|інша тема|інш[аийе] потреб|передумав|передумала)/i.test(
-            p.message,
-          );
-        const distinctNeed =
+        const dialogue = buildDialogueQuery(p.message, previousSeed);
+        const distinctNeed = dialogue.intent === "search" &&
           /(хочу|шукаю|потріб|грант.*для)/i.test(p.message) &&
           previous.intents.some((intent) => intent !== "applicant") &&
-          !current.intents.some(
-            (intent) =>
-              intent !== "applicant" && previous.intents.includes(intent),
-          );
-        const newNeed =
-          explicitChange || (current.intents.length > 0 && distinctNeed);
-        const query = (
-          newNeed
-            ? p.message
-            : [previousSeed, p.message].filter(Boolean).join(" ")
-        ).slice(-5000);
+          !current.intents.some((intent) => intent !== "applicant" && previous.intents.includes(intent));
+        const newNeed = dialogue.intent === "topic_change" || (current.intents.length > 0 && distinctNeed);
+        const query = newNeed ? p.message : dialogue.query;
         const rawSearch = searchGrants(query);
         const businessIntents = [
           "business",
@@ -216,77 +205,10 @@ export function advisorRouter(
         );
         let businessProfile;
         if (profile.rowCount) {
-          const { details, ...base } = profile.rows[0];
-          const rawDetails = details && typeof details === "object" ? details : {};
-          const { contactName: _n, phone: _p, website: _w, newsletterEmail: _e, ...safe } = rawDetails;
-          businessProfile = { ...base, details: safe };
-        }
-
-        // Extract business context facts from user prompt and sync into profile if empty
-        const { data: extractedData, facts: extractedFacts } = extractProfileFromText(p.message);
-        let profileUpdated = false;
-        if (extractedFacts.length > 0) {
-          try {
-            if (profile.rowCount) {
-              const row = profile.rows[0];
-              const details = (row.details && typeof row.details === "object" ? { ...row.details } : {}) as Record<string, string>;
-              let changed = false;
-
-              let nextBusinessName = row.businessName || "";
-              if (!nextBusinessName && extractedData.businessName) {
-                nextBusinessName = extractedData.businessName;
-                changed = true;
-              }
-              let nextRegion = row.region || "";
-              if (!nextRegion && extractedData.region) {
-                nextRegion = extractedData.region;
-                changed = true;
-              }
-              let nextDescription = row.description || "";
-              if (!nextDescription && extractedData.description) {
-                nextDescription = extractedData.description;
-                changed = true;
-              }
-
-              for (const key of ["city", "legalForm", "industry", "requestedAmount", "fundingPurpose", "teamSize", "grantExperience"] as const) {
-                if (!details[key] && extractedData[key]) {
-                  details[key] = extractedData[key]!;
-                  changed = true;
-                }
-              }
-
-              if (changed) {
-                await db.query(
-                  `UPDATE profiles SET business_name=$2, description=$3, region=$4, details=$5::jsonb, updated_at=now(), revision=revision+1 WHERE owner_id=$1`,
-                  [uid, nextBusinessName, nextDescription, nextRegion, JSON.stringify(details)]
-                );
-                profileUpdated = true;
-                const { contactName: _n, phone: _p, website: _w, newsletterEmail: _e, ...safeDetails } = details;
-                businessProfile = { businessName: nextBusinessName, description: nextDescription, region: nextRegion, details: safeDetails };
-              }
-            } else {
-              const details: Record<string, string> = {};
-              for (const key of ["city", "legalForm", "industry", "requestedAmount", "fundingPurpose", "teamSize", "grantExperience"] as const) {
-                if (extractedData[key]) details[key] = extractedData[key]!;
-              }
-              await db.query(
-                `INSERT INTO profiles(owner_id, business_name, description, region, details, revision)
-                 VALUES ($1,$2,$3,$4,$5::jsonb,1)
-                 ON CONFLICT (owner_id) DO NOTHING`,
-                [uid, extractedData.businessName || "", extractedData.description || "", extractedData.region || "", JSON.stringify(details)]
-              );
-              profileUpdated = true;
-              const { contactName: _n, phone: _p, website: _w, newsletterEmail: _e, ...safeDetails } = details;
-              businessProfile = {
-                businessName: extractedData.businessName || "",
-                description: extractedData.description || "",
-                region: extractedData.region || "",
-                details: safeDetails,
-              };
-            }
-          } catch {
-            /* Profile auto-sync is non-blocking */
-          }
+          const { businessName, description, region, details } = profile.rows[0];
+          const source = details && typeof details === "object" ? details : {};
+          const safe = Object.fromEntries(["legalForm", "industry", "fundingPurpose", "requestedAmount", "teamSize"].filter((key) => typeof source[key] === "string").map((key) => [key, source[key]]));
+          businessProfile = { businessName, description, region, details: safe };
         }
         const greeting = /^(привіт|вітаю|добрий день|доброго дня)[!. ]*$/i.test(
           p.message,
@@ -301,8 +223,18 @@ export function advisorRouter(
                   .slice(0, 3)
                   .map((m) => `${m.title}. ${m.reason}`)
                   .join("\n\n")}\n\n${nextQuestion(query, search.intents, search.matches.length > 0)}`;
+        const selected = (current.matches[0] ?? search.matches[0]);
+        const selectedProgram = selected && GRANT_CATALOG.find((program) => program.id === selected.programId);
+        if (dialogue.intent === "information" && selectedProgram) {
+          reply = `${selectedProgram.title}. ${selectedProgram.summary}\n\nДля кого: ${selectedProgram.targetAudience}\nУмови: ${selectedProgram.keyCondition}\nСтатус прийому та чинні вимоги потрібно перевірити: ${selectedProgram.officialUrl}`;
+        } else if (dialogue.intent === "complaint") {
+          reply = `Перепрошую, попередня відповідь не допомогла. Я повторно перевірив наявний каталог за вашою попередньою потребою. ${search.matches.length ? search.matches.slice(0, 3).map((m) => `${m.title}: ${m.reason}`).join(" ") : "Підтвердженого результату цього пошуку немає; назву програми або напрям можна перевірити в каталозі."}`;
+        } else if (dialogue.intent === "correction") {
+          reply = `Врахую ваше уточнення в цій розмові. Збережений профіль не змінено; якщо потрібно оновити його, внесіть зміну в профілі.\n\n${search.explanation}`;
+        }
         let mode = "guided";
-        if (responder && !personalEducation && !studentNeedsIdea) {
+        let fallbackReason: "not_configured" | "provider_error" | "invalid_response" | undefined = responder ? undefined : "not_configured";
+        if (responder && !personalEducation && !studentNeedsIdea && !["complaint", "information", "correction"].includes(dialogue.intent)) {
           const controller = new AbortController();
           let timer: ReturnType<typeof setTimeout> | undefined;
           try {
@@ -350,19 +282,27 @@ export function advisorRouter(
             ) {
               reply = generated.trim();
               mode = "ai";
+            } else {
+              fallbackReason = "invalid_response";
             }
           } catch {
-            /* Verified catalog guidance remains usable when the provider has no quota. */
+            fallbackReason = "provider_error";
           } finally {
             if (timer) clearTimeout(timer);
           }
         }
+        if (fallbackReason === "provider_error" || fallbackReason === "invalid_response") {
+          reply = `Модель тимчасово недоступна; нижче наведено обмежений пошук каталогу.\n\n${reply}`;
+        }
+        search.questions = ["complaint", "information", "correction"].includes(dialogue.intent)
+          ? []
+          : [nextQuestion(query, search.intents, search.matches.length > 0)];
         const payload = {
           mode,
           search,
           seed: query.slice(-2000),
-          profileUpdated,
-          extractedFacts: extractedFacts.length ? extractedFacts : undefined,
+          dialogueIntent: dialogue.intent,
+          fallbackReason,
         };
         const saved = await db.query(
           `INSERT INTO advisor_messages(id,conversation_id,owner_id,question,reply,payload) VALUES($1,$2,$3,$4,$5,$6::jsonb) ON CONFLICT(id) DO NOTHING RETURNING *`,
