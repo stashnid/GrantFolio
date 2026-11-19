@@ -1,5 +1,7 @@
 import pg from "pg";
 import { readdir, readFile } from "node:fs/promises";
+import { syncPlaybooksToDatabase } from "./playbooks/syncPlaybooks.js";
+
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL required");
 const db = new pg.Client({ connectionString: process.env.DATABASE_URL });
 await db.connect();
@@ -25,6 +27,15 @@ try {
     console.log(`Applied ${file}`);
   }
   await db.query("COMMIT");
+
+  // Automatically and idempotently sync playbooks & catalog programs
+  const pool = new pg.Pool({ connectionString: process.env.DATABASE_URL, max: 2 });
+  try {
+    const syncRes = await syncPlaybooksToDatabase(pool);
+    console.log(`Synced ${syncRes.synced} playbooks (${syncRes.catalogTotal} catalog programs)`);
+  } finally {
+    await pool.end();
+  }
 } catch (error) {
   await db.query("ROLLBACK");
   throw error;

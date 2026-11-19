@@ -4,31 +4,35 @@ import { PLAYBOOKS } from "./index.js";
 import { GRANT_CATALOG } from "../grant-catalog-data.js";
 
 export async function syncPlaybooksToDatabase(db: Pool): Promise<{ synced: number; catalogTotal: number }> {
-  // Ensure table exists
+  // Ensure table exists with relaxed check constraint
   await db.query(`
     CREATE TABLE IF NOT EXISTS catalog_programs (
       program_id TEXT PRIMARY KEY,
       canonical_name TEXT NOT NULL,
-      support_tier TEXT NOT NULL DEFAULT 'catalog_only' CHECK (support_tier IN ('deep', 'catalog_only')),
+      support_tier TEXT NOT NULL DEFAULT 'catalog_only',
       search_tags TEXT[] NOT NULL DEFAULT '{}',
       search_synonyms TEXT[] NOT NULL DEFAULT '{}',
       use_case_examples TEXT[] NOT NULL DEFAULT '{}',
       embedding_vector JSONB,
       updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
     );
+    ALTER TABLE catalog_programs DROP CONSTRAINT IF EXISTS catalog_programs_support_tier_check;
+    ALTER TABLE catalog_programs ADD CONSTRAINT catalog_programs_support_tier_check 
+      CHECK (support_tier IN ('deep', 'rules_only', 'playbook_only', 'catalog_only'));
     CREATE INDEX IF NOT EXISTS idx_catalog_programs_tier ON catalog_programs (support_tier);
   `);
 
   let synced = 0;
-  // Upsert deep flagship programs from playbooks
+  // Upsert programs from playbooks with their declared support_tier
   for (const playbook of Object.values(PLAYBOOKS)) {
+    const tier = playbook.support_tier || "deep";
     await db.query(
       `INSERT INTO catalog_programs (
         program_id, canonical_name, support_tier, search_tags, search_synonyms, use_case_examples, updated_at
-      ) VALUES ($1, $2, 'deep', $3, $4, $5, now())
+      ) VALUES ($1, $2, $3, $4, $5, $6, now())
       ON CONFLICT (program_id) DO UPDATE SET
         canonical_name = EXCLUDED.canonical_name,
-        support_tier = 'deep',
+        support_tier = EXCLUDED.support_tier,
         search_tags = EXCLUDED.search_tags,
         search_synonyms = EXCLUDED.search_synonyms,
         use_case_examples = EXCLUDED.use_case_examples,
@@ -36,6 +40,7 @@ export async function syncPlaybooksToDatabase(db: Pool): Promise<{ synced: numbe
       [
         playbook.program_id,
         playbook.canonical_name,
+        tier,
         playbook.domain_tags,
         playbook.synonyms_uk_en,
         playbook.use_case_examples,
@@ -44,21 +49,24 @@ export async function syncPlaybooksToDatabase(db: Pool): Promise<{ synced: numbe
     synced++;
   }
 
-  // Populate remaining catalog programs as catalog_only if not present
+  // Populate remaining catalog programs as catalog_only or matching catalog supportTier
   for (const entry of GRANT_CATALOG) {
-    if (PLAYBOOKS[entry.id]) continue; // already synced as deep
+    if (PLAYBOOKS[entry.id]) continue; // already synced from playbook
+    const tier = entry.supportTier || "catalog_only";
     await db.query(
       `INSERT INTO catalog_programs (
         program_id, canonical_name, support_tier, search_tags, search_synonyms, use_case_examples, updated_at
-      ) VALUES ($1, $2, 'catalog_only', $3, $4, '{}', now())
+      ) VALUES ($1, $2, $3, $4, $5, '{}', now())
       ON CONFLICT (program_id) DO UPDATE SET
         canonical_name = EXCLUDED.canonical_name,
+        support_tier = EXCLUDED.support_tier,
         search_tags = EXCLUDED.search_tags,
         search_synonyms = EXCLUDED.search_synonyms,
         updated_at = now()`,
       [
         entry.id,
         entry.title,
+        tier,
         entry.tags ?? [],
         entry.searchTerms ?? [],
       ]
@@ -78,7 +86,7 @@ if (process.argv[1]?.endsWith("syncPlaybooks.ts") || process.argv[1]?.endsWith("
   const pool = new pg.Pool({ connectionString });
   syncPlaybooksToDatabase(pool)
     .then((result) => {
-      console.log(`Successfully synced ${result.synced} deep playbooks and updated catalog metadata (${result.catalogTotal} total programs)`);
+      console.log(`Successfully synced ${result.synced} playbooks and updated catalog metadata (${result.catalogTotal} total programs)`);
       return pool.end();
     })
     .catch((err) => {

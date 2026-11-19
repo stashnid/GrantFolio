@@ -163,6 +163,55 @@ export function Advisor({
   const [editingSurface, setEditingSurface] = useState<"desktop" | "mobile">("desktop");
   const [mutatingChatId, setMutatingChatId] = useState<string | null>(null);
   const [draftVersion, setDraftVersion] = useState(0);
+  const [appliedProposals, setAppliedProposals] = useState<Record<string, boolean>>({});
+  const [applyingProposalId, setApplyingProposalId] = useState<string | null>(null);
+  const [proposalError, setProposalError] = useState<string>("");
+
+  async function applyProposal(prop: { id: string; target: string; field_key: string; proposed_value: unknown }) {
+    setApplyingProposalId(prop.id);
+    setProposalError("");
+    try {
+      if (prop.target === "profile") {
+        const res = await authenticatedRequest(user, "/api/me/profile");
+        const data = res.ok ? await res.json() : {};
+        const profile = data.profile || {};
+        const updated = { ...profile, [prop.field_key]: prop.proposed_value };
+        const putRes = await authenticatedRequest(user, "/api/me/profile", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ profile: updated, expectedRevision: data.revision ?? 0 }),
+        });
+        if (!putRes.ok) throw new Error("profile update failed");
+        setAppliedProposals((prev) => ({ ...prev, [prop.id]: true }));
+      } else {
+        const casesRes = await authenticatedRequest(user, "/api/cases");
+        if (!casesRes.ok) throw new Error("cases list failed");
+        const casesData = await casesRes.json();
+        const casesList = Array.isArray(casesData.cases) ? casesData.cases : [];
+        if (casesList.length === 0) throw new Error("no_cases");
+        const targetCase = casesList[0];
+        const updatedDetails = {
+          ...targetCase.details,
+          [prop.field_key]: prop.proposed_value,
+        };
+        const putRes = await authenticatedRequest(user, `/api/cases/${targetCase.id}/details`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            expectedRevision: targetCase.revision,
+            idempotencyKey: crypto.randomUUID(),
+            details: updatedDetails,
+          }),
+        });
+        if (!putRes.ok) throw new Error("case details update failed");
+        setAppliedProposals((prev) => ({ ...prev, [prop.id]: true }));
+      }
+    } catch {
+      setProposalError("Не вдалося зберегти зміни. Перевірте профіль або відкрийте проєкт.");
+    } finally {
+      setApplyingProposalId(null);
+    }
+  }
   const historyOpenRef = useRef(historyOpen);
   historyOpenRef.current = historyOpen;
   const editingIdRef = useRef<string | null>(null);
@@ -1188,10 +1237,21 @@ export function Advisor({
                         {(m as any).pending_proposals.map((prop: any) => (
                           <div key={prop.id} className="advisor-proposal-item">
                             <span className="proposal-tag">💡 Пропозиція для проєкту</span>
-                            <p className="proposal-text">{prop.summary}</p>
-                            <span className="proposal-note">Потрібне підтвердження в інтерфейсі</span>
+                            <p className="proposal-text"><strong>{prop.summary}</strong></p>
+                            {prop.why_uk && <p className="proposal-why" style={{ fontSize: "12px", color: "#555", margin: "4px 0" }}>{prop.why_uk}</p>}
+                            <div className="proposal-actions" style={{ marginTop: "8px" }}>
+                              <button
+                                type="button"
+                                className="advisor-grant-primary apply-proposal-btn"
+                                disabled={appliedProposals[prop.id] || applyingProposalId === prop.id}
+                                onClick={() => void applyProposal(prop)}
+                              >
+                                {appliedProposals[prop.id] ? "✅ Застосовано до проєкту" : applyingProposalId === prop.id ? "Застосування…" : "Застосувати пропозицію"}
+                              </button>
+                            </div>
                           </div>
                         ))}
+                        {proposalError && <p className="proposal-error-note" style={{ color: "#d32f2f", fontSize: "12px", marginTop: "4px" }}>{proposalError}</p>}
                       </div>
                     )}
                     {revealingId !== m.id && !selectedProgram && m.search.matches.length > 0 && (

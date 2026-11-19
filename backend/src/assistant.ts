@@ -49,37 +49,8 @@ export function assistantRouter(db: Pool, responder: AssistantResponder | null |
       if (!result.rowCount) { res.status(404).json({ error: "not_found" }); return; }
       const snapshot: Snapshot = result.rows[0];
       if (snapshot.revision !== parsed.data.expectedRevision) { res.status(409).json({ error: "revision_conflict" }); return; }
-      const activeResponder: AssistantResponder | undefined = responder ?? (isAiConfigured() ? async (snap, msg, signal) => {
-        const hist: { role: "user" | "model"; text: string }[] = [];
-        if (Array.isArray(snap.conversation)) {
-          for (const c of snap.conversation) {
-            hist.push({ role: "user", text: c.question });
-            hist.push({ role: "model", text: c.reply });
-          }
-        }
-        const playbook = snap.program_id ? getProgramPlaybook(snap.program_id) : undefined;
-        const res = await runAgentOrchestrator({
-          userMessage: msg,
-          history: hist,
-          context: {
-            mode: "project",
-            activeProject: {
-              title: snap.title,
-              program_id: snap.program_id,
-              revision: snap.revision,
-              total_kopecks: snap.total_kopecks,
-              items: Array.isArray(snap.items) ? snap.items : undefined,
-              details: snap.details,
-            },
-            activePlaybook: playbook,
-            userProfile: snap.businessProfile,
-          },
-          signal,
-        });
-        return res.reply_text;
-      } : undefined);
-
-      if (!activeResponder) { res.status(503).json({ error: "assistant_unavailable" }); return; }
+      if (!responder) { res.status(503).json({ error: "assistant_unavailable" }); return; }
+      const activeResponder = responder;
       const uid: string = res.locals.uid;
       const lease = await limiter.acquire(uid, timeoutMs + 60000);
       if (!lease) { res.status(429).json({ error: "rate_limited" }); return; }

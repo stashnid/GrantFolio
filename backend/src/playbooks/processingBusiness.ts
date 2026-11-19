@@ -9,7 +9,7 @@ export const processingBusinessPlaybook: ProgramPlaybook = {
     min: 1000000,
     max: 8000000,
   },
-  support_tier: "deep",
+  support_tier: "rules_only",
   domain_tags: [
     "переробка",
     "виробництво",

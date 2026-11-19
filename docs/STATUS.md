@@ -1,5 +1,51 @@
 # Поточний стан GrantFolio
 
+## КРОК 2: Паритет двох вертикалей («Дія.Бізнес / Дія» + «Brave1 / Оборонний сектор»), пояснювальний асистент і аудит — 19.11.2026
+
+1. **Інтеграційний аудит та виправлення**:
+   - Запущено повний прогін тестів по всьому репозиторію: **287 тестів пройдено успішно**, 0 помилок, 4 умовні пропуски середовища.
+   - Забезпечено ідемпотентний автозапуск `syncPlaybooksToDatabase` при старті сервера (`backend/src/server.ts`) та після міграцій (`backend/src/migrate.ts`), таблиця `catalog_programs` автоматично оновлюється на Cloud Run.
+   - Ендпоінт `/api/grants` тепер динамічно збагачує програми актуальними даними `support_tier` із бази даних `catalog_programs`.
+   - Чесні бейджі в каталозі (`frontend/src/GrantCatalog.tsx`): статус `deep` («⭐ Повна підготовка + документи») присвоєно **виключно 3 програмам** із повним життєвим циклом: `vlasna-sprava`, `veteran-grant`, `ua-brave1-core`. Для `processing-business` та `agro-gardens` встановлено чесний статус `rules_only` / `playbook_only` («📘 Детальні правила + консультація»).
+
+2. **Глибокі Playbooks від А до Я**:
+   - Розширено `backend/src/playbooks/schema.ts` з розділами `lifecycle_guide` (екосистема, критерії та стоп-фактори, пороги сум, покрокова подача, оцінка та причини відмов, зобов'язання, OPSEC) та `document_requirements` (генеровані GrantFolio + зовнішній чекліст).
+   - Повністю наповнено життєві цикли трьох флагманів: `vlasnaSprava.ts`, `veteranGrant.ts`, `brave1.ts`.
+
+3. **Дворівнева форма, анкета Brave1 та індивідуальні документи**:
+   - Оновлено схему деталей `backend/src/project-details.ts`: підтримка полів Brave1 (10 блоків) та ветеранського гранту, збереження інтерактивного стану чекліста `external_checklist_state`.
+   - Створено рушій перевірки обов'язкових полів `backend/src/playbooks/missingFields.ts` (`computeMissingRequiredFields`) для 3 флагманів.
+   - Впроваджено валідатор `backend/src/finance/brave1Validator.ts` (`validateBrave1Project`): TRL 1–9 (`target > current`), мінімум 2 етапи R&D, звірка сум етапів із BOM, OPSEC-детекція GPS координат та номерів військових частин.
+   - Створено експортний модуль `backend/src/export/brave1Export.ts`: `buildBrave1Workbook` (2 аркуші із «живими» формулами `=D*E`, `=SUM()`, `%`, `fullCalcOnLoad="1"`), `buildBrave1ProjectBriefMarkdown`, `createBrave1Export` (архів .zip).
+   - Додано нові ендпоінти в `backend/src/cases.ts`:
+     - `GET /api/cases/:id/export/brave1/xlsx`
+     - `GET /api/cases/:id/export/brave1/brief`
+     - `GET /api/cases/:id/export/brave1/zip`
+     - `GET /api/cases/:id/validate/brave1`
+   - Підключено програму `veteran-grant` до офіційної анкети `backend/src/grant-application.ts` з перевіркою співфінансування 70/30 та нормативів робочих місць.
+   - В UI (`frontend/src/Cases.tsx`):
+     - Додано OPSEC-банер для оборонних розробок.
+     - Додано спеціалізовані поля для Brave1 (10 розділів) та для ветеранів (УБД/подружжя, пороги 250k/500k/1M, згода).
+     - Додано прогрес-бар готовності («Заповнено X із Y обов'язкових полів»).
+     - Додано блок «Пакет документів»: пряме завантаження Brief, BOM, Zip та запуск валідатора Brave1.
+     - Додано інтерактивний чекліст зовнішніх додатків із збереженням стану чекбоксів у БД.
+
+4. **Перепрошивка AI-асистента**:
+   - Оновлено системний промпт `backend/src/ai/prompts/assistantSystemPrompt.ts`: Consultant & Explainer Mode за замовчуванням, Project Support Mode з викликом `get_missing_fields()`, суворе дотримання OPSEC.
+   - Збільшено `maxOutputTokens` до 3072 (chat) та 4096 (pro) в `backend/src/ai/geminiClient.ts`.
+   - Додано 6-й інструмент `get_missing_fields` до агентного циклу `backend/src/ai/agentOrchestrator.ts`.
+   - В UI (`frontend/src/Advisor.tsx`): додано кнопку «Застосувати до проєкту» для пропозицій ШІ (`pending_proposals`) з прямим записом у базу даних.
+
+5. **Верифікація**:
+   - Додано та успішно пройдено нові тести:
+     - `backend/test/brave1Export.formulas.test.ts` (3/3: структура XLSX з живими формулами, Project Brief Markdown, правила валідатора Brave1).
+     - `backend/test/missingFieldsAndProposals.test.ts` (3/3: перевірка обов'язкових полів для 3 флагманів).
+   - Доповнено `scripts/eval-assistant.ts`: додано сценарії пекарні 250k (Дія.Бізнес vs Дія) та документів Brave1. Усі **5/5 сценаріїв проходять успішно** (`npm run eval:assistant`).
+   - `npm run typecheck` — 0 помилок.
+   - `npm run build` — успішно.
+   - `npm test` — **287 тестів пройдено, 0 помилок, 4 пропущено**.
+
+
 ## Реліз MASTER SPEC на публічний сайт (Cloud Run) — 19.11.2026
 
 - **Коміт релізу**: `0bb26ef24817a6932211d00ac0f0e5e9354c0866` на гілці `main`.

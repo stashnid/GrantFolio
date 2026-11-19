@@ -24,10 +24,47 @@ type Details = {
   salesChannels: string;
   implementationPlan: string;
   expectedResults: string;
+  // Brave1 fields
+  project_title?: string;
+  defense_category?: string;
+  operational_problem?: string;
+  technical_solution_public?: string;
+  current_trl?: number;
+  target_trl?: number;
+  trl_evidence?: string;
+  rd_milestones?: Array<{
+    title: string;
+    duration_months: number;
+    deliverable: string;
+    cost_kopecks: number;
+  }>;
+  team_engineering_background?: string;
+  testing_and_scaling_plan?: string;
+  supply_chain_and_risks?: string;
+  bom_and_rd_budget?: Array<{
+    name: string;
+    category?: string;
+    quantity?: number;
+    unitPriceKopecks?: number;
+  }>;
+  // Veteran fields
+  veteranStatus?: string;
+  fundingTier?: number | string;
+  spouseConsent?: boolean;
+  ownFundsKopecks?: number;
+  // External checklist state
+  external_checklist_state?: Record<string, boolean>;
 };
 type Readiness = {
   revision: number;
   checks: { id: string; label: string; status: "complete" | "missing" }[];
+  summary?: {
+    program_id: string | null;
+    filled_count: number;
+    total_required_count: number;
+    missing_fields: Array<{ field_key: string; label_uk: string; why_required_uk: string }>;
+    is_complete: boolean;
+  };
   disclaimer: string;
 };
 const emptyDetails: Details = {
@@ -36,6 +73,42 @@ const emptyDetails: Details = {
   salesChannels: "",
   implementationPlan: "",
   expectedResults: "",
+};
+
+const EXTERNAL_CHECKLISTS: Record<string, Array<{ id: string; title: string; mandatory: boolean; where: string; why: string }>> = {
+  "ua-brave1-core": [
+    { id: "edr_extract", title: "Витяг з ЄДР (ФОП / ТОВ)", mandatory: true, where: "Портал Дія або ЦНАП", why: "Підтвердження реєстрації без зв'язків із рф/рб" },
+    { id: "tax_clearance", title: "Довідка про відсутність податкового боргу", mandatory: true, where: "Електронний кабінет платника податків ДПС", why: "Обов'язкова умова допуску" },
+    { id: "pitch_deck", title: "Презентація проєкту (Pitch Deck, до 15 слайдів)", mandatory: true, where: "Готується командою", why: "Для оцінки комісією військових експертів" },
+    { id: "video_proof", title: "Відео / фото матеріали діючого зразка", mandatory: true, where: "Лабораторія / полігон", why: "Підтвердження поточного рівня TRL (3+)" },
+    { id: "bom_quotes", title: "Комерційні пропозиції постачальників на BOM", mandatory: true, where: "Постачальники компонентів", why: "Обґрунтування цін у кошторисі" },
+    { id: "team_cvs", title: "Резюме (CV) ключових інженерів команди", mandatory: true, where: "Команда", why: "Оцінка спроможності реалізувати R&D" },
+    { id: "military_feedback", title: "Листи підтримки від військових підрозділів", mandatory: false, where: "Військові частини / бригади", why: "Підтвердження реальної потреби на фронті" },
+    { id: "beneficiaries_cert", title: "Довідка про кінцевих бенефіціарів", mandatory: true, where: "Структура власності компанії", why: "Перевірка безпеки та санкційних списків" },
+  ],
+  "brave1": [
+    { id: "edr_extract", title: "Витяг з ЄДР (ФОП / ТОВ)", mandatory: true, where: "Портал Дія або ЦНАП", why: "Підтвердження реєстрації без зв'язків із рф/рб" },
+    { id: "tax_clearance", title: "Довідка про відсутність податкового боргу", mandatory: true, where: "Електронний кабінет платника податків ДПС", why: "Обов'язкова умова допуску" },
+    { id: "pitch_deck", title: "Презентація проєкту (Pitch Deck, до 15 слайдів)", mandatory: true, where: "Готується командою", why: "Для оцінки комісією військових експертів" },
+    { id: "video_proof", title: "Відео / фото матеріали діючого зразка", mandatory: true, where: "Лабораторія / полігон", why: "Підтвердження поточного рівня TRL (3+)" },
+    { id: "bom_quotes", title: "Комерційні пропозиції постачальників на BOM", mandatory: true, where: "Постачальники компонентів", why: "Обґрунтування цін у кошторисі" },
+    { id: "team_cvs", title: "Резюме (CV) ключових інженерів команди", mandatory: true, where: "Команда", why: "Оцінка спроможності реалізувати R&D" },
+    { id: "military_feedback", title: "Листи підтримки від військових підрозділів", mandatory: false, where: "Військові частини / бригади", why: "Підтвердження реальної потреби на фронті" },
+    { id: "beneficiaries_cert", title: "Довідка про кінцевих бенефіціарів", mandatory: true, where: "Структура власності компанії", why: "Перевірка безпеки та санкційних списків" },
+  ],
+  "veteran-grant": [
+    { id: "ubd_cert", title: "Посвідчення УБД або особи з інвалідністю внаслідок війни", mandatory: true, where: "Оригінал документа", why: "Підтвердження статусу ветерана" },
+    { id: "marriage_cert", title: "Свідоцтво про шлюб (для другого з подружжя)", mandatory: false, where: "РАЦС / Дія", why: "Підтвердження спорідненості при поданні другим із подружжя" },
+    { id: "bank_statement_30", title: "Виписка з рахунку з 30% співфінансування", mandatory: true, where: "Банк", why: "Для грантів понад 500 тис. грн" },
+    { id: "commercial_quotes", title: "Цінові пропозиції / рахунки на обладнання", mandatory: true, where: "Постачальники", why: "Підтвердження цін у бізнес-плані" },
+    { id: "no_debt_cert", title: "Довідка про відсутність заборгованості з податків", mandatory: true, where: "Електронний кабінет ДПС", why: "Відсутність боргів перед бюджетом" },
+  ],
+  "vlasna-sprava": [
+    { id: "bank_account", title: "Рахунок уповноваженого банку (Ощадбанк)", mandatory: true, where: "Ощадбанк", why: "Для відкриття спецрахунку після схвалення" },
+    { id: "quotes_invoices", title: "Цінові пропозиції або рахунки-фактури", mandatory: true, where: "Постачальники обладнання", why: "Обґрунтування кошторису" },
+    { id: "lease_intent", title: "Попередній договір або лист про наміри оренди", mandatory: false, where: "Орендодавець", why: "Якщо заявлено витрати на оренду" },
+    { id: "no_tax_debt", title: "Довідка про відсутність податкового боргу", mandatory: true, where: "Кабінет платника податків", why: "Ділова репутація" },
+  ],
 };
 const businessBasicsFields = [
   {
@@ -99,6 +172,18 @@ const PROGRAM_BUDGET_TEMPLATES: Record<string, { label: string; name: string; pr
     { label: "💧 Крапельне зрошення", name: "Система крапельного поливу та автоматики", price: "180000.00" },
     { label: "🏗️ Опорні конструкції", name: "Шпалери та опорні стовпи", price: "120000.00" },
     { label: "🧪 Добрива та ЗЗР", name: "Комплекс первинного живлення та захисту", price: "50000.00" },
+  ],
+  "ua-brave1-core": [
+    { label: "⚡ Комплектуючі (BOM)", name: "Мікроконтролери та модулі STM32/FPGA", price: "90000.00" },
+    { label: "📡 СВЧ та антени", name: "СВЧ-підсилювачі та антенні решітки", price: "128000.00" },
+    { label: "💻 R&D команда (DSP)", name: "Розробка цифрової обробки сигналів та ПЗ", price: "180000.00" },
+    { label: "🎯 Випробування стенду", name: "Стендові випробування у безвідлунній камері", price: "75000.00" },
+  ],
+  brave1: [
+    { label: "⚡ Комплектуючі (BOM)", name: "Мікроконтролери та модулі STM32/FPGA", price: "90000.00" },
+    { label: "📡 СВЧ та антени", name: "СВЧ-підсилювачі та антенні решітки", price: "128000.00" },
+    { label: "💻 R&D команда (DSP)", name: "Розробка цифрової обробки сигналів та ПЗ", price: "180000.00" },
+    { label: "🎯 Випробування стенду", name: "Стендові випробування у безвідлунній камері", price: "75000.00" },
   ],
 };
 
@@ -246,6 +331,48 @@ export function Cases({
     body: string;
     kind: "budget" | "details";
   } | null>(null);
+  const [brave1Validation, setBrave1Validation] = useState<any>(null);
+  const [validatingBrave1, setValidatingBrave1] = useState(false);
+
+  const isBrave1 = selected?.programId === "ua-brave1-core" || selected?.programId === "brave1";
+  const isVeteran = selected?.programId === "veteran-grant";
+
+  async function runBrave1Validation() {
+    if (!selected) return;
+    setValidatingBrave1(true);
+    try {
+      const res = await request(`/api/cases/${selected.id}/validate/brave1`);
+      if (res.ok) {
+        setBrave1Validation(await res.json());
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setValidatingBrave1(false);
+    }
+  }
+
+  async function toggleChecklistItem(itemId: string) {
+    if (!selected || busy || conflict) return;
+    const currentState = details.external_checklist_state || {};
+    const nextState = { ...currentState, [itemId]: !currentState[itemId] };
+    const nextDetails = { ...details, external_checklist_state: nextState };
+    setDetails(nextDetails);
+    try {
+      await request(`/api/cases/${selected.id}/details`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          expectedRevision: selected.revision,
+          idempotencyKey: crypto.randomUUID(),
+          details: nextDetails,
+        }),
+      });
+      void loadReadiness(selected.id);
+    } catch {
+      // background update
+    }
+  }
   async function request(path: string, init: RequestInit = {}) {
     const timeoutMs = path.endsWith("/assistant") && init.method === "POST" ? 40000 : 15000;
     return authenticatedRequest(user, path, init, timeoutMs);
@@ -1171,11 +1298,65 @@ export function Cases({
           {activeStep === "basics" && (
             <section className="step-panel" aria-labelledby="step1-heading">
               <div className="step-panel-header">
-                <h4 id="step1-heading">{"Крок 1: Ідея бізнесу та цільові клієнти"}</h4>
+                <h4 id="step1-heading">{isBrave1 ? "Крок 1: Оборонна розробка та TRL (Brave1)" : "Крок 1: Ідея бізнесу та цільові клієнти"}</h4>
                 <p>
-                  {"Опишіть вашу ідею, клієнтів та як ви будете продавати. Це допоможе пояснити цінність проєкту та підготувати заявку."}
+                  {isBrave1
+                    ? "Опишіть призначення розробки, бойову задачу, несекретну архітектуру та рівні готовності TRL."
+                    : "Опишіть вашу ідею, клієнтів та як ви будете продавати. Це допоможе пояснити цінність проєкту та підготувати заявку."}
                 </p>
               </div>
+
+              {isBrave1 && (
+                <div className="opsec-banner" style={{ background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: "8px", padding: "12px 16px", marginBottom: "16px", display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                  <span style={{ fontSize: "24px" }}>🛡️</span>
+                  <div>
+                    <strong style={{ color: "#92400e" }}>Правило безпеки (OPSEC):</strong>
+                    <p style={{ margin: "4px 0 0", color: "#78350f", fontSize: "13px" }}>
+                      Не вказуйте точні координати, дійсні найменування військових частин, секретні діапазони робочих радіочастот та алгоритми шифрування. Усі описи мають бути несекретними.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {isVeteran && (
+                <div className="veteran-fields-card" style={{ background: "#f1f5f9", padding: "16px", borderRadius: "8px", marginBottom: "16px", border: "1px solid #cbd5e1" }}>
+                  <h5 style={{ margin: "0 0 12px 0", fontSize: "15px" }}>🎖️ Параметри ветеранського гранту</h5>
+                  <label style={{ display: "block", marginBottom: "12px" }}>
+                    Статус заявника:
+                    <select
+                      style={{ display: "block", width: "100%", marginTop: "4px", padding: "8px", borderRadius: "6px", border: "1px solid #94a3b8" }}
+                      value={details.veteranStatus || "ubd"}
+                      onChange={(e) => setDetails({ ...details, veteranStatus: e.target.value })}
+                    >
+                      <option value="ubd">Учасник бойових дій (УБД) або особа з інвалідністю внаслідок війни</option>
+                      <option value="spouse">Член сім'ї (другий з подружжя ветерана)</option>
+                    </select>
+                  </label>
+                  <label style={{ display: "block", marginBottom: "12px" }}>
+                    Обрана сума фінансування:
+                    <select
+                      style={{ display: "block", width: "100%", marginTop: "4px", padding: "8px", borderRadius: "6px", border: "1px solid #94a3b8" }}
+                      value={details.fundingTier || 250000}
+                      onChange={(e) => setDetails({ ...details, fundingTier: Number(e.target.value) })}
+                    >
+                      <option value={250000}>До 250 000 грн (1 робоче місце, 100% грант)</option>
+                      <option value={500000}>До 500 000 грн (2 робочих місця, 70% грант / 30% власний внесок)</option>
+                      <option value={1000000}>До 1 000 000 грн (4 робочих місця, 70/30, реєстрація ФОП 12+ міс.)</option>
+                    </select>
+                  </label>
+                  {details.veteranStatus === "spouse" && (
+                    <label style={{ display: "flex", gap: "8px", alignItems: "center", marginTop: "8px" }}>
+                      <input
+                        type="checkbox"
+                        checked={!!details.spouseConsent}
+                        onChange={(e) => setDetails({ ...details, spouseConsent: e.target.checked })}
+                      />
+                      <span>Згода ветерана/ветеранки на відкриття бізнесу та зобов'язання зі створення робочих місць</span>
+                    </label>
+                  )}
+                </div>
+              )}
+
               <div className="step-ai-banner">
                 <div className="step-ai-banner-text">
                   <strong>💡 Потрібна порада ШІ для формулювання?</strong>
@@ -1184,29 +1365,124 @@ export function Cases({
                 <button
                   type="button"
                   className="link ai-call-btn"
-                  onClick={() => askAssistant("Допоможи сформулювати мету заявки та підтверджені факти. Врахуй обрану програму й постав доречні уточнення, не вигадуючи досвід чи досягнення.")}
+                  onClick={() => askAssistant(isBrave1 ? "Допоможи описати бойову задачу та несекретне технічне рішення для заявки Brave1 з дотриманням OPSEC." : "Допоможи сформулювати мету заявки та підтверджені факти. Врахуй обрану програму й постав доречні уточнення, не вигадуючи досвід чи досягнення.")}
                 >
                   Запитати ШІ-асистента ↗
                 </button>
               </div>
-              {basicsFields.map((field) => (
-                <label key={field.key}>
-                  {field.label}
-                  <span className="field-hint">{field.hint}</span>
-                  <textarea
-                    id={`preparation-${field.key}`}
-                    rows={4}
-                    maxLength={3000}
-                    placeholder={field.placeholder}
-                    value={details[field.key]}
-                    disabled={busy || !!pending || !!sessionDraft.recovery}
-                    onChange={(e) => {
-                      setDetails({ ...details, [field.key]: e.target.value });
-                      setNotice("");
-                    }}
-                  />
-                </label>
-              ))}
+
+              {isBrave1 ? (
+                <>
+                  <label>
+                    Несекретна назва оборонної розробки
+                    <span className="field-hint">Ідентифікатор виробу в кластері Brave1 (без зазначення таємних шифрів)</span>
+                    <input
+                      type="text"
+                      maxLength={500}
+                      placeholder="Наприклад: Система виявлення та радіоелектронного придушення БПЛА «Спектр-1»"
+                      value={details.project_title || ""}
+                      onChange={(e) => setDetails({ ...details, project_title: e.target.value })}
+                      disabled={busy || !!pending || !!sessionDraft.recovery}
+                    />
+                  </label>
+                  <label>
+                    Оборонна категорія виробу
+                    <span className="field-hint">Визначає профільну комісію військових експертів (ППО, РЕБ, БПЛА, наземні роботи тощо)</span>
+                    <input
+                      type="text"
+                      maxLength={200}
+                      placeholder="Наприклад: Засоби РЕБ / РЕР / Виявлення ворожих БПЛА"
+                      value={details.defense_category || ""}
+                      onChange={(e) => setDetails({ ...details, defense_category: e.target.value })}
+                      disabled={busy || !!pending || !!sessionDraft.recovery}
+                    />
+                  </label>
+                  <label>
+                    Бойова задача та переваги над аналогами противника
+                    <span className="field-hint">Яку практичну проблему військових на ЛБЗ вирішує та чому є ефективнішим за існуючі рішення</span>
+                    <textarea
+                      rows={4}
+                      maxLength={3000}
+                      placeholder="Опишіть тактичну необхідність, сценарії застосування та переваги перед закордонними чи трофейними аналогами..."
+                      value={details.operational_problem || ""}
+                      onChange={(e) => setDetails({ ...details, operational_problem: e.target.value })}
+                      disabled={busy || !!pending || !!sessionDraft.recovery}
+                    />
+                  </label>
+                  <label>
+                    Несекретний опис технології та архітектури
+                    <span className="field-hint">Загальний принцип дії, робочі діапазони та компоненти без секретних частот та алгоритмів</span>
+                    <textarea
+                      rows={4}
+                      maxLength={3000}
+                      placeholder="Опишіть модульну структуру виробу, антенну систему, процесор обробки сигналів та інтерфейси..."
+                      value={details.technical_solution_public || ""}
+                      onChange={(e) => setDetails({ ...details, technical_solution_public: e.target.value })}
+                      disabled={busy || !!pending || !!sessionDraft.recovery}
+                    />
+                  </label>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px" }}>
+                    <label>
+                      Поточний рівень TRL (1–9)
+                      <span className="field-hint">Для Brave1 рекомендовано TRL 3+ (діючий лабораторний зразок)</span>
+                      <select
+                        value={details.current_trl || 3}
+                        onChange={(e) => setDetails({ ...details, current_trl: Number(e.target.value) })}
+                        disabled={busy || !!pending || !!sessionDraft.recovery}
+                      >
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((lvl) => (
+                          <option key={lvl} value={lvl}>TRL {lvl}</option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      Цільовий рівень TRL (1–9)
+                      <span className="field-hint">Результат після виконання грантових етапів R&D</span>
+                      <select
+                        value={details.target_trl || 5}
+                        onChange={(e) => setDetails({ ...details, target_trl: Number(e.target.value) })}
+                        disabled={busy || !!pending || !!sessionDraft.recovery}
+                      >
+                        {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((lvl) => (
+                          <option key={lvl} value={lvl}>TRL {lvl}</option>
+                        ))}
+                      </select>
+                    </label>
+                  </div>
+                  <label>
+                    Докази готовності (тести / стенди / прототип)
+                    <span className="field-hint">Посилання на несекретні відео/фото випробувань діючого зразка на стенді чи полігоні</span>
+                    <textarea
+                      rows={3}
+                      maxLength={3000}
+                      placeholder="Наприклад: Проведено стендові вимірювання КСХ антени та придушення сигналу на дистанції 1.5 км. Посилання на диск..."
+                      value={details.trl_evidence || ""}
+                      onChange={(e) => setDetails({ ...details, trl_evidence: e.target.value })}
+                      disabled={busy || !!pending || !!sessionDraft.recovery}
+                    />
+                  </label>
+                </>
+              ) : (
+                basicsFields.map((field) => (
+                  <label key={field.key}>
+                    {field.label}
+                    <span className="field-hint">{field.hint}</span>
+                    <textarea
+                      id={`preparation-${field.key}`}
+                      rows={4}
+                      maxLength={3000}
+                      placeholder={field.placeholder}
+                      value={details[field.key]}
+                      disabled={busy || !!pending || !!sessionDraft.recovery}
+                      onChange={(e) => {
+                        setDetails({ ...details, [field.key]: e.target.value });
+                        setNotice("");
+                      }}
+                    />
+                  </label>
+                ))
+              )}
+
               <div className="step-actions">
                 <button
                   type="button"
@@ -1235,11 +1511,26 @@ export function Cases({
           {activeStep === "plan" && (
             <section className="step-panel" aria-labelledby="step2-heading">
               <div className="step-panel-header">
-                <h4 id="step2-heading">{"Крок 2: План реалізації та очікувані результати"}</h4>
+                <h4 id="step2-heading">{isBrave1 ? "Крок 2: R&D план, команда та випробування (Brave1)" : "Крок 2: План реалізації та очікувані результати"}</h4>
                 <p>
-                  {"Зазначте основні кроки запуску (графік) та ключові результати: плановий дохід та робочі місця, якщо вони передбачені вашим планом і умовами програми."}
+                  {isBrave1
+                    ? "Опишіть кваліфікацію інженерної команди, програму полігонних випробувань та ланцюг постачання."
+                    : "Зазначте основні кроки запуску (графік) та ключові результати: плановий дохід та робочі місця, якщо вони передбачені вашим планом і умовами програми."}
                 </p>
               </div>
+
+              {isBrave1 && (
+                <div className="opsec-banner" style={{ background: "#fef3c7", border: "1px solid #f59e0b", borderRadius: "8px", padding: "12px 16px", marginBottom: "16px", display: "flex", gap: "12px", alignItems: "flex-start" }}>
+                  <span style={{ fontSize: "24px" }}>🛡️</span>
+                  <div>
+                    <strong style={{ color: "#92400e" }}>Правило безпеки (OPSEC):</strong>
+                    <p style={{ margin: "4px 0 0", color: "#78350f", fontSize: "13px" }}>
+                      Не вказуйте точні координати полігонів, номери військових частин та персональні дані діючих військовослужбовців.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div className="step-ai-banner">
                 <div className="step-ai-banner-text">
                   <strong>{"💡 Скласти графік запуску разом із ШІ?"}</strong>
@@ -1248,29 +1539,83 @@ export function Cases({
                 <button
                   type="button"
                   className="link ai-call-btn"
-                  onClick={() => askAssistant("Допоможи скласти план підготовки та очікувані результати за обраною програмою. Робочі місця враховуй лише якщо їх вимагає конкретний напрям.")}
+                  onClick={() => askAssistant(isBrave1 ? "Допоможи структурувати етапи R&D дорожньої карти Brave1 та план випробувань." : "Допоможи скласти план підготовки та очікувані результати за обраною програмою. Робочі місця враховуй лише якщо їх вимагає конкретний напрям.")}
                 >
                   Запитати ШІ-асистента ↗
                 </button>
               </div>
-              {planFields.map((field) => (
-                <label key={field.key}>
-                  {field.label}
-                  <span className="field-hint">{field.hint}</span>
-                  <textarea
-                    id={`preparation-${field.key}`}
-                    rows={4}
-                    maxLength={3000}
-                    placeholder={field.placeholder}
-                    value={details[field.key]}
-                    disabled={busy || !!pending || !!sessionDraft.recovery}
-                    onChange={(e) => {
-                      setDetails({ ...details, [field.key]: e.target.value });
-                      setNotice("");
-                    }}
-                  />
-                </label>
-              ))}
+
+              {isBrave1 ? (
+                <>
+                  <label>
+                    Інженерна команда та технічні компетенції
+                    <span className="field-hint">Досвід провідних інженерів, схемотехніків, програмістів в оборонній сфері</span>
+                    <textarea
+                      rows={4}
+                      maxLength={3000}
+                      placeholder="Опишіть ключових розробників команди (головний конструктор, DSP-інженер, ембеддед розробник), досвід у hard/soft..."
+                      value={details.team_engineering_background || ""}
+                      onChange={(e) => setDetails({ ...details, team_engineering_background: e.target.value })}
+                      disabled={busy || !!pending || !!sessionDraft.recovery}
+                    />
+                  </label>
+                  <label>
+                    План випробувань, сертифікації та кодифікації
+                    <span className="field-hint">Порядок стендового тестування, військових випробувань та отримання допуску до експлуатації</span>
+                    <textarea
+                      rows={4}
+                      maxLength={3000}
+                      placeholder="Опишіть етапи: 1) лабораторні випробування у безвідлунній камері; 2) полігонні тести проти цільових БПЛА; 3) звіт для комісії Генштабу..."
+                      value={details.testing_and_scaling_plan || ""}
+                      onChange={(e) => setDetails({ ...details, testing_and_scaling_plan: e.target.value })}
+                      disabled={busy || !!pending || !!sessionDraft.recovery}
+                    />
+                  </label>
+                  <label>
+                    Ланцюг постачання компонентів та захист від ризиків
+                    <span className="field-hint">Доступність імпортних радіокомпонентів, наявність альтернативних постачальників</span>
+                    <textarea
+                      rows={4}
+                      maxLength={3000}
+                      placeholder="Опишіть логістику чипів FPGA/MCU, СВЧ-підсилювачів, захист від блокування постачання з третіх країн..."
+                      value={details.supply_chain_and_risks || ""}
+                      onChange={(e) => setDetails({ ...details, supply_chain_and_risks: e.target.value })}
+                      disabled={busy || !!pending || !!sessionDraft.recovery}
+                    />
+                  </label>
+                  <label>
+                    Календарний план етапів R&D (дорожня карта)
+                    <span className="field-hint">Контрольні точки з термінами та очікуваними артефактами (мінімум 2 етапи)</span>
+                    <textarea
+                      rows={4}
+                      maxLength={3000}
+                      placeholder="Етап 1 (2 міс): Лабораторний стенд та схемотехніка. Етап 2 (3 міс): Дослідна партія та польові випробування..."
+                      value={details.implementationPlan}
+                      onChange={(e) => setDetails({ ...details, implementationPlan: e.target.value })}
+                      disabled={busy || !!pending || !!sessionDraft.recovery}
+                    />
+                  </label>
+                </>
+              ) : (
+                planFields.map((field) => (
+                  <label key={field.key}>
+                    {field.label}
+                    <span className="field-hint">{field.hint}</span>
+                    <textarea
+                      id={`preparation-${field.key}`}
+                      rows={4}
+                      maxLength={3000}
+                      placeholder={field.placeholder}
+                      value={details[field.key]}
+                      disabled={busy || !!pending || !!sessionDraft.recovery}
+                      onChange={(e) => {
+                        setDetails({ ...details, [field.key]: e.target.value });
+                        setNotice("");
+                      }}
+                    />
+                  </label>
+                ))
+              )}
               <div className="step-actions">
                 <button
                   type="button"
@@ -1472,9 +1817,143 @@ export function Cases({
                 </p>
               </div>
 
+              <div className="readiness-progress-wrapper" style={{ margin: "16px 0", padding: "16px", background: "#f8fafc", borderRadius: "8px", border: "1px solid #e2e8f0" }}>
+                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px", fontWeight: "600", fontSize: "14px" }}>
+                  <span>Заповнено {readinessCompleteCount ?? 0} із {readinessTotalCount ?? 0} обов'язкових полів для {activeProgram ? activeProgram.title : "проєкту"}</span>
+                  <span style={{ color: readinessCompleteCount === readinessTotalCount ? "#16a34a" : "#2563eb" }}>
+                    {readinessTotalCount ? Math.round(((readinessCompleteCount ?? 0) / readinessTotalCount) * 100) : 0}%
+                  </span>
+                </div>
+                <div style={{ height: "8px", background: "#e2e8f0", borderRadius: "4px", overflow: "hidden" }}>
+                  <div
+                    style={{
+                      height: "100%",
+                      width: `${readinessTotalCount ? ((readinessCompleteCount ?? 0) / readinessTotalCount) * 100 : 0}%`,
+                      background: (readinessTotalCount && readinessCompleteCount === readinessTotalCount) ? "#16a34a" : "#2563eb",
+                      transition: "width 0.3s ease",
+                    }}
+                  />
+                </div>
+              </div>
+
               {selected.programId && <GrantApplication key={selected.id} user={user} caseId={selected.id}
                 caseRevision={selected.revision} programId={selected.programId}
                 disabled={dirty || !!pending || conflict || !!sessionDraft.recovery} />}
+
+              {isBrave1 && (
+                <section className="brave1-documents-package" style={{ background: "#f0fdf4", border: "1px solid #bbf7d0", borderRadius: "8px", padding: "16px", margin: "20px 0" }}>
+                  <h4 style={{ margin: "0 0 8px 0", color: "#166534" }}>📦 Пакет документів кластера Brave1</h4>
+                  <p style={{ fontSize: "13px", color: "#14532d", marginBottom: "16px" }}>
+                    Сформовані документи відповідають вимогам подання до кластера оборонних інновацій Brave1 (TRL, BOM, milestones).
+                  </p>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "10px", marginBottom: "16px" }}>
+                    <a
+                      href={`/api/cases/${selected.id}/export/brave1/brief`}
+                      download="brave1-project-brief.md"
+                      className="primary"
+                      style={{ padding: "8px 14px", textDecoration: "none", borderRadius: "6px", fontSize: "13px", display: "inline-block" }}
+                    >
+                      📄 Завантажити Brief проєкту (.md)
+                    </a>
+                    <a
+                      href={`/api/cases/${selected.id}/export/brave1/xlsx`}
+                      download="brave1-rnd-budget.xlsx"
+                      className="primary"
+                      style={{ padding: "8px 14px", textDecoration: "none", borderRadius: "6px", fontSize: "13px", display: "inline-block" }}
+                    >
+                      📊 Завантажити BOM-кошторис (.xlsx)
+                    </a>
+                    <a
+                      href={`/api/cases/${selected.id}/export/brave1/zip`}
+                      download="brave1-project-package.zip"
+                      className="secondary-btn"
+                      style={{ padding: "8px 14px", textDecoration: "none", borderRadius: "6px", fontSize: "13px", display: "inline-block" }}
+                    >
+                      🗜️ Повний архів (.zip)
+                    </a>
+                    <button
+                      type="button"
+                      className="secondary-btn"
+                      disabled={validatingBrave1}
+                      onClick={() => void runBrave1Validation()}
+                      style={{ padding: "8px 14px", borderRadius: "6px", fontSize: "13px" }}
+                    >
+                      {validatingBrave1 ? "Перевірка…" : "🛡️ Перевірити вимоги Brave1"}
+                    </button>
+                  </div>
+
+                  {brave1Validation && (
+                    <div style={{ background: "#ffffff", padding: "12px", borderRadius: "6px", border: "1px solid #cbd5e1" }}>
+                      <h5 style={{ margin: "0 0 8px 0" }}>
+                        Результат перевірки Brave1: {brave1Validation.valid ? "✅ Усі вимоги виконано" : "⚠️ Знайдено зауваження"}
+                      </h5>
+                      <div style={{ fontSize: "12px", marginBottom: "6px" }}>
+                        <strong>TRL:</strong> з TRL {brave1Validation.trl_transition?.current} до TRL {brave1Validation.trl_transition?.target} ·{" "}
+                        <strong>Звірка бюджету:</strong> {brave1Validation.reconciliation?.matches ? "Суми кошторису та етапів сходяться" : `Розбіжність ${((brave1Validation.reconciliation?.difference_kopecks || 0) / 100).toFixed(2)} грн`}
+                      </div>
+                      {brave1Validation.blocking_errors?.length > 0 && (
+                        <div style={{ marginTop: "8px" }}>
+                          <strong style={{ color: "#b91c1c" }}>Блокуючі помилки:</strong>
+                          <ul style={{ margin: "4px 0 0 0", paddingLeft: "20px", color: "#b91c1c", fontSize: "12px" }}>
+                            {brave1Validation.blocking_errors.map((err: any, idx: number) => (
+                              <li key={idx}>{err.message}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {brave1Validation.warnings?.length > 0 && (
+                        <div style={{ marginTop: "8px" }}>
+                          <strong style={{ color: "#d97706" }}>Попередження:</strong>
+                          <ul style={{ margin: "4px 0 0 0", paddingLeft: "20px", color: "#d97706", fontSize: "12px" }}>
+                            {brave1Validation.warnings.map((w: any, idx: number) => (
+                              <li key={idx}>{w.message}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {selected.programId && EXTERNAL_CHECKLISTS[selected.programId] && (
+                <section className="external-checklist-section" style={{ background: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "16px", margin: "20px 0" }}>
+                  <h4 style={{ margin: "0 0 4px 0" }}>📋 Чекліст зовнішніх додатків заявника</h4>
+                  <p style={{ fontSize: "13px", color: "#64748b", margin: "0 0 12px 0" }}>
+                    Відмічайте документи, які ви вже підготували або отримали для подання:
+                  </p>
+                  <ul style={{ listStyle: "none", padding: 0, margin: 0 }}>
+                    {EXTERNAL_CHECKLISTS[selected.programId].map((item) => {
+                      const isChecked = !!details.external_checklist_state?.[item.id];
+                      return (
+                        <li key={item.id} style={{ display: "flex", gap: "10px", alignItems: "flex-start", padding: "8px 0", borderBottom: "1px solid #f1f5f9" }}>
+                          <input
+                            type="checkbox"
+                            id={`chk-${item.id}`}
+                            checked={isChecked}
+                            onChange={() => void toggleChecklistItem(item.id)}
+                            style={{ marginTop: "3px" }}
+                          />
+                          <div style={{ flex: 1 }}>
+                            <label htmlFor={`chk-${item.id}`} style={{ fontWeight: 600, fontSize: "13px", cursor: "pointer", display: "inline" }}>
+                              {item.title}
+                            </label>{" "}
+                            <span style={{ fontSize: "11px", padding: "2px 6px", borderRadius: "4px", background: item.mandatory ? "#fee2e2" : "#f1f5f9", color: item.mandatory ? "#991b1b" : "#475569" }}>
+                              {item.mandatory ? "Обов'язково" : "Бажано"}
+                            </span>
+                            <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>
+                              <span><strong>Де отримати:</strong> {item.where}</span> · <span><strong>Призначення:</strong> {item.why}</span>
+                            </div>
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <p style={{ fontSize: "12px", color: "#0f766e", marginTop: "10px", fontWeight: "600" }}>
+                    ✓ Підтверджено {Object.values(details.external_checklist_state || {}).filter(Boolean).length} із {EXTERNAL_CHECKLISTS[selected.programId].length} додатків
+                  </p>
+                </section>
+              )}
 
               <section className="readiness" aria-labelledby="readiness-heading">
                 <h4 id="readiness-heading">Заповненість чернетки проєкту</h4>

@@ -62,7 +62,24 @@ export function createApp(
   app.use("/api/monobank/acquiring/webhook", express.raw({ type: "application/json", limit: "16kb", inflate: false }), monobankWebhookRouter(db, payment));
   app.use("/api/payments/monobank", monobankJarWebhookRouter(db));
   app.use(express.json({ limit: "128kb" }));
-  app.get("/api/grants", async (_req,res,next) => {try { const sources=await catalogStatus();res.set("Cache-Control","no-store").json({programs:GRANT_CATALOG,sources}); }catch(e){next(e);} });
+  app.get("/api/grants", async (_req, res, next) => {
+    try {
+      const sources = await catalogStatus();
+      const dbPrograms = await db
+        .query("SELECT program_id, support_tier FROM catalog_programs")
+        .catch(() => ({ rows: [] }));
+      const tierMap = new Map(
+        dbPrograms.rows.map((r: { program_id: string; support_tier: string }) => [r.program_id, r.support_tier]),
+      );
+      const enrichedCatalog = GRANT_CATALOG.map((p) => {
+        const dbTier = tierMap.get(p.id);
+        return dbTier ? { ...p, supportTier: dbTier } : p;
+      });
+      res.set("Cache-Control", "no-store").json({ programs: enrichedCatalog, sources });
+    } catch (e) {
+      next(e);
+    }
+  });
   app.get("/api/health", async (_req, res) => {
     try {
       await db.query("SELECT 1");

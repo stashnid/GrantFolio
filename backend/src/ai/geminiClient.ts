@@ -68,7 +68,7 @@ export async function callGeminiGenerate(
     contents: request.contents,
     generationConfig: {
       temperature: request.temperature ?? 0.3,
-      maxOutputTokens: request.maxOutputTokens ?? 2048,
+      maxOutputTokens: request.maxOutputTokens ?? (request.role === "pro" ? 4096 : 3072),
     },
   };
 

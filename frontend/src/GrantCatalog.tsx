@@ -625,7 +625,11 @@ export function GrantCatalog({
           <div className="grant-badges">
             {selected.supportTier === "deep" ? (
               <span className="grant-badge-deep">
-                ⭐ Глибока підготовка + документи
+                ⭐ Повна підготовка + документи
+              </span>
+            ) : selected.supportTier === "playbook_only" || selected.supportTier === "rules_only" ? (
+              <span className="grant-badge-rules">
+                📘 Детальні правила + консультація
               </span>
             ) : (
               <span className="grant-badge-catalog">
@@ -639,10 +643,12 @@ export function GrantCatalog({
                 : "Конкурс / набір"}
             </span>
           </div>
-          <div className={`grant-support-tier-banner ${selected.supportTier === "deep" ? "deep" : "catalog-only"}`}>
+          <div className={`grant-support-tier-banner ${selected.supportTier === "deep" ? "deep" : selected.supportTier === "playbook_only" || selected.supportTier === "rules_only" ? "rules-only" : "catalog-only"}`}>
             {selected.supportTier === "deep"
-              ? "⭐ Флагманська програма: доступні повний Playbook з лімітами, перевірка робочих місць, податкового повернення та генерація документів (Excel .xlsx / PDF)."
-              : "📋 Огляд програми: для цієї програми доступні консультація та базовий проєкт, а повні шаблони офіційних документів та авторозрахунок доступні у флагманських програмах."}
+              ? "⭐ Повний цикл: доступні повний Playbook з лімітами, покрокова анкета, валідатор умов та офіційні документи (Excel .xlsx / PDF)."
+              : selected.supportTier === "playbook_only" || selected.supportTier === "rules_only"
+                ? "📘 Детальні правила: доступні структурований Playbook, ліміти статей витрат та консультація асистента. Офіційні форми заявки заповнюються на порталі програми."
+                : "📋 Огляд програми: для цієї програми доступні консультація та базовий опис умов; повний цикл документів доступний у флагманських програмах."}
           </div>
           <p className="grant-page-amount">{selected.amount}</p>
           <p className="grant-official-name">
@@ -1070,7 +1076,11 @@ export function GrantCatalog({
               <div className="grant-badges">
                 {p.supportTier === "deep" ? (
                   <span className="grant-badge-deep">
-                    ⭐ Глибока підготовка + документи
+                    ⭐ Повна підготовка + документи
+                  </span>
+                ) : p.supportTier === "playbook_only" || p.supportTier === "rules_only" ? (
+                  <span className="grant-badge-rules">
+                    📘 Детальні правила + консультація
                   </span>
                 ) : (
                   <span className="grant-badge-catalog">

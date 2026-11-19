@@ -290,7 +290,72 @@ const garden: Program = {
   },
 };
 
-const programs: ReadonlyMap<string, Program> = new Map([["vlasna-sprava", vlasnaSprava], ["agro-gardens", garden]]);
+const veteranGrantUrl = "https://diia.gov.ua/services/grant-dlya-veteraniv-ta-chleniv-yihnih-simej";
+const veteranGrant: Program = {
+  version: "veteran-grant-2026-11-19.1",
+  title: "Грант для ветеранів та членів їхніх сімей",
+  officialUrl: veteranGrantUrl,
+  submission: "Подання через портал Дія із підписом КЕП/Дія.Підпис. До заяви додається бізнес-план за формою Мінекономіки, посвідчення УБД/інваліда війни та згода подружжя (за потреби).",
+  questions: vlasnaSprava.questions,
+  validate(answers, budget) {
+    const issues = vlasnaSprava.validate(answers, budget);
+    const requested = answers.requestedGrantKopecks;
+    const jobs = answers.newJobs ?? 0;
+
+    if (requested !== undefined) {
+      if (requested > 1_000_000_00) {
+        issues.push({
+          code: "veteran_max_exceeded",
+          field: "requestedGrantKopecks",
+          severity: "blocking",
+          message: "Максимальна сума ветеранського гранту — 1 000 000 грн.",
+        });
+      } else if (requested > 500_000_00) {
+        if (jobs < 4) {
+          issues.push({
+            code: "veteran_1m_jobs",
+            field: "newJobs",
+            severity: "blocking",
+            message: "Для гранту понад 500 000 грн обов'язкове створення не менше 4 робочих місць.",
+          });
+        }
+        if (budget !== null && BigInt(requested) * 100n > BigInt(budget) * 70n) {
+          issues.push({
+            code: "veteran_co_financing_70_30",
+            field: "ownContributionKopecks",
+            severity: "blocking",
+            message: "Для гранту понад 500 000 грн вимагається співфінансування 70/30 (власний внесок не менше 30%).",
+          });
+        }
+      } else if (requested > 250_000_00) {
+        if (jobs < 2) {
+          issues.push({
+            code: "veteran_500k_jobs",
+            field: "newJobs",
+            severity: "blocking",
+            message: "Для гранту від 250 000 до 500 000 грн обов'язкове створення не менше 2 робочих місць.",
+          });
+        }
+      } else {
+        if (jobs < 1) {
+          issues.push({
+            code: "veteran_250k_jobs",
+            field: "newJobs",
+            severity: "blocking",
+            message: "Для гранту до 250 000 грн обов'язкове створення не менше 1 робочого місця.",
+          });
+        }
+      }
+    }
+    return issues;
+  },
+};
+
+const programs: ReadonlyMap<string, Program> = new Map([
+  ["vlasna-sprava", vlasnaSprava],
+  ["agro-gardens", garden],
+  ["veteran-grant", veteranGrant],
+]);
 export const grantApplicationVersions = Object.fromEntries(Array.from(programs, ([id, rules]) => [id, rules.version]));
 const caseFields = ["projectDescription", "customers", "salesChannels", "implementationPlan", "expectedResults"] as const;
 

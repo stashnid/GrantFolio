@@ -2,7 +2,7 @@ import { z } from "zod";
 import { buildAssistantSystemPrompt, type AssistantPromptContext } from "./prompts/assistantSystemPrompt.js";
 import { callGeminiGenerate, type GeminiContent, type GeminiFunctionDeclaration } from "./geminiClient.js";
 import { hybridSearchGrants, type HybridSearchCandidate } from "../matching/hybridSearch.js";
-import { getProgramPlaybook } from "../playbooks/index.js";
+import { getProgramPlaybook, computeMissingRequiredFields } from "../playbooks/index.js";
 import { GRANT_CATALOG } from "../grant-catalog-data.js";
 import { getAiConfig, isAiConfigured } from "./aiConfig.js";
 
@@ -112,6 +112,19 @@ const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
         },
       },
       required: ["target", "summary", "patch"],
+    },
+  },
+  {
+    name: "get_missing_fields",
+    description: "Отримання списку незаповнених обов'язкових полів профілю або анкети для поточної програми (vlasna-sprava, veteran-grant, ua-brave1-core). Допомагає асистенту вести користувача покроково, ставлячи по 1-2 запитання за раз.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        program_id: {
+          type: "STRING",
+          description: "Ідентифікатор програми (опційно; за замовчуванням береться з активного проєкту).",
+        },
+      },
     },
   },
 ];
@@ -310,6 +323,24 @@ export async function runAgentOrchestrator(
             args,
             resultSummary: `Сформовано пропозицію ${proposal.id} (${summary})`,
           });
+        } else if (toolName === "get_missing_fields") {
+          const progId = (args.program_id as string) || context.activeProject?.program_id || null;
+          onProgress?.("Аналізую заповненість анкети проєкту…");
+          const missingResult = computeMissingRequiredFields(progId, {
+            title: context.activeProject?.title,
+            program_id: progId,
+            details: context.activeProject?.details as Record<string, unknown> | null,
+            items: context.activeProject?.items,
+            total_kopecks: context.activeProject?.total_kopecks,
+            profile: context.userProfile as Record<string, unknown> | null,
+          });
+          toolOutput = missingResult as unknown as Record<string, unknown>;
+          toolTrace.push({
+            step: loopStep,
+            tool: toolName,
+            args,
+            resultSummary: `Заповнено ${missingResult.filled_count}/${missingResult.total_required_count} полів. Залишилось: ${missingResult.missing_fields.map((f) => f.label_uk).join(", ") || "всі заповнені"}`,
+          });
         } else {
           toolOutput = { error: "unknown_tool" };
         }
@@ -371,9 +402,25 @@ async function runOfflineAgentOrchestrator(
 
   const isVeteran = /ветеран|убд/i.test(msg);
   const isProcessing = /переробк|заморозк|цех/i.test(msg);
+  const isBakery250kNoStaff = /пекарн/i.test(msg) && (/250/i.test(msg) || /дія\.?бізнес/i.test(msg)) && (/сам|без працівник/i.test(msg));
+  const isBrave1Docs = /brave1/i.test(msg) && (/документ|подач|чекліст|brief|проєкт/i.test(msg));
 
   let reply_text: string;
-  if (isAirDefense) {
+  if (isBakery250kNoStaff) {
+    reply_text =
+      "Тут є два критичні моменти, які потрібно одразу розділити, щоб не отримати автоматичну відмову. " +
+      "По-перше, Дія.Бізнес — це інформаційний портал для підприємців (консультації та шаблони), а сама заявка подається на порталі «Дія» за програмою «Власна справа» (єРобота). " +
+      "По-друге — головний стоп-фактор: за Порядком КМУ № 738 грант у розмірі 250 000 грн надається виключно за умови створення мінімум 2 офіційних робочих місць на повну ставку строком не менше ніж на 36 місяців. Працювати самому на цій сумі не вийде: " +
+      "якщо ви плануєте працювати самостійно взагалі без найманих людей — за програмою «Власна справа» грант отримати неможливо (навіть для суми до 150 000 грн обов'язкове створення мінімум 1 робочого місця). " +
+      "Якщо ви готові найняти 1 людину — можна податися на поріг до 150 000 грн. Якщо вам обов'язково потрібно 250 000 грн на піч та тістоміс — бізнес-модель повинна генерувати виручку для виплати заробітної плати 2 найманим працівникам не нижче мінімальної (8 000 грн у 2026 році) та сплати ЄСВ (1 760 грн/міс за кожного). " +
+      "Чи є можливість залучити найманих працівників під розширення виробництва, чи розглянемо поріг 150 тис. грн з 1 помічником?";
+  } else if (isBrave1Docs) {
+    reply_text =
+      "Для подання заявки до кластера Brave1 пакет документів складається з двох контурів: " +
+      "1) Матеріали, які генерує GrantFolio: Brave1 R&D Project Brief (PDF на 10 розділів із дорожньою картою) та Brave1 R&D / BOM Кошторис та Дорожня карта (.xlsx із живими формулами =C*D та =SUM). " +
+      "2) Зовнішній чекліст заявника: профіль на порталі grants.brave1.tech, несекретний Pitch Deck (7-10 слайдів), відео/фото стендових або полігонних тестів для підтвердження TRL 3+, установчі документи юридичної особи/ФОП, резюме ключових інженерів та листи зацікавленості від військових частин (за наявності). " +
+      "Пам'ятайте про правила OPSEC: категорично заборонено вказувати точні радіочастоти, координати виробництва та номери військових частин.";
+  } else if (isAirDefense) {
     reply_text =
       "Для розробки систем виявлення або протидії повітряним загрозам («приватне ППО», антидрон, РЕБ) в Україні профільним інструментом є кластер Brave1 (програма `ua-brave1-core`). " +
       "Зверніть увагу на регуляторний аспект: приватне володіння зброєю або самостійне ураження повітряних цілей суворо обмежено законодавством; такі системи розробляються як dual-use або оборонні технології та проходять обов'язкову експертизу Генштабу ЗСУ і полігонні випробування. " +

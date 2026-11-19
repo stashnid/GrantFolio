@@ -6,6 +6,7 @@ import { processingBusinessPlaybook } from "./processingBusiness.js";
 import { agroGardensPlaybook } from "./agroGardens.js";
 
 export * from "./schema.js";
+export * from "./missingFields.js";
 export {
   vlasnaSpravaPlaybook,
   veteranGrantPlaybook,

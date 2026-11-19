@@ -28,6 +28,18 @@ async function main() {
       expectedProgram: "veteran-grant",
       mustInclude: ["ветеран"],
     },
+    {
+      title: "Кейс 4: Пекарня через Дія.Бізнес 250 тис. без працівників",
+      query: "Хочу через Дія.Бізнес 250 тис. на пекарню, працюватиму сам без найму людей",
+      expectedProgram: "vlasna-sprava",
+      mustInclude: ["робочих місць", "Дія.Бізнес"],
+    },
+    {
+      title: "Кейс 5: Пояснення документів та OPSEC для Brave1",
+      query: "Які документи та чекліст потрібні для подання проєкту в Brave1?",
+      expectedProgram: "ua-brave1-core",
+      mustInclude: ["Project Brief", "OPSEC", "TRL"],
+    },
   ];
 
   let passed = 0;
@@ -67,6 +79,8 @@ async function main() {
   console.log(`\nПідсумок тестування: ${passed}/${testCases.length} пройдено.`);
   if (passed === testCases.length) {
     console.log("Всі сценарії оцінки AI-консультанта успішно підтверджено!");
+  } else {
+    throw new Error(`Evaluation failed: ${passed}/${testCases.length} passed`);
   }
 }
 

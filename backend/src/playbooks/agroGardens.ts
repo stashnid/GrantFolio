@@ -9,7 +9,7 @@ export const agroGardensPlaybook: ProgramPlaybook = {
     min: 140000,
     max: 10000000,
   },
-  support_tier: "deep",
+  support_tier: "rules_only",
   domain_tags: [
     "агро",
     "сад",

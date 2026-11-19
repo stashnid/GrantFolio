@@ -1,6 +1,7 @@
 import { createFundingMonitor } from "./funding-monitor.js";
 import {createGrantSync} from "./grant-sync.js";
 import {GRANT_CATALOG} from "./grant-catalog-data.js";
+import { syncPlaybooksToDatabase } from "./playbooks/syncPlaybooks.js";
 import { initializeApp } from "firebase-admin/app";
 import pg from "pg";
 import express from "express";
@@ -23,6 +24,9 @@ try {
   await fundingMonitor.hydrate();
   if (config.runCatalogTimers) fundingMonitor.start();
 } catch { console.warn("New funding discovery unavailable; apply database migrations."); }
+try {
+  await syncPlaybooksToDatabase(db);
+} catch { console.warn("Playbooks sync unavailable; apply database migrations."); }
 const app = createApp(
   db,
   async () => {

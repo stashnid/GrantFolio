@@ -13,6 +13,8 @@ import { assistantRouter } from "./assistant.js";
 import { configuredGeminiResponder } from "./gemini.js";
 import { grantApplicationRouter } from "./grant-application-router.js";
 import { grantFinancialPlanRouter } from "./grant-financial-plan-router.js";
+import { buildBrave1Workbook, buildBrave1ProjectBriefMarkdown, createBrave1Export } from "./export/brave1Export.js";
+import { validateBrave1Project } from "./finance/brave1Validator.js";
 const idSchema = z.string().uuid();
 const ALLOWED_PROGRAMS = GRANT_CATALOG.map(p=>p.id) as [string,...string[]];
 
@@ -219,6 +221,125 @@ export function casesRouter(db: Pool, payment?: PaymentConfig) {
       }
       res.set("Content-Disposition", 'attachment; filename="grantfolio-project.txt"');
       res.type("text/plain; charset=utf-8").send(draftExport(result.rows[0]));
+    } catch (e) {
+      next(e);
+    }
+  });
+  router.get("/:id/export/brave1/xlsx", async (req, res, next) => {
+    if (!idSchema.safeParse(req.params.id).success) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    try {
+      const result = await db.query(
+        "SELECT * FROM cases WHERE id=$1 AND owner_id=$2",
+        [req.params.id, res.locals.uid],
+      );
+      if (!result.rowCount) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      const row = result.rows[0];
+      const workbook = buildBrave1Workbook({
+        title: row.title,
+        revision: row.revision,
+        details: row.details || {},
+        items: row.items || [],
+        total_kopecks: row.total_kopecks,
+      });
+      res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+      res.setHeader("Content-Disposition", 'attachment; filename="brave1-rnd-budget.xlsx"');
+      res.send(Buffer.from(workbook));
+    } catch (e) {
+      next(e);
+    }
+  });
+  router.get("/:id/export/brave1/brief", async (req, res, next) => {
+    if (!idSchema.safeParse(req.params.id).success) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    try {
+      const result = await db.query(
+        "SELECT * FROM cases WHERE id=$1 AND owner_id=$2",
+        [req.params.id, res.locals.uid],
+      );
+      if (!result.rowCount) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      const row = result.rows[0];
+      const brief = buildBrave1ProjectBriefMarkdown({
+        title: row.title,
+        revision: row.revision,
+        details: row.details || {},
+        items: row.items || [],
+        total_kopecks: row.total_kopecks,
+      });
+      res.setHeader("Content-Type", "text/markdown; charset=utf-8");
+      res.setHeader("Content-Disposition", 'attachment; filename="brave1-project-brief.md"');
+      res.send(brief);
+    } catch (e) {
+      next(e);
+    }
+  });
+  router.get("/:id/export/brave1/zip", async (req, res, next) => {
+    if (!idSchema.safeParse(req.params.id).success) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    try {
+      const result = await db.query(
+        "SELECT * FROM cases WHERE id=$1 AND owner_id=$2",
+        [req.params.id, res.locals.uid],
+      );
+      if (!result.rowCount) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      const row = result.rows[0];
+      const { zipBuffer } = await createBrave1Export({
+        title: row.title,
+        revision: row.revision,
+        details: row.details || {},
+        items: row.items || [],
+        total_kopecks: row.total_kopecks,
+      });
+      res.setHeader("Content-Type", "application/zip");
+      res.setHeader("Content-Disposition", 'attachment; filename="brave1-project-package.zip"');
+      res.send(zipBuffer);
+    } catch (e) {
+      next(e);
+    }
+  });
+  router.get("/:id/validate/brave1", async (req, res, next) => {
+    if (!idSchema.safeParse(req.params.id).success) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
+    try {
+      const result = await db.query(
+        "SELECT * FROM cases WHERE id=$1 AND owner_id=$2",
+        [req.params.id, res.locals.uid],
+      );
+      if (!result.rowCount) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      const row = result.rows[0];
+      const details = row.details || {};
+      const allTextFields = Object.values(details).filter((v): v is string => typeof v === "string");
+      const validation = validateBrave1Project({
+        title: row.title,
+        current_trl: details.current_trl,
+        target_trl: details.target_trl,
+        trl_evidence: details.trl_evidence,
+        rd_milestones: details.rd_milestones,
+        bom_and_rd_budget: details.bom_and_rd_budget,
+        total_kopecks: row.total_kopecks,
+        all_text_fields: allTextFields,
+      });
+      res.json(validation);
     } catch (e) {
       next(e);
     }

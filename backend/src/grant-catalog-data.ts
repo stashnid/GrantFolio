@@ -23,7 +23,7 @@ export type GrantCatalogEntry = {
   officialUrl: string;
   checkedAt: string;
   intakeStatus: "open" | "unconfirmed" | "paused" | "archived";
-  supportTier?: "deep" | "catalog_only";
+  supportTier?: "deep" | "playbook_only" | "rules_only" | "catalog_only";
   searchTags?: string[];
   searchSynonyms?: string[];
   useCaseExamples?: string[];
@@ -264,7 +264,7 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
       "https://diia.gov.ua/services/grant-na-pererobne-pidpriyemstvo",
     checkedAt: "2026-11-16",
     intakeStatus: "paused",
-    supportTier: "deep",
+    supportTier: "playbook_only",
     planningLimitKopecks: 1600000000,
     details: {
       overview:
@@ -328,7 +328,7 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
     officialUrl: "https://diia.gov.ua/services/grant-na-sad",
     checkedAt: "2026-11-16",
     intakeStatus: "paused",
-    supportTier: "deep",
+    supportTier: "playbook_only",
     details: {
       overview:
         "Підтримка висадки багаторічних насаджень, а не загальне фінансування будь-якого агробізнесу.",
