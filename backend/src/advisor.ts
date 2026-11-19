@@ -3,9 +3,10 @@ import { z } from "zod";
 import type { Pool } from "pg";
 import type { AssistantResponder } from "./assistant.js";
 import { postgresAssistantLimiter, type AssistantLimiter } from "./assistant-limits.js";
-import { normalize, searchGrants } from "./grant-discovery.js";
+import { findNamedPrograms, grantIntake, grantSupport, normalize, searchGrants } from "./grant-discovery.js";
 import { GRANT_CATALOG } from "./grant-catalog-data.js";
 import { extractProfileFromText } from "./profile-extractor.js";
+import { buildDialogueQuery } from "./advisor-dialogue.js";
 const input = z
   .object({
     id: z.string().uuid(),
@@ -64,7 +65,7 @@ export function nextQuestion(query: string, intents: string[], hasMatches: boole
     /(?:мені|вік|віком)\s*\d{1,3}(?:\s*рок(?:и|ів|у)?)?/g,
     "",
   );
-  if (!/(\d|тисяч|тис\b|мільйон)/.test(withoutAge))
+  if (!/(?:^|\s)\d+(?:[.,]\d+)?(?:\s|$)|тисяч|тис\b|мільйон/.test(withoutAge))
     return "Яка орієнтовна сума вам потрібна?";
   if (
     !/(регіон|област|ки(?:їв|єв)|льв(?:ів|ов)|одес|хар(?:ків|ков)|дніпр|запоріж|полтав|вінниц|черкас|черніг|чернів|житомир|сум|терноп|луц(?:ьк|к)|рівн|ужгород|микола(?:їв|єв)|херсон|кропивницьк|івано|хмельницьк)/.test(
@@ -82,7 +83,15 @@ export function nextQuestion(query: string, intents: string[], hasMatches: boole
     return "Збережіть опис потреби й перевірте умови програм у каталозі. Робочу чернетку можна підготувати до підтвердження прийому.";
   return "Які витрати ви хочете покрити? Це допоможе звузити пошук.";
 }
+function isDefenseProgram(program: (typeof GRANT_CATALOG)[number] | undefined) {
+  return Boolean(program && /defen[cs]e[ -]?tech|оборонн.*(?:розроб|технолог)|озброєн/iu.test(`${program.title} ${program.targetAudience} ${program.summary}`));
+}
+function programDirectory(program: (typeof GRANT_CATALOG)[number]) {
+  return `«${program.title}». За описом каталогу: ${program.details.overview}\n\n${grantIntake(program).intakeLabel}\n\n${grantSupport(program.id).supportLabel}\n\n[Офіційне джерело](${program.officialUrl})`;
+}
 function namedProgram(message: string) {
+  const direct = findNamedPrograms(message)[0];
+  if (direct) return direct;
   const q = normalize(message);
   return GRANT_CATALOG.find((p) => {
     const name = normalize(p.title);
@@ -106,6 +115,7 @@ export function programFollowUp(message: string, previousMatches: { programId: s
   const farmExample = farm ? GRANT_CATALOG.find(p => p.id === "vlasna-sprava") : undefined;
   const program = named ?? previous[0] ?? farmExample;
   if (!program) return undefined;
+  if (isDefenseProgram(program)) return programDirectory(program);
   const example = !named && previous.length !== 1;
   const sections: string[] = [];
   if (costs) sections.push(`**На що можна спрямувати кошти**\n${program.details.costs.map(cost => `- ${cost}`).join("\n")}${program.id === "vlasna-sprava" && farm ? "\n\nДля ферми обладнання для сортування, пакування або охолодження може бути кандидатом у кошторис, але допустимість конкретної покупки треба перевірити за чинними правилами." : ""}`);
@@ -127,10 +137,10 @@ async function preparationIdea(
   owner: string,
   context: string,
   question: string,
-): Promise<string | undefined> {
+): Promise<{idea?: string; fallbackReason?: "rate_limited" | "timeout" | "provider_error" | "invalid_response"}> {
   const timeoutMs = 3200;
   const lease = await limiter.acquire(owner, timeoutMs + 60000).catch(() => null);
-  if (!lease) return undefined;
+  if (!lease) return {fallbackReason: "rate_limited"};
   const controller = new AbortController();
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
@@ -152,10 +162,11 @@ async function preparationIdea(
       }),
     ]);
     const idea = text?.trim();
-    if (!idea || idea.length > 750 || /[\d<>]|https?:|www\.|грн|%|дедлайн|схвален|дозволен|прийом заяв|умов[иа] гранту|грант |програм[аи]/iu.test(idea)) return undefined;
-    return idea;
+    if (controller.signal.aborted) return {fallbackReason: "timeout"};
+    if (!idea || idea.length > 750 || /[\d<>]|https?:|www\.|грн|%|дедлайн|схвален|дозволен|прийом заяв|умов[иа] гранту|грант |програм[аи]/iu.test(idea)) return {fallbackReason: "invalid_response"};
+    return {idea};
   } catch {
-    return undefined;
+    return {fallbackReason: controller.signal.aborted ? "timeout" : "provider_error"};
   } finally {
     if (timer) clearTimeout(timer);
     await limiter.release(owner, lease).catch(() => {});
@@ -343,10 +354,8 @@ export function advisorRouter(db: Pool, responder?: AssistantResponder, limiter 
             : prior.map((r) => r.question).join(" ");
         const current = searchGrants(p.message);
         const previous = searchGrants(previousSeed);
-        const explicitChange =
-          /(а тепер|інша тема|інш[аийе] потреб|передумав|передумала)/i.test(
-            p.message,
-          );
+        const dialogue = buildDialogueQuery(p.message, previousSeed);
+        const explicitChange = dialogue.intent === "topic_change";
         const distinctNeed =
           /(хочу|шукаю|потріб|грант.*для)/i.test(p.message) &&
           previous.intents.some((intent) => intent !== "applicant") &&
@@ -357,12 +366,13 @@ export function advisorRouter(db: Pool, responder?: AssistantResponder, limiter 
         const followUpWording = /витрат|витратити|потрат|купити|придбати|закуп|на що|що можна|умов|вимог|хто може|чи (?:можу|підход)|право на|як пода|як подат|подача|подати|заявк|документ|оформ/i.test(p.message);
         const newNeed =
           explicitChange || (!followUpWording && current.intents.length > 0 && distinctNeed);
-        const query = (
-          newNeed
-            ? p.message
-            : [previousSeed, p.message].filter(Boolean).join(" ")
-        ).slice(-5000);
-        const rawSearch = searchGrants(query);
+        const query = newNeed ? p.message : dialogue.query;
+        const namedSelection = namedProgram(p.message);
+        const selectedProgramId = namedSelection?.id ?? (!newNeed ? prior.at(-1)?.payload?.selectedProgramId : undefined);
+        // Current explicit identity and the selected programme outrank old search words.
+        const lookup = dialogue.intent === "comparison" ? p.message : selectedProgramId ?? query;
+        const candidateSearch = searchGrants(lookup, GRANT_CATALOG, new Date(), {includeUnavailable: true});
+        const rawSearch = {...candidateSearch, intents: searchGrants(query).intents};
         const businessIntents = [
           "business",
           "transport",
@@ -390,10 +400,20 @@ export function advisorRouter(db: Pool, responder?: AssistantResponder, limiter 
         const greeting = /^(привіт|вітаю|добрий день|доброго дня)[!. ]*$/i.test(
           p.message,
         );
-        const namedSelection = namedProgram(p.message);
-        const selectedProgramId = namedSelection?.id ?? (!newNeed ? prior.at(-1)?.payload?.selectedProgramId : undefined);
-        const followUp = programFollowUp(p.message, prior.at(-1)?.payload?.search?.matches ?? [], newNeed && !namedSelection, selectedProgramId, query) ?? (namedSelection ? `Розглянемо «${namedSelection.title}». ${namedSelection.details.overview} ${namedSelection.intakeStatus === "paused" ? "Прийом призупинено; дату відновлення потрібно підтвердити." : "Актуальний прийом і вашу відповідність потрібно підтвердити."} [Офіційні умови](${namedSelection.officialUrl})\n\nЩо хочете з’ясувати: витрати, вимоги чи подання заявки?` : undefined);
-        const consultation = personalEducation
+        const followUp = programFollowUp(p.message, prior.at(-1)?.payload?.search?.matches ?? [], newNeed && !namedSelection, selectedProgramId, query) ?? (namedSelection ? `Розглянемо «${namedSelection.title}». За збереженим описом: ${namedSelection.details.overview}\n\n${grantIntake(namedSelection).intakeLabel} Відповідність заявника потребує перевірки.\n\n${grantSupport(namedSelection.id).supportLabel}\n\n[Офіційні умови](${namedSelection.officialUrl})` : undefined);
+        const comparisonPrograms = dialogue.intent === "comparison"
+          ? (findNamedPrograms(p.message).length >= 2 ? findNamedPrograms(p.message)
+            : (prior.at(-1)?.payload?.search?.matches ?? []).map((m: {programId: string}) => GRANT_CATALOG.find(program => program.id === m.programId)).filter(Boolean)).slice(0, 3)
+          : [];
+        const comparison = dialogue.intent === "comparison"
+          ? comparisonPrograms.length < 2 ? "Назвіть дві програми для порівняння. Порівняю їхні цільові аудиторії, підтверджений статус прийому та доступну допомогу."
+            : comparisonPrograms.map((program: (typeof GRANT_CATALOG)[number]) => `**${program.title}**\nЗа описом каталогу: ${program.targetAudience}\n${grantIntake(program).intakeLabel}\n${grantSupport(program.id).supportLabel}\n[Джерело](${program.officialUrl})`).join("\n\n") + "\n\nЦе порівняння збережених описів, а не оцінка шансів чи підтвердження вашої відповідності."
+          : undefined;
+        const consultation = comparison ?? (dialogue.intent === "complaint"
+          ? `Перепрошую, попередня відповідь не допомогла. Я повторно перевірив каталог за вашою попередньою потребою. ${search.matches.length ? search.matches.slice(0, 3).map((m) => `${m.title}: ${m.reason}`).join(" ") : "Підтвердженого результату цього пошуку немає; назву або напрям можна перевірити в каталозі."}`
+          : dialogue.intent === "correction"
+            ? `Врахую ваше уточнення в цій розмові. Збережений профіль не змінено; якщо потрібно оновити його, внесіть зміну в профілі.\n\n${search.explanation}`
+          : personalEducation
           ? "GrantFolio допомагає шукати фінансування для відкриття або розвитку бізнесу. Програми для особистого навчання та стипендії не входять до каталогу. Якщо маєте підприємницьку ідею, розкажіть про неї."
           : studentNeedsIdea
             ? "Допоможу розібратися з фінансуванням підприємницької ідеї. Яку справу ви плануєте відкрити або розвинути та на що потрібні кошти?"
@@ -402,14 +422,22 @@ export function advisorRouter(db: Pool, responder?: AssistantResponder, limiter 
               : followUp ?? `${search.explanation}\n\n${search.matches
                   .slice(0, 3)
                   .map((m) => `${m.title}. ${m.reason}`)
-                  .join("\n\n")}\n\n${nextQuestion(query, search.intents, search.matches.length > 0)}`;
-        const idea = responder && !greeting && !personalEducation && !studentNeedsIdea &&
+                  .join("\n\n")}\n\n${nextQuestion(query, search.intents, search.matches.length > 0)}`);
+        const selectedProgram = GRANT_CATALOG.find(program => program.id === selectedProgramId);
+        const contextualProgram = selectedProgram ?? (!newNeed ? GRANT_CATALOG.find(program => program.id === prior.at(-1)?.payload?.search?.matches?.[0]?.programId) : undefined);
+        const ideaResult = responder && !greeting && !personalEducation && !studentNeedsIdea && !isDefenseProgram(contextualProgram) && !/(?:\bdefen[cs]e|ппо|озброєн|збро[яїю])/iu.test(query) && !["complaint", "correction", "comparison"].includes(dialogue.intent) &&
           (followUp || rawSearch.intents.some(intent => businessIntents.includes(intent)))
           ? await preparationIdea(responder, limiter, uid, newNeed ? "" : previousSeed, p.message)
-          : undefined;
+          : {};
+        const {idea, fallbackReason} = ideaResult;
         const reply = idea ? `**Ідея для вашої чернетки**\n\n${idea}\n\n${consultation}` : consultation;
+        search.questions = ["complaint", "correction", "comparison"].includes(dialogue.intent) || followUp
+          ? [] : [nextQuestion(query, search.intents, search.matches.length > 0)];
         const payload = {
           mode: "guided",
+          hasPreparationIdea: Boolean(idea),
+          fallbackReason,
+          dialogueIntent: dialogue.intent,
           selectedProgramId,
           search,
           seed: query.slice(-2000),

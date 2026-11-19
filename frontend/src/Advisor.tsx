@@ -1,6 +1,6 @@
-import { hasGuidedApplication } from "./grants";
-import { advisorFollowups } from "./advisor-followups";
+import { grantIntake, grantSupport } from "../../backend/src/grant-discovery";
 import { isGrantAvailable } from "../../backend/src/grant-availability";
+import { hasGuidedApplication } from "./grants";
 import { useGrantPrograms } from "./GrantPrograms";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -31,6 +31,8 @@ type Message = {
   seed: string;
   selectedProgramId?: string;
   extractedFacts?: ExtractedProfileFact[];
+  fallbackReason?: "not_configured" | "rate_limited" | "timeout" | "provider_error" | "invalid_response";
+  hasPreparationIdea?: boolean;
 };
 type Conversation = { id: string; title: string };
 
@@ -1062,7 +1064,9 @@ export function Advisor({
                       <AiEmblem />
                       <strong className="author-name">GrantFolio Асистент</strong>
                       <span className="revision-badge">
-                        {m.mode === "guided" ? "Консультація за каталогом" : "Раніше збережена відповідь ШІ"}
+                        {m.mode === "guided"
+                          ? m.fallbackReason ? "Довідка за каталогом · ідею ШІ не додано" : m.hasPreparationIdea ? "Довідка за каталогом та ідея ШІ" : "Довідка за каталогом"
+                          : "Раніше збережена відповідь ШІ"}
                       </span>
                     </div>
                     <div className="bubble-text assistant-text">
@@ -1109,7 +1113,7 @@ export function Advisor({
                             className="advisor-sync-link"
                             onClick={onOpenProfile}
                           >
-                            Переглянути в кабінеті →
+                            Перевірити й змінити профіль →
                           </button>
                         )}
                       </div>
@@ -1118,15 +1122,16 @@ export function Advisor({
                       <div className="advisor-recommendations" aria-label="Можливі програми">
                         {m.search.matches.slice(0, 3).map((match) => {
                           const p = GRANT_PROGRAMS.find((program) => program.id === match.programId);
-                          if (!p || !isGrantAvailable(p)) return null;
+                          if (!p) return null;
+                          const intake = grantIntake(p);
+                          const support = grantSupport(p.id);
                           return (
                             <article key={p.id} className="advisor-grant">
                               <h3>{match.title}</h3>
                               <p>{match.reason}</p>
                               <small>{match.caution}</small>
-                              <p>{hasGuidedApplication(p.id)
-                                ? "У GrantFolio доступні анкета та підготовка робочих матеріалів."
-                                : "У GrantFolio доступні умови програми та посилання на надавача."}</p>
+                              <p><strong>Прийом:</strong> {intake.intakeLabel}</p>
+                              <p><strong>Допомога GrantFolio:</strong> {support.supportLabel}</p>
                               <p><a href={p.officialUrl} target="_blank" rel="noopener noreferrer" aria-label={`Офіційне джерело програми: ${match.title} (відкриється в новій вкладці)`}>Офіційне джерело ↗</a></p>
                               <div className="advisor-grant-actions">
                                 <button
@@ -1141,9 +1146,11 @@ export function Advisor({
                                   type="button"
                                   className="advisor-grant-primary"
                                   aria-label={`Готувати матеріали для програми: ${match.title}`}
-                                  onClick={() => onPrepare(p, m.seed)}
+                                  onClick={() => support.supportDepth === "guided-draft"
+                                    ? onPrepare(p, m.seed)
+                                    : fill(`Які вимоги програми «${p.title}» і що ще потрібно перевірити?`)}
                                 >
-                                  Готувати матеріали
+                                  Готувати робочі матеріали
                                 </button>}
                               </div>
                             </article>
@@ -1160,6 +1167,12 @@ export function Advisor({
                         onOpenFeedback={() => onOpenFeedback({ programId: m.search.matches[0]?.programId ?? null })}
                       />
                     )}
+                    {revealingId !== m.id && selectedProgram &&
+                      <aside className="advisor-grant" aria-label="Статус обраної програми">
+                        <p><strong>Прийом:</strong> {grantIntake(selectedProgram).intakeLabel}</p>
+                        <p><strong>Допомога GrantFolio:</strong> {grantSupport(selectedProgram.id).supportLabel}</p>
+                        <a href={selectedProgram.officialUrl} target="_blank" rel="noopener noreferrer">Офіційне джерело ↗</a>
+                      </aside>}
                     {revealingId !== m.id && selectedProgram && hasGuidedApplication(selectedProgram.id) &&
                       <div className="advisor-grant-actions">
                         <button type="button" className="advisor-grant-primary" onClick={() => onPrepare(selectedProgram, m.seed)}>
@@ -1167,6 +1180,7 @@ export function Advisor({
                         </button>
                       </div>}
                     {revealingId !== m.id && !selectedProgram && preparablePilot &&
+                      !m.search.matches.some(match => match.programId === preparablePilot.id) &&
                       m.search.intents.includes("business") &&
                       !m.search.intents.includes("study") && (
                         <aside className="advisor-grant" aria-label="Підготовка до майбутнього прийому">
@@ -1180,7 +1194,7 @@ export function Advisor({
                       )}
                     {revealingId !== m.id && (
                       <div className="advisor-followups">
-                        {advisorFollowups(m.seed, m.search.intents.includes("transport")).map((q) => (
+                        {m.search.questions.slice(0, 2).map((q) => (
                           <button type="button" key={q} onClick={() => fill(q)}>
                             {q}
                           </button>
