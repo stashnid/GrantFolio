@@ -1,5 +1,4 @@
-import { advisorFollowups } from "./advisor-followups";
-import { isGrantAvailable } from "../../backend/src/grant-availability";
+import { grantIntake, grantSupport } from "../../backend/src/grant-discovery";
 import { useGrantPrograms } from "./GrantPrograms";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -28,6 +27,7 @@ type Message = {
   seed: string;
   profileUpdated?: boolean;
   extractedFacts?: ExtractedProfileFact[];
+  fallbackReason?: "not_configured" | "timeout" | "provider_error" | "invalid_response";
 };
 type Conversation = { id: string; title: string };
 
@@ -653,7 +653,9 @@ export function Advisor({
                       <AiEmblem />
                       <strong className="author-name">GrantFolio Асистент</strong>
                       <span className="revision-badge">
-                        {m.mode === "guided" ? "Підбір за умовами каталогу" : "З урахуванням вашої розмови"}
+                        {m.mode === "guided"
+                          ? m.fallbackReason ? "Модель недоступна · довідка за каталогом" : "Довідка за каталогом"
+                          : "Відповідь моделі з контекстом розмови"}
                       </span>
                     </div>
                     <div className="bubble-text assistant-text">
@@ -685,7 +687,7 @@ export function Advisor({
                           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                             <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
                           </svg>
-                          <span>{m.profileUpdated ? "Дані збережено у Профіль бізнесу:" : "Виявлено деталі для Профілю:"}</span>
+                          <span>{m.profileUpdated ? "Дані збережено у Профіль бізнесу:" : "Згадані вами дані; профіль не змінено:"}</span>
                         </div>
                         <div className="advisor-sync-chips">
                           {m.extractedFacts.map((f) => (
@@ -700,7 +702,7 @@ export function Advisor({
                             className="advisor-sync-link"
                             onClick={onOpenProfile}
                           >
-                            Переглянути в кабінеті →
+                            Перевірити й змінити профіль →
                           </button>
                         )}
                       </div>
@@ -709,12 +711,17 @@ export function Advisor({
                       <div className="advisor-recommendations" aria-label="Можливі програми">
                         {m.search.matches.slice(0, 3).map((match) => {
                           const p = GRANT_PROGRAMS.find((program) => program.id === match.programId);
-                          if (!p || !isGrantAvailable(p)) return null;
+                          if (!p) return null;
+                          const intake = grantIntake(p);
+                          const support = grantSupport(p.id);
                           return (
                             <article key={p.id} className="advisor-grant">
                               <h3>{match.title}</h3>
                               <p>{match.reason}</p>
                               <small>{match.caution}</small>
+                              <p><strong>Прийом:</strong> {intake.intakeLabel}</p>
+                              <p><strong>Допомога GrantFolio:</strong> {support.supportLabel}</p>
+                              <a href={match.evidenceUrl} target="_blank" rel="noopener noreferrer">Офіційне джерело</a>
                               <div className="advisor-grant-actions">
                                 <button
                                   type="button"
@@ -728,9 +735,11 @@ export function Advisor({
                                   type="button"
                                   className="advisor-grant-primary"
                                   aria-label={`Готувати матеріали для програми: ${match.title}`}
-                                  onClick={() => onPrepare(p, m.seed)}
+                                  onClick={() => support.supportDepth === "guided-draft"
+                                    ? onPrepare(p, m.seed)
+                                    : fill(`Які вимоги програми «${p.title}» і що ще потрібно перевірити?`)}
                                 >
-                                  Готувати матеріали
+                                  {support.supportDepth === "guided-draft" ? "Готувати робочі матеріали" : "Уточнити вимоги"}
                                 </button>
                               </div>
                             </article>
@@ -740,7 +749,7 @@ export function Advisor({
                     )}
                     {revealingId !== m.id && (
                       <div className="advisor-followups">
-                        {advisorFollowups(m.seed, m.search.intents.includes("transport")).map((q) => (
+                        {m.search.questions.slice(0, 2).map((q) => (
                           <button type="button" key={q} onClick={() => fill(q)}>
                             {q}
                           </button>

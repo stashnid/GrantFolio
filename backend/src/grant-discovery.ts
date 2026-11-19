@@ -119,6 +119,46 @@ function match(word: string, term: string) {
       distance(word, term) <= 1)
   );
 }
+function identityScore(query: string, p: GrantCatalogEntry): number {
+  const cleaned = normalize(query);
+  const words = cleaned.split(" ");
+    const shortTitle = p.title.split(/[:—–(]/u)[0].trim();
+    let score = 0;
+    for (const name of [p.id, p.title, ...(shortTitle.length >= 5 ? [shortTitle] : []), ...(p.aliases ?? [])]) {
+      const phrase = normalize(name);
+      if (phrase.length < 4 && !(p.aliases?.includes(name) && phrase.length >= 3)) continue;
+      if (` ${cleaned} `.includes(` ${phrase} `)) return 1100;
+      // One typo in a long identity is safe enough for a candidate, never eligibility.
+      const tokens = phrase.split(" ");
+      if (phrase.length < 7) continue;
+      if (words.some((_, i) => {
+        const span = words.slice(i, i + tokens.length).join(" ");
+        return Math.abs(span.length - phrase.length) <= 1 && distance(span, phrase) <= 1;
+      })) score = 1000;
+    }
+    return score;
+}
+/** Identity lookup precedes intake filtering. Generic category/search terms are not aliases. */
+export function findNamedPrograms(query: string, programs: readonly GrantCatalogEntry[] = GRANT_CATALOG): GrantCatalogEntry[] {
+  return programs.map(p => ({program: p, score: identityScore(query, p)}))
+    .filter(p => p.score > 0).sort((a, b) => b.score - a.score).map(p => p.program);
+}
+
+export function grantIntake(program: GrantCatalogEntry, now = new Date()): {intake: NonNullable<GrantMatch["intake"]>; intakeLabel: string} {
+  if (program.intakeStatus === "paused") return {intake: "paused", intakeLabel: "У каталозі прийом позначено призупиненим; поточний стан перевірте в організатора."};
+  if (isGrantAvailable(program, now)) return {intake: "open", intakeLabel: "Прийом підтверджений збереженим джерелом; перевірте його перед поданням."};
+  const a = program.availability;
+  const fresh = a && Number.isFinite(now.getTime()) && Date.parse(a.checkedAt) <= now.getTime() && Date.parse(a.validUntil) > now.getTime();
+  if (fresh && a.startsAt && Date.parse(a.startsAt) > now.getTime()) return {intake: "upcoming", intakeLabel: "За збереженим джерелом прийом ще не почався."};
+  if (fresh && (a.state === "closed" || (a.deadlineAt && Date.parse(a.deadlineAt) <= now.getTime()))) return {intake: "closed", intakeLabel: "За збереженим джерелом прийом закритий; перевірте наступний конкурс."};
+  return {intake: "unconfirmed", intakeLabel: "Поточний прийом не підтверджений. Наявність програми в каталозі не означає відкритого конкурсу."};
+}
+
+export function grantSupport(programId: string): {supportDepth: NonNullable<GrantMatch["supportDepth"]>; supportLabel: string} {
+  return ["vlasna-sprava", "agro-gardens"].includes(programId)
+    ? {supportDepth: "guided-draft", supportLabel: "Доступні анкета та робочі матеріали. Повний офіційний комплект не перевірений."}
+    : {supportDepth: "catalog-only", supportLabel: "Доступні довідка й консультація за каталогом. Підготовку офіційного комплекту не реалізовано."};
+}
 export type GrantMatch = {
   programId: string;
   title: string;
@@ -126,6 +166,11 @@ export type GrantMatch = {
   caution: string;
   score: number;
   evidenceUrl: string;
+  matchKind?: "direct" | "thematic";
+  intake?: "open" | "closed" | "paused" | "upcoming" | "unconfirmed";
+  intakeLabel?: string;
+  supportDepth?: "guided-draft" | "catalog-only";
+  supportLabel?: string;
 };
 export type SearchResult = {
   query: string;
@@ -134,8 +179,9 @@ export type SearchResult = {
   questions: string[];
   explanation: string;
 };
-export function searchGrants(query: string, programs: readonly GrantCatalogEntry[] = GRANT_CATALOG, now = new Date()): SearchResult {
+export function searchGrants(query: string, programs: readonly GrantCatalogEntry[] = GRANT_CATALOG, now = new Date(), options: {includeUnavailable?: boolean} = {}): SearchResult {
   const cleaned = normalize(query).slice(-1500);
+  const namedIds = new Set(findNamedPrograms(query, programs).map(p => p.id));
   const words = cleaned.split(" ").filter(Boolean);
   const from = "qwertyuiop[]asdfghjkl;'zxcvbnm,.";
   const to =   "йцукенгшщзхїфівапролджєячсмитьбю";
@@ -197,7 +243,8 @@ export function searchGrants(query: string, programs: readonly GrantCatalogEntry
   const pastPurchase = /(?:купив|купила|купили|придбав|придбала|придбали|закупив|закупила|сплатив|сплатила|оплатив|оплатила|оплатили|поніс витрати|понесла витрати)/.test(pastStatements);
   const matches: GrantMatch[] = [];
   for (const p of programs) {
-    if (!isGrantAvailable(p, now) || personalOnly || studyOnly) continue;
+    const direct = namedIds.has(p.id);
+    if (!direct && ((!options.includeUnavailable && !isGrantAvailable(p, now)) || personalOnly || studyOnly)) continue;
     let score = 0,
       reason = "";
     const add = (n: number, text: string) => {
@@ -269,8 +316,8 @@ export function searchGrants(query: string, programs: readonly GrantCatalogEntry
       includesPhrase(p.id) || (p.id === "uvf-reimbursement" && /(?:^| )(?:uvf|увф)(?: |$)/.test(cleaned));
     const explicitWomenTech = p.id === "women-techeu-2-eic" && /(?:^| )(?:women ?techeu|women techeu 2 eic)(?: |$)/.test(cleaned);
     const deepTechNeed = /deep[ -]?tech|діп[ -]?тех|глибок(?:і|их|ими) технолог|trl[ -]?[4-6]/.test(cleaned);
-    if (cleaned && p.id === "women-techeu-2-eic" && !explicitProvider && !explicitWomenTech && !deepTechNeed) continue;
-    if (p.fundingType === "reimbursement" && (futurePurchase || explicitlyNotPurchased) && !pastPurchase) continue;
+    if (!direct && cleaned && p.id === "women-techeu-2-eic" && !explicitProvider && !explicitWomenTech && !deepTechNeed) continue;
+    if (!direct && p.fundingType === "reimbursement" && (futurePurchase || explicitlyNotPurchased) && !pastPurchase) continue;
     if (p.fundingType === "reimbursement" && !intents.includes("veteran") && !explicitProvider) { score=0; reason=""; }
     else if(named||costs||applicants||context) {
       const lexical=Math.min(45,named*16+costs*12+applicants*8+context*5);
@@ -290,6 +337,11 @@ export function searchGrants(query: string, programs: readonly GrantCatalogEntry
     if (!words.length)
       add(1, "Перегляньте, що фінансує програма та кому вона доступна.");
 
+    if (direct) {
+      score = identityScore(query, p);
+      reason = `Знайдено за назвою або ідентифікатором. За описом каталогу: ${p.targetAudience} Це інформація про програму, а не підтвердження відповідності чи відкритого прийому.`;
+    }
+
     if (score > 0)
       matches.push({
         programId: p.id,
@@ -297,8 +349,8 @@ export function searchGrants(query: string, programs: readonly GrantCatalogEntry
         reason,
         score,
         caution:
-          p.intakeStatus === "paused"
-            ? "Зараз прийом призупинено. Можна ознайомитись та підготуватися."
+          grantIntake(p, now).intake !== "open"
+            ? `${grantIntake(p, now).intakeLabel} Вашу відповідність потрібно перевірити окремо.`
             : p.id === "vlasna-sprava" && intents.includes("applicant")
               ? "Вік і відповідність умовам програми потрібно уточнити; студентський статус сам по собі не підтверджує право на грант."
               : "Актуальний прийом і вашу відповідність потрібно підтвердити; це можливий напрям, не схвалення заявки.",
@@ -306,6 +358,9 @@ export function searchGrants(query: string, programs: readonly GrantCatalogEntry
           p.id === "vlasna-sprava" && intents.includes("transport")
             ? "https://diia.gov.ua/news/vlasna-sprava-zbilshyly-hranty-na-start-i-masshtabuvannia-biznesu"
             : p.officialUrl,
+        matchKind: direct ? "direct" : "thematic",
+        ...grantIntake(p, now),
+        ...grantSupport(p.id),
       });
   }
   const questions = intents.includes("veteran") && !pastPurchase && !futurePurchase
@@ -337,6 +392,6 @@ export function searchGrants(query: string, programs: readonly GrantCatalogEntry
         ? "GrantFolio допомагає з грантами для бізнесу; особисте навчання та стипендії не входять до каталогу."
         : matches.length
           ? "Це можливі напрями за змістом запиту. Нижче пояснено підстави й обмеження."
-          : "У перевіреній частині каталогу поки немає підтвердженого збігу. Уточніть потребу або обговоріть її з асистентом; випадкові програми не підставляємо.",
+          : "Не знайшов тематичного збігу в перевірених описах каталогу. Це не доводить відсутність програми: потрібен точніший опис потреби або назва організатора.",
   };
 }

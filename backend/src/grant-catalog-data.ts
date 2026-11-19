@@ -31,6 +31,8 @@ export type GrantCatalogEntry = {
   reviewStatus?: "curated" | "needs-review";
   tags?: string[];
   searchTerms?: string[];
+  /** Curated identity spellings, not generic funding topics. */
+  aliases?: string[];
   availability?: {
     state: "open" | "closed" | "unknown";
     basis?: "calendar" | "announcement" | "rolling";
@@ -61,6 +63,7 @@ export type GrantCatalogEntry = {
 export const GRANT_CATALOG: GrantCatalogEntry[] = [
   {
     id: "vlasna-sprava",
+    aliases: ["Власна справа", "Vlasna sprava"],
     title: "Власна справа: започаткування та масштабування",
     provider: "Дія / Державний центр зайнятості",
     amount: "Старт — до 500 тис. грн; масштабування — до 2,5 млн грн",
@@ -377,6 +380,7 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
   },
   {
     id: "uvf-reimbursement",
+    aliases: ["UVF", "УВФ", "Український ветеранський фонд"],
     title: "Відшкодування витрат ветеранського бізнесу — 20 тисяч",
     provider: "Український ветеранський фонд",
     category: "veteran",
