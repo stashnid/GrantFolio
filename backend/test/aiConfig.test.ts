@@ -5,6 +5,7 @@ import { BASE_ASSISTANT_SYSTEM_PROMPT, buildAssistantSystemPrompt } from "../src
 
 test("aiConfig returns sensible defaults when env variables are unset", (t) => {
   const origChat = process.env.GEMINI_CHAT_MODEL;
+  const origLegacy = process.env.GEMINI_MODEL;
   const origPro = process.env.GEMINI_PRO_MODEL;
   const origUtility = process.env.GEMINI_UTILITY_MODEL;
   const origEmbedding = process.env.GEMINI_EMBEDDING_MODEL;
@@ -12,6 +13,7 @@ test("aiConfig returns sensible defaults when env variables are unset", (t) => {
 
   t.after(() => {
     if (origChat !== undefined) process.env.GEMINI_CHAT_MODEL = origChat; else delete process.env.GEMINI_CHAT_MODEL;
+    if (origLegacy !== undefined) process.env.GEMINI_MODEL = origLegacy; else delete process.env.GEMINI_MODEL;
     if (origPro !== undefined) process.env.GEMINI_PRO_MODEL = origPro; else delete process.env.GEMINI_PRO_MODEL;
     if (origUtility !== undefined) process.env.GEMINI_UTILITY_MODEL = origUtility; else delete process.env.GEMINI_UTILITY_MODEL;
     if (origEmbedding !== undefined) process.env.GEMINI_EMBEDDING_MODEL = origEmbedding; else delete process.env.GEMINI_EMBEDDING_MODEL;
@@ -19,19 +21,20 @@ test("aiConfig returns sensible defaults when env variables are unset", (t) => {
   });
 
   delete process.env.GEMINI_CHAT_MODEL;
+  delete process.env.GEMINI_MODEL;
   delete process.env.GEMINI_PRO_MODEL;
   delete process.env.GEMINI_UTILITY_MODEL;
   delete process.env.GEMINI_EMBEDDING_MODEL;
   delete process.env.AI_ASSISTANT_SYSTEM_PROMPT_OVERRIDE;
 
   const config = getAiConfig();
-  assert.equal(config.chatModel, "gemini-2.5-flash");
-  assert.equal(config.proModel, "gemini-2.5-flash"); // falls back to chatModel
+  assert.equal(config.chatModel, "gemini-3.5-flash-lite");
+  assert.equal(config.proModel, "gemini-3.5-flash-lite"); // falls back to chatModel
   assert.equal(config.utilityModel, "gemini-3.5-flash-lite");
   assert.equal(config.embeddingModel, "text-embedding-004");
   assert.equal(config.systemPromptOverride, undefined);
 
-  assert.equal(resolveModelForRole("chat"), "gemini-2.5-flash");
+  assert.equal(resolveModelForRole("chat"), "gemini-3.5-flash-lite");
   assert.equal(resolveModelForRole("utility"), "gemini-3.5-flash-lite");
   assert.equal(resolveModelForRole("embedding"), "text-embedding-004");
 });

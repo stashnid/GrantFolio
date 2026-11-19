@@ -4,7 +4,8 @@ import { callGeminiGenerate, type GeminiContent, type GeminiFunctionDeclaration 
 import { hybridSearchGrants, type HybridSearchCandidate } from "../matching/hybridSearch.js";
 import { getProgramPlaybook, computeMissingRequiredFields } from "../playbooks/index.js";
 import { GRANT_CATALOG } from "../grant-catalog-data.js";
-import { getAiConfig, isAiConfigured } from "./aiConfig.js";
+import { getAiConfig, isAiConfigured, isMockAllowed } from "./aiConfig.js";
+import { searchOfficialRules } from "../knowledge/searchOfficialRules.js";
 
 export interface PendingProposal {
   id: string;
@@ -127,6 +128,24 @@ const TOOL_DECLARATIONS: GeminiFunctionDeclaration[] = [
       },
     },
   },
+  {
+    name: "search_official_rules",
+    description: "Точний семантичний та повнотекстовий пошук за нормативно-правовими актами України (Порядок КМУ № 738, Положення Brave1, вимоги до TRL та OPSEC). Використовуйте цей інструмент для перевірки точних лімітів, формулювань закону, дозволених статей витрат та критеріїв оцінювання.",
+    parameters: {
+      type: "OBJECT",
+      properties: {
+        program_id: {
+          type: "STRING",
+          description: "Ідентифікатор програми (напр. 'vlasna-sprava', 'veteran-grant', 'brave1', 'ua-brave1-core').",
+        },
+        question: {
+          type: "STRING",
+          description: "Конкретне питання або ключові слова для перевірки в нормативній базі (напр. 'чи можна оренду без працівників', 'ліміти співфінансування', 'OPSEC вимоги').",
+        },
+      },
+      required: ["program_id", "question"],
+    },
+  },
 ];
 
 export async function runAgentOrchestrator(
@@ -142,6 +161,14 @@ export async function runAgentOrchestrator(
 
   // Offline / Unconfigured fallback
   if (!isAiConfigured() && fetchImpl === fetch) {
+    if (!isMockAllowed()) {
+      return {
+        reply_text: "AI-провайдер не налаштований. Вкажіть GEMINI_API_KEY або GEMINI_VERTEX_PROJECT у конфігурації (.env) для отримання живих відповідей консультанта.",
+        attached_grants: [],
+        pending_proposals: [],
+        tool_trace: [],
+      };
+    }
     return runOfflineAgentOrchestrator(options);
   }
 
@@ -210,11 +237,15 @@ export async function runAgentOrchestrator(
         break;
       }
 
-      // Append model's tool calls to contents
-      const modelParts: any[] = [];
-      if (response.text) modelParts.push({ text: response.text });
-      for (const fc of response.functionCalls) {
-        modelParts.push({ functionCall: fc });
+      // Append model's tool calls to contents (preserve rawParts with thoughtSignature if present)
+      const modelParts: any[] = response.rawParts && response.rawParts.length > 0
+        ? response.rawParts
+        : [];
+      if (modelParts.length === 0) {
+        if (response.text) modelParts.push({ text: response.text });
+        for (const fc of response.functionCalls || []) {
+          modelParts.push({ functionCall: fc });
+        }
       }
       contents.push({ role: "model", parts: modelParts });
 
@@ -270,6 +301,22 @@ export async function runAgentOrchestrator(
           const programId = String(args.program_id);
           const playbook = getProgramPlaybook(programId);
           onProgress?.(`Перевіряю умови програми ${playbook?.canonical_name || programId}…`);
+
+          const targetProg = GRANT_CATALOG.find((p) => p.id === programId || (programId === "brave1" && p.id === "ua-brave1-core"));
+          if (targetProg && !attachedGrantsMap.has(targetProg.id)) {
+            attachedGrantsMap.set(targetProg.id, {
+              program_id: targetProg.id,
+              title: targetProg.title,
+              description: targetProg.targetAudience,
+              provider: targetProg.provider,
+              amount: targetProg.amount,
+              intake_status: targetProg.intakeStatus,
+              support_tier: targetProg.id === "vlasna-sprava" || targetProg.id === "veteran-grant" || targetProg.id === "ua-brave1-core" ? "deep" : "catalog_only",
+              match_score: 95,
+              match_explanation: `Програма опрацьовується консультантом за Playbook`,
+              official_url: targetProg.officialUrl,
+            });
+          }
 
           if (playbook) {
             toolOutput = { playbook };
@@ -358,6 +405,50 @@ export async function runAgentOrchestrator(
             args,
             resultSummary: `Заповнено ${missingResult.filled_count}/${missingResult.total_required_count} полів. Залишилось: ${missingResult.missing_fields.map((f) => f.label_uk).join(", ") || "всі заповнені"}`,
           });
+        } else if (toolName === "search_official_rules") {
+          const programId = String(args.program_id || "");
+          const question = String(args.question || "");
+          onProgress?.(`Звіряю офіційні норми для ${programId}…`);
+
+          const targetProg = GRANT_CATALOG.find((p) => p.id === programId || (programId === "brave1" && p.id === "ua-brave1-core"));
+          if (targetProg && !attachedGrantsMap.has(targetProg.id)) {
+            attachedGrantsMap.set(targetProg.id, {
+              program_id: targetProg.id,
+              title: targetProg.title,
+              description: targetProg.targetAudience,
+              provider: targetProg.provider,
+              amount: targetProg.amount,
+              intake_status: targetProg.intakeStatus,
+              support_tier: targetProg.id === "vlasna-sprava" || targetProg.id === "veteran-grant" || targetProg.id === "ua-brave1-core" ? "deep" : "catalog_only",
+              match_score: 95,
+              match_explanation: `Програма опрацьовується консультантом за нормативною базою`,
+              official_url: targetProg.officialUrl,
+            });
+          }
+
+          const officialResults = await searchOfficialRules({
+            program_id: programId,
+            question,
+            limit: 5,
+          });
+
+          toolOutput = {
+            matches_count: officialResults.length,
+            rules: officialResults.map((r) => ({
+              doc_id: r.doc_id,
+              section_title: r.section_title,
+              snippet: r.snippet,
+              source_url: r.source_url,
+              verified_at: r.verified_at,
+            })),
+          };
+
+          toolTrace.push({
+            step: loopStep,
+            tool: toolName,
+            args,
+            resultSummary: `Знайдено ${officialResults.length} розділів нормативної бази (${officialResults.map((r) => r.section_title).slice(0, 2).join(", ") || "не знайдено"})`,
+          });
         } else {
           toolOutput = { error: "unknown_tool" };
         }
@@ -372,8 +463,17 @@ export async function runAgentOrchestrator(
 
       contents.push({ role: "user", parts: userResponseParts });
     }
-  } catch (_networkError) {
-    // Graceful offline fallback if live network is unreachable
+  } catch (err: any) {
+    if (!isMockAllowed()) {
+      console.error("[AI] Live agent orchestration failed in dev/prod mode without mock permission:", err);
+      return {
+        reply_text: `Виникла помилка під час звернення до AI-моделі: ${err?.message || "невідома помилка"}. Будь ласка, перевірте налаштування GEMINI_API_KEY та стан мережі.`,
+        attached_grants: [],
+        pending_proposals: [],
+        tool_trace: [],
+      };
+    }
+    // Graceful offline fallback if live network is unreachable in test or mock mode
     return runOfflineAgentOrchestrator(options);
   }
 
@@ -401,11 +501,26 @@ async function runOfflineAgentOrchestrator(
   options: AgentOrchestratorOptions
 ): Promise<AgentOrchestratorResult> {
   const { userMessage, fetchImpl } = options;
-  const msg = userMessage.toLowerCase();
+  const msg = userMessage.toLowerCase().trim();
 
-  const isAirDefense = /ппо|приватне ппо|антидрон|дрони?|бпла|реб|мілтех|miltech|defense/i.test(msg);
-  const keywords = isAirDefense
-    ? ["defense tech", "miltech", "РЕБ", "ППО", "антидрон", "БПЛА"]
+  const isGreeting = /^(привіт|добрий день|доброго дня|вітаю|hello|hi|хай|хто ти|що ти вмієш)[\s!\.,?]*$/i.test(msg);
+  if (isGreeting) {
+    return {
+      reply_text:
+        "Вітаю! Я — AI-консультант із грантів для бізнесу та оборонних технологій сервісу GrantFolio. " +
+        "Допомагаю підібрати актуальні програми в Україні («Власна справа», ветеранські гранти, гранти на переробку, оборонний кластер Brave1), " +
+        "прорахувати детерміновану фінансову модель у копійках і підготувати повний пакет документів без помилок. " +
+        "Розкажіть коротко про вашу ідею, діючий бізнес чи розробку — і ми розберемо, які програми вам підходять та які там ключові вимоги.",
+      attached_grants: [],
+      pending_proposals: [],
+      tool_trace: [],
+    };
+  }
+
+  const isDroneWorkshop = /майстерн.*дрон|дрон.*майстерн|ремонт.*дрон|збірк.*дрон/i.test(msg);
+  const isAirDefense = /ппо|приватне ппо|антидрон|реб|мілтех|miltech|defense/i.test(msg) || (/дрони?|бпла/i.test(msg) && !isDroneWorkshop);
+  const keywords = isAirDefense || isDroneWorkshop
+    ? ["defense tech", "miltech", "РЕБ", "ППО", "антидрон", "БПЛА", "дрон"]
     : msg.split(/\s+/).slice(0, 5);
 
   const results = await hybridSearchGrants({
@@ -423,7 +538,15 @@ async function runOfflineAgentOrchestrator(
   const isBrave1Docs = /brave1/i.test(msg) && (/документ|подач|чекліст|brief|проєкт/i.test(msg));
 
   let reply_text: string;
-  if (isBakery250kNoStaff) {
+  if (isDroneWorkshop) {
+    reply_text =
+      "Для відкриття майстерні дронів є два принципово різні шляхи фінансування в Україні, залежно від типу діяльності:\n\n" +
+      "1. Ремонт, обслуговування або збірка дронів як комерційна послуга (цивільний бізнес):\n" +
+      "Якщо це сервісний центр, ремонтна майстерня чи контрактна збірка готових дронів для клієнтів — це цивільний бізнес. Оптимальна програма — «Власна справа» (єРобота). Можна отримати до 250 000 грн на паяльні станції, осцилографи, 3D-принтери, оренду та компоненти за умови створення 1–2 офіційних робочих місць на 36 місяців (або до 500 тис. чи 1 млн грн за Ветеранським грантом, якщо у вас або подружжя є статус УБД).\n\n" +
+      "2. Власна інженерна R&D-розробка нових моделей БПЛА, систем РЕБ чи прошивок для оборонних потреб:\n" +
+      "Якщо ви створюєте власну унікальну конструкцію, польотний контролер чи систему протидії радіоелектронній боротьбі (TRL 3+) — це оборонний сектор. У такому разі слід подаватися до оборонного кластера Brave1 (гранти від $12 500 до $50 000 і більше на R&D, стендові та полігонні випробування).\n\n" +
+      "Уточніть, будь ласка: ви плануєте відкривати сервісно-ремонтну майстерню як комерційний бізнес чи ведете власну конструкторську розробку під військові потреби?";
+  } else if (isBakery250kNoStaff) {
     reply_text =
       "Тут є два критичні моменти, які потрібно одразу розділити, щоб не отримати автоматичну відмову. " +
       "По-перше, Дія.Бізнес — це інформаційний портал для підприємців (консультації та шаблони), а сама заявка подається на порталі «Дія» за програмою «Власна справа» (єРобота). " +
@@ -439,9 +562,9 @@ async function runOfflineAgentOrchestrator(
       "Пам'ятайте про правила OPSEC: категорично заборонено вказувати точні радіочастоти, координати виробництва та номери військових частин.";
   } else if (isAirDefense) {
     reply_text =
-      "Для розробки систем виявлення або протидії повітряним загрозам («приватне ППО», антидрон, РЕБ) в Україні профільним інструментом є кластер Brave1 (програма `ua-brave1-core`). " +
-      "Зверніть увагу на регуляторний аспект: приватне володіння зброєю або самостійне ураження повітряних цілей суворо обмежено законодавством; такі системи розробляються як dual-use або оборонні технології та проходять обов'язкову експертизу Генштабу ЗСУ і полігонні випробування. " +
-      "Який рівень готовності має ваша розробка: це концепт (TRL 3), робочий прототип (TRL 5–6) чи готовий виріб?";
+      "Для розробки систем виявлення або протидії повітряним загрозам («приватне ППО», антидрон, РЕБ) в Україні профільним інструментом є оборонний кластер Brave1. " +
+      "Зверніть увагу на регуляторний аспект: приватне володіння зброєю або самостійне ураження повітряних цілей суворо обмежено законодавством; такі системи розробляються як dual-use або оборонні технології та проходять обов'язкову експертизу Генерального штабу ЗСУ і полігонні випробування. " +
+      "Який рівень готовності має ваша розробка: це концепт (TRL 3), робочий лабораторний зразок (TRL 4–5) чи виріб для польових тестів?";
   } else if (isVeteran) {
     reply_text =
       "Для ветеранів та членів їхніх сімей діє спеціалізована програма «Грант для ветеранів та членів їхніх сімей» (пороги фінансування: 250 тис. грн — 1 робоче місце, 500 тис. грн — 2 робочих місця зі співфінансуванням 70/30, до 1 млн грн — 4 робочих місця для ветерана ФОП від 3 років). " +

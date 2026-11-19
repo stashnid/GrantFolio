@@ -1,6 +1,7 @@
 import pg from "pg";
 import { readdir, readFile } from "node:fs/promises";
 import { syncPlaybooksToDatabase } from "./playbooks/syncPlaybooks.js";
+import { syncOfficialDocs } from "./knowledge/indexOfficialDocs.js";
 
 if (!process.env.DATABASE_URL) throw new Error("DATABASE_URL required");
 const db = new pg.Client({ connectionString: process.env.DATABASE_URL });
@@ -33,6 +34,8 @@ try {
   try {
     const syncRes = await syncPlaybooksToDatabase(pool);
     console.log(`Synced ${syncRes.synced} playbooks (${syncRes.catalogTotal} catalog programs)`);
+    const docsRes = await syncOfficialDocs(pool);
+    console.log(`Synced ${docsRes.indexedChunks} official doc chunks to database`);
   } finally {
     await pool.end();
   }

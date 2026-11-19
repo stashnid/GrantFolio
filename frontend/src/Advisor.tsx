@@ -1191,9 +1191,11 @@ export function Advisor({
                       <AiEmblem />
                       <strong className="author-name">GrantFolio Асистент</strong>
                       <span className="revision-badge">
-                        {m.mode === "guided"
-                          ? m.fallbackReason ? "Довідка за каталогом · ідею ШІ не додано" : m.hasPreparationIdea ? "Довідка за каталогом та ідея ШІ" : "Довідка за каталогом"
-                          : "Раніше збережена відповідь ШІ"}
+                        {m.mode === "ai_orchestrator"
+                          ? "AI-консультант GrantFolio"
+                          : m.mode === "guided"
+                            ? m.fallbackReason ? "Довідка за каталогом · ідею ШІ не додано" : m.hasPreparationIdea ? "Довідка за каталогом та ідея ШІ" : "Довідка за каталогом"
+                            : "Раніше збережена відповідь ШІ"}
                       </span>
                     </div>
                     <div className="bubble-text assistant-text">
@@ -1329,6 +1331,7 @@ export function Advisor({
                         </button>
                       </div>}
                     {revealingId !== m.id && !selectedProgram && preparablePilot &&
+                      m.mode !== "ai_orchestrator" &&
                       !m.search.matches.some(match => match.programId === preparablePilot.id) &&
                       m.search.intents.includes("business") &&
                       !m.search.intents.includes("study") && (
@@ -1341,7 +1344,7 @@ export function Advisor({
                           </div>
                         </aside>
                       )}
-                    {revealingId !== m.id && (
+                    {revealingId !== m.id && m.mode !== "ai_orchestrator" && (
                       <div className="advisor-followups">
                         {m.search.questions.slice(0, 2).map((q) => (
                           <button type="button" key={q} onClick={() => fill(q)}>

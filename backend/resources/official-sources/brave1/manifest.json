@@ -1,0 +1,23 @@
+{
+  "program_id": "ua-brave1-core",
+  "documents": [
+    {
+      "doc_id": "brave1-official-guide-rd",
+      "title": "Керівництво грантової програми оборонного кластера Brave1 (R&D напрям)",
+      "doc_type": "official_guide",
+      "source_url": "https://grants.brave1.tech",
+      "verified_at": "2026-11-19T00:00:00.000Z",
+      "local_file": "brave1-rules.md",
+      "is_verified_official": true
+    },
+    {
+      "doc_id": "brave1-bom-template-xlsx",
+      "title": "Офіційна форма BOM-кошторису та плану етапів розробки Brave1",
+      "doc_type": "template",
+      "source_url": "https://brave1.ukraine/guidelines/bom",
+      "verified_at": "2026-11-19T00:00:00.000Z",
+      "local_file": "brave1-bom-template.xlsx",
+      "is_verified_official": true
+    }
+  ]
+}

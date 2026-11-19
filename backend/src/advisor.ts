@@ -617,12 +617,23 @@ export function advisorRouter(
               : [nextQuestion(query, search.intents, search.matches.length > 0)];
         }
         const payload = {
-          mode: "guided",
+          mode: sseMode ? "ai_orchestrator" : "guided",
           hasPreparationIdea: Boolean(idea),
           fallbackReason,
           dialogueIntent: dialogue.intent,
           selectedProgramId,
-          search,
+          search: sseMode
+            ? {
+                ...search,
+                questions: [],
+                matches: attached_grants.map((g: any) => ({
+                  programId: g.program_id,
+                  title: g.title,
+                  reason: g.match_explanation || g.target_audience || "",
+                  caution: g.caution,
+                })),
+              }
+            : search,
           seed: query.slice(-2000),
           extractedFacts: extractedFacts.length ? extractedFacts : undefined,
           attached_grants: attached_grants.length ? attached_grants : undefined,

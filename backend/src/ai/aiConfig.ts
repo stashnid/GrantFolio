@@ -6,6 +6,8 @@ export interface AiConfig {
   utilityModel: string;
   embeddingModel: string;
   systemPromptOverride?: string;
+  provider: "api_key" | "vertex" | "disabled";
+  mockAllowed: boolean;
 }
 
 export type AiModelRole = "chat" | "pro" | "utility" | "embedding";
@@ -16,7 +18,7 @@ export function getAiConfig(): AiConfig {
   const apiKey = process.env.GEMINI_API_KEY?.trim() || undefined;
   const vertexProject = process.env.GEMINI_VERTEX_PROJECT?.trim() || undefined;
 
-  const rawChatModel = process.env.GEMINI_CHAT_MODEL?.trim();
+  const rawChatModel = process.env.GEMINI_CHAT_MODEL?.trim() || process.env.GEMINI_MODEL?.trim();
   const rawProModel = process.env.GEMINI_PRO_MODEL?.trim();
   const rawUtilityModel = process.env.GEMINI_UTILITY_MODEL?.trim() || process.env.GEMINI_MODEL?.trim();
   const rawEmbeddingModel = process.env.GEMINI_EMBEDDING_MODEL?.trim();
@@ -24,7 +26,7 @@ export function getAiConfig(): AiConfig {
 
   const chatModel = rawChatModel && VALID_MODEL_NAME_REGEX.test(rawChatModel)
     ? rawChatModel
-    : "gemini-2.5-flash";
+    : "gemini-3.5-flash-lite";
 
   const proModel = rawProModel && VALID_MODEL_NAME_REGEX.test(rawProModel)
     ? rawProModel
@@ -38,6 +40,15 @@ export function getAiConfig(): AiConfig {
     ? rawEmbeddingModel
     : "text-embedding-004";
 
+  let provider: "api_key" | "vertex" | "disabled" = "disabled";
+  if (vertexProject && /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(vertexProject)) {
+    provider = "vertex";
+  } else if (apiKey) {
+    provider = "api_key";
+  }
+
+  const mockAllowed = process.env.NODE_ENV === "test" || process.env.ALLOW_AI_MOCK === "true";
+
   return {
     apiKey,
     vertexProject,
@@ -46,16 +57,18 @@ export function getAiConfig(): AiConfig {
     utilityModel,
     embeddingModel,
     systemPromptOverride,
+    provider,
+    mockAllowed,
   };
 }
 
 export function isAiConfigured(): boolean {
   const config = getAiConfig();
-  if (config.apiKey) return true;
-  if (config.vertexProject && /^[a-z][a-z0-9-]{4,28}[a-z0-9]$/.test(config.vertexProject)) {
-    return true;
-  }
-  return false;
+  return config.provider !== "disabled";
+}
+
+export function isMockAllowed(): boolean {
+  return process.env.NODE_ENV === "test" || process.env.ALLOW_AI_MOCK === "true";
 }
 
 export function resolveModelForRole(role: AiModelRole): string {

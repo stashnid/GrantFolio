@@ -2,6 +2,8 @@ import { createFundingMonitor } from "./funding-monitor.js";
 import {createGrantSync} from "./grant-sync.js";
 import {GRANT_CATALOG} from "./grant-catalog-data.js";
 import { syncPlaybooksToDatabase } from "./playbooks/syncPlaybooks.js";
+import { syncOfficialDocs } from "./knowledge/indexOfficialDocs.js";
+import { getAiConfig, isMockAllowed } from "./ai/aiConfig.js";
 import { initializeApp } from "firebase-admin/app";
 import pg from "pg";
 import express from "express";
@@ -12,6 +14,10 @@ initializeApp({ projectId: config.projectId });
 const db = new pg.Pool({ connectionString: config.databaseUrl, max: 5 });
 const grantSync = createGrantSync(db);
 const fundingMonitor = createFundingMonitor(db);
+
+const ai = getAiConfig();
+console.log(`[AI] Provider: ${ai.provider} | Models: CHAT=${ai.chatModel}, PRO=${ai.proModel}, UTILITY=${ai.utilityModel}, EMBEDDING=${ai.embeddingModel} | Mock mode: ${isMockAllowed()}`);
+
 try {
   for (const program of GRANT_CATALOG.filter(p=>p.availability)) {
     const a=program.availability!;
@@ -27,6 +33,9 @@ try {
 try {
   await syncPlaybooksToDatabase(db);
 } catch { console.warn("Playbooks sync unavailable; apply database migrations."); }
+try {
+  await syncOfficialDocs(db);
+} catch { console.warn("Official sources sync unavailable; apply database migrations."); }
 const app = createApp(
   db,
   async () => {

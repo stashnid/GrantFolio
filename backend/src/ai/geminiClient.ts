@@ -10,9 +10,11 @@ export interface GeminiFunctionDeclaration {
 export interface GeminiPart {
   text?: string;
   thought?: boolean;
+  thoughtSignature?: string;
   functionCall?: {
     name: string;
     args: Record<string, unknown>;
+    id?: string;
   };
   functionResponse?: {
     name: string;
@@ -43,6 +45,7 @@ export interface GeminiGenerateResponse {
     args: Record<string, unknown>;
   }[];
   rawCandidate?: unknown;
+  rawParts?: GeminiPart[];
 }
 
 export async function callGeminiGenerate(
@@ -104,22 +107,11 @@ export async function callGeminiGenerate(
     headers.set("x-goog-api-key", apiKey!);
   }
 
-  let res = await fetchImpl(url, {
-    method: "POST",
-    headers: Object.fromEntries(headers),
-    body: JSON.stringify(payload),
-    signal: request.signal,
-    redirect: "error",
-  });
+  let res: Response | null = null;
+  let attempts = 0;
 
-  if (!res.ok && res.status === 400 && generationConfig.thinkingConfig) {
-    // Safe fallback: retry without thinkingConfig if the endpoint or model version does not support thinking
-    const fallbackGenConfig = { ...generationConfig };
-    delete fallbackGenConfig.thinkingConfig;
-    payload = {
-      ...payload,
-      generationConfig: fallbackGenConfig,
-    };
+  while (attempts < 4) {
+    attempts++;
     res = await fetchImpl(url, {
       method: "POST",
       headers: Object.fromEntries(headers),
@@ -127,11 +119,33 @@ export async function callGeminiGenerate(
       signal: request.signal,
       redirect: "error",
     });
+
+    if (res.status === 400 && generationConfig.thinkingConfig) {
+      // Safe fallback: retry without thinkingConfig if the endpoint or model version does not support thinking
+      const fallbackGenConfig = { ...generationConfig };
+      delete fallbackGenConfig.thinkingConfig;
+      payload = {
+        ...payload,
+        generationConfig: fallbackGenConfig,
+      };
+      continue;
+    }
+
+    if ((res.status === 503 || res.status === 429) && attempts < 4) {
+      console.warn(`[AI] Upstream HTTP ${res.status} on model ${model}, retrying attempt ${attempts + 1}...`);
+      await new Promise((resolve) => setTimeout(resolve, 1500 * attempts));
+      continue;
+    }
+
+    break;
   }
 
-  if (!res.ok) {
-    const text = await res.text().catch(() => "");
-    throw new Error(`Gemini upstream error HTTP ${res.status}: ${text.slice(0, 500)}`);
+  if (!res || !res.ok) {
+    const status = res ? res.status : "unknown";
+    const text = res ? await res.text().catch(() => "") : "No response";
+    const errorDetails = `Gemini upstream error HTTP ${status} [model: ${model}, url: ${url}]: ${text.slice(0, 1000)}`;
+    console.error(`[AI] ${errorDetails}`);
+    throw new Error(errorDetails);
   }
 
   const data = (await res.json()) as {
@@ -168,6 +182,7 @@ export async function callGeminiGenerate(
     text: textParts.trim() || undefined,
     functionCalls: functionCalls.length > 0 ? functionCalls : undefined,
     rawCandidate: candidate,
+    rawParts: parts,
   };
 }
 

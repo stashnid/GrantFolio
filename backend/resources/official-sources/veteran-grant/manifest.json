@@ -1,0 +1,23 @@
+{
+  "program_id": "veteran-grant",
+  "documents": [
+    {
+      "doc_id": "kmu-738-veteran-grant-regulation",
+      "title": "Порядок надання грантів на створення або розвиток власного бізнесу учасникам бойових дій, особам з інвалідністю внаслідок війни та членам їхніх сімей (Постанова КМУ № 738 зі змінами)",
+      "doc_type": "regulation",
+      "source_url": "https://zakon.rada.gov.ua/laws/show/738-2022-%D0%BF#n113",
+      "verified_at": "2026-11-19T00:00:00.000Z",
+      "local_file": "veteran-grant-rules.md",
+      "is_verified_official": true
+    },
+    {
+      "doc_id": "diia-veteran-plan-template",
+      "title": "Офіційний шаблон бізнес-плану для ветеранських грантів (портал Дія)",
+      "doc_type": "template",
+      "source_url": "https://diia.gov.ua/services/grant-dlya-veteraniv-ta-chleniv-yihnih-simej",
+      "verified_at": "2026-11-19T00:00:00.000Z",
+      "local_file": "veteran-grant-official-template.xlsx",
+      "is_verified_official": true
+    }
+  ]
+}
