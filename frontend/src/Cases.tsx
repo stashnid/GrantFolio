@@ -375,14 +375,24 @@ export function Cases({
     }
   }
   const handledPreparation = useRef("");
+  const preparationVersion = `${selectedProgram?.id ?? ""}:${preparationId}:${programTarget?.id ?? ""}`;
+  const latestPreparation = useRef(preparationVersion);
+  latestPreparation.current = preparationVersion;
+  const formEpoch = useRef(0);
+  const createInFlight = useRef(false);
   useEffect(() => {
     if (!selectedProgram) { handledPreparation.current = ""; return; }
-    if (programTarget || !ready || busy) return;
+    if (programTarget) { setShowCreate(false); return; }
+    if (!ready || busy) return;
     const key = preparationId || `catalog:${selectedProgram.id}`;
     if (handledPreparation.current === key) return;
     handledPreparation.current = key;
+    const epoch = formEpoch.current;
+    const version = preparationVersion;
     void (async () => {
-      if (!(await mayLeaveDraft()) || !mountedRef.current) { onClearProgram?.(); return; }
+      const mayLeave = await mayLeaveDraft();
+      if (!mountedRef.current || latestPreparation.current !== version || formEpoch.current !== epoch) return;
+      if (!mayLeave) { onClearProgram?.(); return; }
       setTitle("");
       setInitialNeed(preparationSeed.slice(0, 2000));
       setError("");
@@ -392,7 +402,8 @@ export function Cases({
   }, [selectedProgram, programTarget, preparationId, preparationSeed, ready, busy]);
 
   async function openNewProject() {
-    if (!(await mayLeaveDraft())) return;
+    const epoch = ++formEpoch.current;
+    if (!(await mayLeaveDraft()) || !mountedRef.current || formEpoch.current !== epoch) return;
     onClearProgram?.();
     setTitle("");
     setInitialNeed("");
@@ -403,6 +414,12 @@ export function Cases({
 
   async function create(e?: React.FormEvent) {
     e?.preventDefault();
+    if (createInFlight.current) return;
+    createInFlight.current = true;
+    try { await createProject(); } finally { createInFlight.current = false; }
+  }
+
+  async function createProject() {
     if (programTarget || busy || !ready || !(await mayLeaveDraft())) return;
     const targetId = selectedProgram?.id ?? "vlasna-sprava";
     const target = targetId ? GRANT_PROGRAMS.find(p => p.id === targetId) : null;
@@ -918,7 +935,7 @@ export function Cases({
             className="secondary-btn cases-new-btn"
             disabled={!ready || !!programTarget}
             onClick={() => {
-              if (showCreate) { setShowCreate(false); onClearProgram?.(); }
+              if (showCreate) { formEpoch.current++; setShowCreate(false); onClearProgram?.(); }
               else void openNewProject();
             }}
             aria-expanded={showCreate}
@@ -986,7 +1003,7 @@ export function Cases({
       )}
       <div id="create-case-panel" hidden={!showCreate} className="create-case-disclosure">
         <h3>Новий проєкт</h3>
-        <p>{selectedProgram ? `Готуємо новий проєкт для програми «${selectedProgram.title}». Введіть власну назву. Після оплати відкриється «Готовність та експорт».` : "Назвіть проєкт і, за бажанням, опишіть потребу. Відкриється актуальна анкета «Власна справа» у вкладці «Готовність та експорт»."}</p>
+        <p>{selectedProgram ? `Готуємо новий проєкт для програми «${selectedProgram.title}». Введіть власну назву. Після оплати відкриється «Готовність та експорт».` : "Назвіть проєкт і, за бажанням, опишіть потребу. Відкриється робоча анкета «Власна справа» у вкладці «Готовність та експорт»."}</p>
       <p>Доступ до роботи над проєктом коштує 5 грн одноразово. Після створення ви перейдете до оплати.</p>
       <form onSubmit={create} className="create-case-form">
         <label>
