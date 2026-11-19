@@ -20,6 +20,7 @@ import "./workspace.css";
 import type { GrantProgram } from "./grants";
 import { emptyProfile as empty, normalizeProfile, type Profile } from "./profile";
 import type { FeedbackTask } from "./FeedbackModal";
+import { PublicLanding } from "./PublicLanding";
 const FeedbackModal = lazy(() => import("./FeedbackModal").then(module => ({ default: module.FeedbackModal })));
 const FeedbackAdminDrawer = lazy(() => import("./FeedbackAdminDrawer").then(module => ({ default: module.FeedbackAdminDrawer })));
 const Advisor = lazy(() => import("./Advisor").then(module => ({ default: module.Advisor })));
@@ -511,130 +512,30 @@ export function App() {
             </div>
           </div>
         )}
-        {!user && <section className="intro">
-          <div className="eyebrow">
-            <span className="small-dot" /> GrantFolio для бізнесу
-          </div>
-          <h1>Від бізнес-ідеї<br />до грантової заявки<span className="heading-period">.</span></h1>
-          <p className="intro-lead">Знайдіть фінансування для своєї справи. Зберіть опис, бюджет і робочу чернетку в одному просторі.</p>
-          <ol className="intro-route" aria-label="Як працює GrantFolio">
-            <li><span>01</span><div><strong>Знайдіть свою можливість</strong><p>Обговоріть потребу з асистентом або відкрийте каталог.</p></div></li>
-            <li><span>02</span><div><strong>Підготуйте проєкт</strong><p>Працюйте над описом і бюджетом у власному темпі.</p></div></li>
-            <li><span>03</span><div><strong>Збережіть результат</strong><p>Експортуйте робочу чернетку для подальшої підготовки заявки.</p></div></li>
-          </ol>
-          <a className="intro-action" href="#account" onClick={(event) => { event.preventDefault(); setRegister(true); setError(""); emailInput.current?.focus(); emailInput.current?.scrollIntoView({ block: "center" }); }}>
-            Почати роботу <span aria-hidden="true">→</span>
-          </a>
-          <p className="intro-prototype">Прототип · Подання заявки відбувається в офіційному сервісі програми.</p>
-        </section>}
-        <section className="panel" id="account">
-          <Suspense fallback={<p className="workspace-loading" role="status">Завантажуємо кабінет…</p>}>
-          {loading ? (
-            <p>Завантаження…</p>
-          ) : !user ? (
-            <div className="card auth-card">
-              <div className="card-top">
-                <span>ВАШ ОСОБИСТИЙ ПРОСТІР</span>
-              </div>
-              <h2>{register ? "Створіть акаунт" : "Вхід до кабінету"}</h2>
-              <p>
-                {register
-                  ? "Створіть акаунт, щоб зберігати профіль бізнесу та плани."
-                  : "Увійдіть, щоб працювати з профілем бізнесу та планами."}
-              </p>
-              <form onSubmit={login}>
-                <label htmlFor="auth-email">
-                  Електронна пошта
-                  <input
-                    id="auth-email"
-                    ref={emailInput}
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    aria-invalid={!!error}
-                    aria-describedby={error ? "auth-error" : undefined}
-                  />
-                </label>
-                <label htmlFor="auth-password">
-                  Пароль
-                  <input
-                    id="auth-password"
-                    type="password"
-                    autoComplete={
-                      register ? "new-password" : "current-password"
-                    }
-                    required
-                    minLength={6}
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Не менше 6 символів"
-                    aria-invalid={!!error}
-                    aria-describedby={error ? "auth-error" : undefined}
-                  />
-                </label>
-                {error && (
-                  <p id="auth-error" className="error" role="alert">
-                    {error}
-                  </p>
-                )}
-                {message && <p className="success" role="status">{message}</p>}
-                <button type="submit" className="primary" disabled={busy}>
-                  <span>
-                    {busy
-                      ? "Зачекайте…"
-                      : register
-                        ? "Створити акаунт"
-                        : "Увійти"}
-                  </span>
-                  <span className="primary-cta-arrow" aria-hidden="true">→</span>
-                </button>
-                <button type="button" className="google-auth-button" disabled={busy} onClick={() => void loginWithGoogle()}>
-                  <svg className="google-auth-button__icon" viewBox="0 0 48 48" aria-hidden="true">
-                    <path fill="#4285F4" d="M43.6 24.5c0-1.5-.1-3-.4-4.5H24v8.5h11a9.5 9.5 0 0 1-4.1 6.2v5.1h6.7c3.9-3.6 6-8.9 6-15.3Z" />
-                    <path fill="#34A853" d="M24 44c5.5 0 10.1-1.8 13.5-4.9l-6.7-5.1c-1.8 1.2-4 1.9-6.8 1.9-5.2 0-9.6-3.5-11.2-8.2H5.9v5.3A20 20 0 0 0 24 44Z" />
-                    <path fill="#FBBC05" d="M12.8 27.7a12 12 0 0 1 0-7.4V15H5.9a20 20 0 0 0 0 18l6.9-5.3Z" />
-                    <path fill="#EA4335" d="M24 12.1c3 0 5.7 1 7.8 3.1l5.9-5.9A19.7 19.7 0 0 0 24 4 20 20 0 0 0 5.9 15l6.9 5.3c1.6-4.7 6-8.2 11.2-8.2Z" />
-                  </svg>
-                  <span>Продовжити через Google</span>
-                </button>
-                {inAppBrowser && (
-                  <div className="auth-inapp-notice" role="note">
-                    <p>
-                      💡 <strong>Ви відкрили сайт у вбудованому браузері</strong> (наприклад, Telegram чи Instagram). Google обмежує вхід у таких вікнах. Натисніть <strong>⋯</strong> та виберіть <strong>«Відкрити в Safari»</strong> чи <strong>«Відкрити в Chrome»</strong>, або скористайтеся входом за поштою нижче.
-                    </p>
-                  </div>
-                )}
-                {!register && <button type="button" className="link" disabled={busy} onClick={() => void resetPassword()}>Забули пароль?</button>}
-              </form>
-              <div className="switch">
-                {register ? "Вже маєте акаунт?" : "Немає акаунта?"}{" "}
-                <button
-                  type="button"
-                  className="link"
-                  onClick={() => {
-                    setRegister(!register);
-                    setError("");
-                    setMessage("");
-                  }}
-                >
-                  {register ? "Увійти" : "Зареєструватися"}
-                </button>
-              </div>
-              <p className="auth-support-note">
-                Виникли складнощі зі входом?{" "}
-                <a
-                  href="mailto:grantfoliomanager@gmail.com?subject=GrantFolio%20%D0%9F%D0%BE%D0%BC%D0%B8%D0%BB%D0%BA%D0%B0%20%D0%B2%D1%85%D0%BE%D0%B4%D1%83"
-                  className="link"
-                >
-                  Повідомити команду ↗
-                </a>
-              </p>
-            </div>
-          ) : (
-            <>
+        {!user ? (
+          <PublicLanding
+            email={email}
+            setEmail={setEmail}
+            password={password}
+            setPassword={setPassword}
+            register={register}
+            setRegister={setRegister}
+            busy={busy}
+            error={error}
+            message={message}
+            inAppBrowser={inAppBrowser}
+            emailInputRef={emailInput}
+            onSubmit={login}
+            onGoogleLogin={() => void loginWithGoogle()}
+            onResetPassword={() => void resetPassword()}
+            onClearFeedback={() => {
+              setError("");
+              setMessage("");
+            }}
+          />
+        ) : (
+          <section className="panel" id="account">
+            <Suspense fallback={<p className="workspace-loading" role="status">Завантажуємо кабінет…</p>}>
             <div hidden={tab !== "advisor"}>
               <Advisor key={user.uid} user={user} onDirty={setAdvisorDirty} prefilledMessage={advisorPrompt} prefillConversationId={advisorPromptId} onClearPrefilled={() => {setAdvisorPrompt("");setAdvisorPromptId("");}} onView={p => { openTab("catalog"); window.location.hash=`grants/${p.id}`; }} onPrepare={(p,seed) => {setSelectedProgram(p);setPreparationSeed(seed);setPreparationId(crypto.randomUUID());openTab("cases");}} onOpenProfile={() => openTab("profile")} onOpenFeedback={(ctx) => openFeedback("assistant", { screen: "advisor", programId: ctx?.programId ?? null })} />
             </div>
@@ -702,10 +603,9 @@ export function App() {
               />
               {profileReady && !profileDirty && savedProfile.businessName && <button type="button" className="link" onClick={() => openTab("catalog")}>Перейти до каталогу грантів →</button>}
             </div>
-            </>
-          )}
-          </Suspense>
-        </section>
+            </Suspense>
+          </section>
+        )}
       </main>
       <footer className={user ? "app-footer" : undefined}>
         <span>© GrantFolio</span>
