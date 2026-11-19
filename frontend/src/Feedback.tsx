@@ -4,27 +4,27 @@ import { ApiError, authenticatedRequest, readableApiError } from "./api";
 import { CustomSelect } from "./CustomSelect";
 
 const TASKS = [
-  { value: "profile", label: "Профіль бізнесу" },
-  { value: "project", label: "Чернетка проєкту" },
-  { value: "budget", label: "Бюджет" },
-  { value: "assistant", label: "ШІ-асистент" },
-  { value: "catalog", label: "Каталог грантів" },
-  { value: "export", label: "Експорт / Плани" },
+  { value: "project", label: "Весь сайт загалом" },
+  { value: "catalog", label: "Пошук грантів" },
+  { value: "assistant", label: "Поради помічника" },
+  { value: "budget", label: "Розрахунок витрат" },
+  { value: "profile", label: "Дані про бізнес" },
+  { value: "export", label: "Завантаження документів" },
 ] as const;
 
 const RATINGS = [
-  { value: 1, label: "1 — Жахливо" },
-  { value: 2, label: "2 — Погано" },
-  { value: 3, label: "3 — Задовільно" },
-  { value: 4, label: "4 — Добре" },
-  { value: 5, label: "5 — Відмінно" },
+  { value: 1, label: "1 — Потрібно значно доопрацювати" },
+  { value: 2, label: "2 — Складно розібратися" },
+  { value: 3, label: "3 — Нормально, є що покращити" },
+  { value: 4, label: "4 — Добре, майже все зрозуміло" },
+  { value: 5, label: "5 — Відмінно, дуже допомогло" },
 ] as const;
 
 export function Feedback({ user }: { user: User }) {
   const [feedbackId, setFeedbackId] = useState(() => crypto.randomUUID());
   const [rating, setRating] = useState<number>(0);
   const [hoveredRating, setHoveredRating] = useState<number>(0);
-  const [task, setTask] = useState<string>("profile");
+  const [task, setTask] = useState<string>("project");
   const [comment, setComment] = useState("");
   const [lastSubmittedContent, setLastSubmittedContent] = useState<string>("");
   const [busy, setBusy] = useState(false);
@@ -172,7 +172,7 @@ export function Feedback({ user }: { user: User }) {
             rows={4}
             value={comment}
             onChange={(e) => handleContentChange(rating, task, e.target.value)}
-            placeholder="Поділіться враженнями, складнощами або пропозиціями…"
+            placeholder="Напишіть своїми словами: чи все було зрозуміло, що викликало труднощі, та що варто змінити чи додати на сайті…"
             disabled={busy}
             aria-invalid={!!error}
             aria-describedby={error ? "feedback-error" : undefined}

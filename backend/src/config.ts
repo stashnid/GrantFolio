@@ -1,3 +1,17 @@
+import { monobankAcquiring } from "./monobank-acquiring.js";
+import type { PaymentConfig } from "./grant-preparation-pilot.js";
+
+export function configuredPayment(): PaymentConfig | undefined {
+  const token = process.env.MONOBANK_ACQUIRING_TOKEN?.trim();
+  const base = process.env.PUBLIC_BASE_URL?.trim();
+  if (!token || !base) return undefined;
+  try {
+    const url = new URL(base);
+    if (url.protocol !== "https:" || url.username || url.password || url.pathname !== "/" || url.search || url.hash) return undefined;
+    return { client: monobankAcquiring(token), baseUrl: url.origin };
+  } catch { return undefined; }
+}
+
 export function configuration() {
   const emulator = process.env.FIREBASE_AUTH_EMULATOR_HOST;
   if (

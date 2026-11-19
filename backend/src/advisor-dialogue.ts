@@ -2,7 +2,7 @@ export type DialogueIntent = "complaint" | "correction" | "topic_change" | "info
 
 /** Classify the current turn independently of old search words. */
 export function classifyDialogue(message: string): DialogueIntent {
-  const q = message.trim().toLocaleLowerCase("uk");
+  const q = message.trim().toLocaleLowerCase("uk").replace(/[.!?]+$/u, "").trim();
   if (/(чому|навіщо).*(повтор|не шука|не знайш|помил)|ти (повтор|помил|не шука)/u.test(q)) return "complaint";
   if (/(виправ|помилив|помилилась|насправді|замість|неправильно)/u.test(q)) return "correction";
   if (/(інша тема|інш[аие] потреб|а тепер|передумав|передумала)/u.test(q)) return "topic_change";

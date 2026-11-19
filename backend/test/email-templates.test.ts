@@ -71,12 +71,12 @@ test("unsubscribe tokens round-trip uid and reject tampering or wrong secret", (
 test("renderGrantDigestEmail escapes profile input and emits RFC 8058 unsubscribe headers", () => {
   const secret = "x".repeat(48);
   const unsubscribeUrl = buildUnsubscribeUrl("uid-test-1", secret);
-  const programs = selectDigestPrograms({
-    industry: "Громадське харчування",
-    region: "Львівська область",
-    legalForm: "fop",
-  });
-  assert.ok(programs.length >= 1);
+  const programs = [{
+    id: "example", title: "Приклад програми", provider: "Організатор",
+    amount: "До 100 грн", fundingLabel: "Грант", deadlineLabel: "До 30 листопада",
+    reason: "Перевірте умови участі", statusLabel: "Відкритий прийом",
+    url: "https://grantfolio.pp.ua/#grants/example",
+  }];
 
   const rendered = renderGrantDigestEmail(
     {
@@ -97,7 +97,7 @@ test("renderGrantDigestEmail escapes profile input and emits RFC 8058 unsubscrib
   assert.ok(!rendered.html.includes("opacity:0"));
   assert.ok(rendered.html.includes("Станіслав &lt;script&gt;"));
   assert.ok(rendered.html.includes("Персональний дайджест"));
-  assert.ok(rendered.html.includes("Підготувати заявку в GrantFolio"));
+  assert.ok(rendered.html.includes("Переглянути умови програми"));
   assert.ok(rendered.html.includes("https://grantfolio.pp.ua/#grants/"));
   assert.ok(rendered.html.includes("/api/newsletter/unsubscribe?token="));
   assert.ok(rendered.text.includes("Вітаємо, Станіслав <script>!"));
@@ -115,4 +115,14 @@ test("renderLoginCodeEmail renders branded HTML and plain text with Auto-Submitt
   assert.ok(rendered.text.includes("482910"));
   assert.equal(rendered.headers["Auto-Submitted"], "auto-generated");
   assert.equal(rendered.headers["List-Unsubscribe"], undefined);
+});
+
+
+test("digest does not substitute arbitrary recommendations and explains an empty result", () => {
+  assert.deepEqual(selectDigestPrograms({}), []);
+  assert.deepEqual(selectDigestPrograms({ industry: "неіснуючийтерміндляперевірки" }), []);
+  const email = renderGrantDigestEmail({}, []);
+  assert.match(email.text, /не знайдено можливостей/);
+  assert.match(email.html, /не знайдено можливостей/);
+  assert.doesNotMatch(email.text, /0 актуальні|Чому підходить|відповідають параметрам/);
 });

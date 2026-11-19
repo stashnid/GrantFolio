@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { parseGrantInvestmentLines, totalInvestmentLines } from "./grant-investment-lines.js";
 
 const applicationText = z.string().trim().min(1).max(3000);
 const amount = z.number().int().min(0).max(1_000_000_000_000);
@@ -16,11 +17,56 @@ export const grantApplicationAnswersSchema = z.object({
   monthsInBusiness: z.number().int().min(0).max(1200),
   marketEvidence: applicationText,
   financialAssumptions: applicationText,
+  salesForecast: applicationText,
+  profitabilityForecast: applicationText,
+  financialResultForecast: applicationText,
+  cashFlowForecast: applicationText,
+  roiForecast: applicationText,
+  irrForecast: applicationText,
   quoteEvidence: applicationText,
   permits: applicationText,
   staffingPlan: applicationText,
   projectRisks: applicationText,
+  projectRiskMitigation: applicationText,
   expectedImpact: applicationText,
+  applicantIdentity: applicationText,
+  applicantName: applicationText,
+  applicantTaxId: applicationText,
+  legalForm: applicationText,
+  businessAddress: applicationText,
+  applicantBusinessHistory: applicationText,
+  taxSystem: z.enum(["simplified", "general"]),
+  taxProfile: z.enum(["fop_simplified", "fop_general", "company_simplified", "company_general"]),
+  vatStatus: z.enum(["payer", "nonpayer"]),
+  vatBonusBasis: z.enum(["yes", "no"]),
+  youngApplicant: z.enum(["yes", "no"]),
+  veteranBusiness: z.enum(["yes", "no"]),
+  patentBasis: z.enum(["yes", "no"]),
+  displacedApplicant: z.enum(["yes", "no"]),
+  priorityTerritory: z.enum(["yes", "no"]),
+  damagedAssets: z.enum(["yes", "no"]),
+  prioritySector: z.enum(["yes", "no"]),
+  applicantExperience: applicationText,
+  projectConcept: applicationText,
+  projectObjective: applicationText,
+  projectDurationMonths: z.number().int().min(1).max(60),
+  projectSchedule: applicationText,
+  productDescription: applicationText,
+  targetCustomers: applicationText,
+  grantUsePlan: applicationText,
+  grantExpenseLines: applicationText,
+  ownExpenseLines: applicationText,
+  pricingStrategy: applicationText,
+  marketAnalysis: applicationText,
+  existingAssets: applicationText,
+  financingSources: applicationText,
+  paybackAssumptions: applicationText,
+  breakEvenMonths: z.number().int().min(1).max(600),
+  environmentalImpact: applicationText,
+  otherResults: applicationText,
+  taxEstimate: applicationText,
+  regionalImpact: applicationText,
+  indirectJobs: applicationText,
   landArea: z.number().min(0.01).max(1000),
   landTenure: z.enum(["owned", "lease"]),
   landUseYears: z.number().int().min(0).max(100),
@@ -113,11 +159,56 @@ const vlasnaSprava: Program = {
     { id: "existingJobs", label: "Чинні робочі місця", prompt: "Скільки працівників уже офіційно працюють у бізнесі, який ви масштабуєте?", kind: "integer", required: true },
     { id: "newJobs", label: "Нові робочі місця", prompt: "Скільки нових робочих місць ви плануєте створити у межах проєкту?", kind: "integer", source: vlasnaSpravaOrder, required: true },
     { id: "staffingPlan", label: "Кадровий план", prompt: "Які посади та зарплати заплановані, коли найматимете працівників і з чого сплачуватимете зарплати?", kind: "text", source: businessPlanFields, required: true },
+    { id: "applicantIdentity", label: "Дані заявника й контакти", prompt: "Укажіть підтверджені контактні дані й відповідальну особу. Не додавайте банківські реквізити.", kind: "text", source: businessPlanFields, required: true },
+    { id: "applicantName", label: "Назва заявника або ПІБ", prompt: "Укажіть юридичну назву суб’єкта або повне ПІБ заявника так, як у реєстраційних документах.", kind: "text", source: businessPlanFields, required: true },
+    { id: "applicantTaxId", label: "ЄДРПОУ або РНОКПП", prompt: "Укажіть ідентифікаційний код заявника (ЄДРПОУ для юридичної особи або РНОКПП для фізичної особи). Не вводьте банківські реквізити.", kind: "text", source: businessPlanFields, required: true },
+    { id: "legalForm", label: "Організаційно-правова форма", prompt: "Яка зареєстрована організаційно-правова форма заявника (наприклад, ФОП або ТОВ)? Для ще не зареєстрованої справи вкажіть заплановану форму.", kind: "text", source: businessPlanFields, required: true },
+    { id: "businessAddress", label: "Адреса й контакти суб’єкта", prompt: "Укажіть адресу реєстрації/місця провадження діяльності та перевірені контакти, які можна вказати у формі.", kind: "text", source: businessPlanFields, required: true },
+    { id: "applicantBusinessHistory", label: "Історія діяльності суб’єкта", prompt: "Коли суб’єкт зареєстрований, як довго провадить господарську діяльність і який має досвід саме у цій сфері? Для нового бізнесу зазначте, що він ще не працює.", kind: "text", source: businessPlanFields, required: true },
+    { id: "taxSystem", label: "Система оподаткування", prompt: "Оберіть систему, яку застосовує або планує застосовувати заявник. Перевірте вибір із бухгалтером перед поданням.", kind: "select", options: [{value:"simplified",label:"Спрощена"},{value:"general",label:"Загальна"}], source: businessPlanFields, required: true },
+    { id: "taxProfile", label: "Податковий профіль заявника", prompt: "Оберіть податковий профіль, що відповідає зареєстрованій правовій формі та системі оподаткування.", kind: "select", options: [{value:"fop_simplified",label:"ФОП — спрощена система"},{value:"fop_general",label:"ФОП — загальна система"},{value:"company_simplified",label:"Підприємство — спрощена система"},{value:"company_general",label:"Підприємство — загальна система"}], source: businessPlanFields, required: true },
+    { id: "vatStatus", label: "Статус платника ПДВ", prompt: "Оберіть чинний статус заявника на дату підготовки бізнес-плану. Якщо статус ще не визначений, спершу перевірте його.", kind: "select", options: [{value:"payer",label:"Платник ПДВ"},{value:"nonpayer",label:"Неплатник ПДВ"}], source: businessPlanFields, required: true },
+    { id: "vatBonusBasis", label: "Підстава надбавки за ПДВ", prompt: "Чи буде заявник зареєстрованим платником ПДВ саме на дату подання заявки? Підтвердьте статус за реєстром; не враховуйте лише намір зареєструватися.", kind: "select", options: [{value:"yes",label:"Так, статус підтверджений"},{value:"no",label:"Ні"}], source: businessPlanFields, required: true },
+    { id: "youngApplicant", label: "Вік отримувача", prompt: "Чи буде отримувачу гранту від 18 до 25 років включно на дату подання? Перевірте вік за документом.", kind: "select", options: [{value:"yes",label:"Так"},{value:"no",label:"Ні"}], source: businessPlanFields, required: true },
+    { id: "veteranBusiness", label: "Ветеранське підприємництво", prompt: "Чи підтверджується для цього заявника критерій ветеранського підприємництва за чинними правилами програми?", kind: "select", options: [{value:"yes",label:"Так, підтверджується"},{value:"no",label:"Ні"}], source: businessPlanFields, required: true },
+    { id: "patentBasis", label: "Патент України", prompt: "Чи має заявник чинний патент України на винахід/корисну модель, пов’язаний із цим проєктом?", kind: "select", options: [{value:"yes",label:"Так, патент чинний і пов’язаний із проєктом"},{value:"no",label:"Ні"}], source: businessPlanFields, required: true },
+    { id: "displacedApplicant", label: "ВПО або релокація", prompt: "Чи відповідає заявник критерію ВПО з понад 6 місяцями підприємницького досвіду до переміщення або релокованого підприємства?", kind: "select", options: [{value:"yes",label:"Так, документи це підтверджують"},{value:"no",label:"Ні"}], source: businessPlanFields, required: true },
+    { id: "priorityTerritory", label: "Визначена територія", prompt: "Чи зареєстрований отримувач і чи провадить/планує діяльність на території, прямо визначеній чинним Порядком? Звірте громаду з офіційним переліком.", kind: "select", options: [{value:"yes",label:"Так, територію перевірено"},{value:"no",label:"Ні"}], source: businessPlanFields, required: true },
+    { id: "damagedAssets", label: "Пошкоджені основні засоби", prompt: "Чи передбачає проєкт оновлення основних засобів виробництва, пошкоджених/знищених унаслідок збройної агресії, і чи є підтвердження?", kind: "select", options: [{value:"yes",label:"Так, є підтвердження"},{value:"no",label:"Ні"}], source: businessPlanFields, required: true },
+    { id: "prioritySector", label: "Пріоритетний сектор", prompt: "Чи належить проєкт до пріоритетного сектора за чинним Порядком? Звірте КВЕД і фактичний зміст діяльності з офіційним переліком.", kind: "select", options: [{value:"yes",label:"Так, відповідність звірено"},{value:"no",label:"Ні"}], source: businessPlanFields, required: true },
+    { id: "applicantExperience", label: "Досвід і команда", prompt: "Який підтверджений досвід заявника та команди стосується проєкту?", kind: "text", source: businessPlanFields, required: true },
+    { id: "projectConcept", label: "Концепція та унікальність", prompt: "Поясніть концепцію проєкту, його унікальність/інноваційність і чому він має цінність для клієнтів або громади.", kind: "text", source: businessPlanFields, required: true },
+    { id: "projectObjective", label: "Мета проєкту", prompt: "Яку конкретну мету має проєкт і які продукти або послуги він створює?", kind: "text", source: businessPlanFields, required: true },
+    { id: "projectDurationMonths", label: "Строк реалізації", prompt: "Оберіть строк реалізації бізнес-плану: 24, 36 або 60 місяців. Перед поданням звірте його з чинною формою Дії.", kind: "integer", source: businessPlanFields, required: true },
+    { id: "projectSchedule", label: "Строки та етапи (4 рядки)", prompt: "Введіть рівно чотири рядки: 1) місяць/рік початку; 2) ключовий етап і строк; 3) наступний етап і строк; 4) місяць/рік завершення. Кожен рядок буде перенесено в окреме поле шаблону.", kind: "text", source: businessPlanFields, required: true },
+    { id: "productDescription", label: "Продукт або послуга", prompt: "Опишіть конкретні товари чи послуги, які продаватиме бізнес, їхні характеристики та чим вони корисні клієнту.", kind: "text", source: businessPlanFields, required: true },
+    { id: "targetCustomers", label: "Потенційні споживачі", prompt: "Хто купуватиме ваш продукт: де ці люди або компанії, які мають потреби чи ознаки аудиторії? Наведіть підтверджені дані або позначте оцінку як припущення.", kind: "text", source: businessPlanFields, required: true },
+    { id: "grantUsePlan", label: "Напрями використання гранту", prompt: "Перелічіть, що саме плануєте придбати за грантові кошти, для чого потрібна кожна позиція та які суми підтверджені кошторисом/пропозиціями постачальників. Не включайте непогоджені або непідтверджені витрати як факт.", kind: "text", source: businessPlanFields, required: true },
+    { id: "grantExpenseLines", label: "Кошторис за рахунок гранту", prompt: "Введіть до 7 рядків у форматі «назва/характеристики | сума грн | обґрунтування». Суми мають разом дорівнювати запитуваному гранту. Кожну ціну звірте з пропозицією постачальника. Якщо витрати ще не визначені, їх не можна оформити як готову заяву.", kind: "text", source: businessPlanFields, required: true },
+    { id: "ownExpenseLines", label: "Власні/залучені витрати", prompt: "Введіть до 4 рядків у форматі «назва/характеристики | сума грн | обґрунтування». Разом має дорівнювати власному внеску. Якщо внеску немає — вкажіть «Не планується (0 грн)».", kind: "text", source: businessPlanFields, required: true },
+    { id: "pricingStrategy", label: "Ціноутворення", prompt: "Як формуватимуться ціни та які дані ринку їх обґрунтовують?", kind: "text", source: businessPlanFields, required: true },
+    { id: "marketAnalysis", label: "Ринок і конкуренти", prompt: "Хто основні конкуренти, які переваги проєкту та які джерела підтверджують аналіз?", kind: "text", source: businessPlanFields, required: true },
+    { id: "existingAssets", label: "Наявні активи", prompt: "Які власні приміщення, обладнання або інші активи вже доступні для проєкту? Якщо їх немає, зазначте це.", kind: "text", source: businessPlanFields, required: true },
+    { id: "financingSources", label: "Джерела фінансування", prompt: "Які джерела власного внеску чи іншого фінансування і чи підтверджені вони?", kind: "text", source: businessPlanFields, required: true },
+    { id: "paybackAssumptions", label: "Окупність та ефективність", prompt: "Які припущення щодо прибутковості, окупності та беззбитковості? Якщо показники ще не розраховані, вкажіть це.", kind: "text", source: businessPlanFields, required: true },
+    { id: "breakEvenMonths", label: "Місяць беззбитковості", prompt: "Через скільки місяців від початку реалізації прогнозовані доходи мають покрити операційні витрати? Відповідь має узгоджуватися з фінансовим планом.", kind: "integer", source: businessPlanFields, required: true },
+    { id: "environmentalImpact", label: "Вплив на довкілля", prompt: "Опишіть очікуваний вплив бізнесу на довкілля та заходи зменшення негативного впливу. Якщо вплив не оцінювали, зазначте це.", kind: "text", source: businessPlanFields, required: true },
+    { id: "otherResults", label: "Інші результати проєкту", prompt: "Які важливі результати, крім продажів і робочих місць, очікуєте отримати? Поясніть підстави для прогнозу.", kind: "text", source: businessPlanFields, required: true },
+    { id: "taxEstimate", label: "Прогноз податків і платежів", prompt: "Які податки, збори та ЄСВ очікуєте сплачувати за прогнозний період? Наведіть оцінку й припущення або зазначте, що розрахунок ще потрібен.", kind: "text", source: businessPlanFields, required: true },
+    { id: "regionalImpact", label: "Вплив на економіку регіону", prompt: "Як проєкт вплине на підприємницьке середовище громади чи регіону (місцеві закупівлі, послуги, зайнятість, ланцюги постачання)? Вкажіть, що є прогнозом.", kind: "text", source: businessPlanFields, required: true },
+    { id: "indirectJobs", label: "Непрямі робочі місця", prompt: "Чи очікуються непрямі робочі місця та на яких даних ґрунтується оцінка?", kind: "text", source: businessPlanFields, required: true },
     { id: "marketEvidence", label: "Підтвердження попиту", prompt: "Що підтверджує попит, наприклад замовлення, переговори з клієнтами або результати перевірки попиту? Укажіть, які припущення ще потрібно перевірити.", kind: "text", required: true },
     { id: "financialAssumptions", label: "Припущення фінансового плану", prompt: "На чому ґрунтується прогноз продажів і витрат? Опишіть очікуваний обсяг продажів, ціни та регулярні витрати. Позначте неперевірені цифри як припущення.", kind: "text", required: true },
+    { id: "salesForecast", label: "Прогноз продажів", prompt: "Оцініть обсяг продажів у штуках/послугах і гривнях за період, використовуючи припущення фінансового плану. Позначте прогноз як неперевірений, якщо фактичних замовлень немає.", kind: "text", source: businessPlanFields, required: true },
+    { id: "profitabilityForecast", label: "Прогноз рентабельності", prompt: "Укажіть очікувану рентабельність і спосіб розрахунку або зазначте, що її ще потрібно розрахувати з фінансового плану.", kind: "text", source: businessPlanFields, required: true },
+    { id: "financialResultForecast", label: "Фінансовий результат", prompt: "Який очікуєте фінансовий результат після доходів і витрат за прогнозний період? Вкажіть період і припущення або позначте показник як не розрахований.", kind: "text", source: businessPlanFields, required: true },
+    { id: "cashFlowForecast", label: "Грошовий потік", prompt: "Опишіть очікувані щомісячні надходження, витрати й залишок/дефіцит коштів. Узгодьте відповідь із помісячним фінансовим планом.", kind: "text", source: businessPlanFields, required: true },
+    { id: "roiForecast", label: "ROI", prompt: "Укажіть прогноз ROI у відсотках і період розрахунку або зазначте, що показник ще потрібно обчислити з перевіреного фінансового плану.", kind: "text", source: businessPlanFields, required: true },
+    { id: "irrForecast", label: "IRR", prompt: "Укажіть прогноз IRR у відсотках і період розрахунку або зазначте, що показник ще потрібно обчислити з перевіреного фінансового плану.", kind: "text", source: businessPlanFields, required: true },
     { id: "quoteEvidence", label: "Обґрунтування цін", prompt: "Якими пропозиціями постачальників або іншими даними ви обґрунтували ціни в кошторисі? Позначте позиції, для яких ціни ще потрібно підтвердити.", kind: "text", required: true },
     { id: "permits", label: "Дозволи й ліцензії", prompt: "Які дозволи чи ліцензії потрібні для вашої діяльності? Укажіть їхній стан або зазначте, що питання ще потребує перевірки.", kind: "text", source: businessPlanFields, required: true },
     { id: "projectRisks", label: "Ризики та дії", prompt: "Що може затримати запуск або знизити доходи? Опишіть заходи на випадок кожного суттєвого ризику.", kind: "text", source: businessPlanFields, required: true },
+    { id: "projectRiskMitigation", label: "Заходи зменшення ризиків", prompt: "Для кожного ризику вкажіть конкретний запобіжний захід або план реагування, відповідальну особу та, якщо можливо, строк виконання.", kind: "text", source: businessPlanFields, required: true },
     { id: "expectedImpact", label: "Вплив проєкту", prompt: "Який вплив матиме проєкт на працевлаштування, громаду й надходження до бюджету? Якщо є оцінка, поясніть її припущення.", kind: "text", source: businessPlanFields, required: true },
     { id: "requestedGrantKopecks", label: "Очікувана сума гранту", prompt: "Яку суму гранту ви плануєте запросити, у гривнях?", kind: "money", source: vlasnaSpravaTerms, required: true },
     { id: "ownContributionKopecks", label: "Власне фінансування", prompt: "Яку суму витрат ви покриєте власними коштами, у гривнях? Вкажіть 0, якщо власний внесок не заплановано.", kind: "money", required: true },
@@ -125,11 +216,35 @@ const vlasnaSprava: Program = {
   ],
   validate(answers) {
     const result: GrantApplicationIssue[] = [];
+    if (answers.projectDurationMonths !== undefined && ![24, 36, 60].includes(answers.projectDurationMonths)) {
+      result.push({ code: "project_duration", field: "projectDurationMonths", severity: "blocking", message: "У зразку бізнес-плану передбачено строк 24, 36 або 60 місяців." });
+    }
     if (answers.track === "scale" && answers.newJobs === 0) {
       result.push({ code: "scale_new_job_required", field: "newJobs", severity: "blocking", message: "Для масштабування програмою передбачено щонайменше одне нове робоче місце." });
     }
     if (answers.track === "scale" && answers.monthsInBusiness !== undefined && answers.monthsInBusiness < 6) {
       result.push({ code: "scale_activity_duration", field: "monthsInBusiness", severity: "blocking", message: "Для масштабування перевірте вимогу щонайменше шести місяців фактичної підприємницької діяльності до подання." });
+    }
+    if (answers.taxProfile && answers.taxSystem && answers.taxProfile.endsWith("simplified") !== (answers.taxSystem === "simplified")) {
+      result.push({ code: "tax_profile_mismatch", field: "taxProfile", severity: "blocking", message: "Податковий профіль не відповідає обраній системі оподаткування." });
+    }
+    if (answers.taxProfile?.startsWith("fop_") && answers.applicantType === "legal_entity" || answers.taxProfile?.startsWith("company_") && answers.applicantType === "entrepreneur") {
+      result.push({ code: "tax_legal_form_mismatch", field: "taxProfile", severity: "blocking", message: "Податковий профіль не відповідає типу заявника. Звірте зареєстровану форму." });
+    }
+    if (answers.projectSchedule !== undefined && answers.projectSchedule.split(/\r?\n/).map(line => line.trim()).filter(Boolean).length !== 4) {
+      result.push({ code: "project_schedule_rows", field: "projectSchedule", severity: "blocking", message: "Заповніть чотири окремі рядки графіка: початок, два ключові етапи та завершення." });
+    }
+    const grantLines = parseGrantInvestmentLines(answers.grantExpenseLines, 7);
+    if (answers.grantExpenseLines !== undefined && grantLines.error) {
+      result.push({ code: "grant_investment_lines", field: "grantExpenseLines", severity: "blocking", message: grantLines.error });
+    } else if (grantLines.lines && answers.requestedGrantKopecks !== undefined && totalInvestmentLines(grantLines.lines) !== answers.requestedGrantKopecks) {
+      result.push({ code: "grant_investment_total", field: "grantExpenseLines", severity: "blocking", message: "Сума рядків витрат за грант має точно дорівнювати запитуваній сумі гранту." });
+    }
+    const ownLines = parseGrantInvestmentLines(answers.ownExpenseLines, 4);
+    if (answers.ownExpenseLines !== undefined && ownLines.error) {
+      result.push({ code: "own_investment_lines", field: "ownExpenseLines", severity: "blocking", message: ownLines.error });
+    } else if (ownLines.lines && answers.ownContributionKopecks !== undefined && totalInvestmentLines(ownLines.lines) !== answers.ownContributionKopecks) {
+      result.push({ code: "own_investment_total", field: "ownExpenseLines", severity: "blocking", message: "Сума рядків власних/залучених витрат має точно дорівнювати власному внеску." });
     }
     const maximum = answers.track === "start" ? 50_000_000 : answers.track === "scale" ? 250_000_000 : null;
     if (maximum !== null && answers.requestedGrantKopecks !== undefined && answers.requestedGrantKopecks > maximum) {

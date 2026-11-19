@@ -4,6 +4,7 @@ import {
   GRANT_SOURCE_RULES,
   type GrantSourceRule,
 } from "./grant-source-rules.js";
+import { getMonitorProfile } from "./program-monitor-profiles.js";
 
 type Availability = NonNullable<GrantCatalogEntry["availability"]>;
 type CheckStatus = {
@@ -15,6 +16,7 @@ type CheckStatus = {
 };
 const MAX_BODY = 4 * 1024 * 1024;
 const VALID_MS = 36 * 60 * 60 * 1000;
+const CONFIRMED_GATE_EVIDENCE = "Підтверджено сторінкою послуги: ";
 const MONTHS = [
   "січ",
   "лют",
@@ -323,8 +325,20 @@ export function createGrantSync(
     statuses = [];
     for (const row of result.rows) {
       const rule = byId.get(row.program_id);
-      if (!rule || rule.url !== row.source_url) continue;
-      const availability = row.availability as Availability | null;
+      const monitorProfile =
+        rules === GRANT_SOURCE_RULES
+          ? getMonitorProfile(row.program_id)
+          : undefined;
+      const matchesRule = Boolean(rule && rule.url === row.source_url);
+      const matchesProfile = Boolean(
+        monitorProfile && monitorProfile.sourceUrl === row.source_url,
+      );
+      if (!matchesRule && !matchesProfile) continue;
+      let availability = row.availability as Availability | null;
+      if (rule?.suspensionOpenDeadlinePattern && availability?.state === "open" &&
+          (typeof availability.evidence !== "string" || !availability.evidence.startsWith(CONFIRMED_GATE_EVIDENCE))) {
+        availability = null;
+      }
       apply(row.program_id, availability);
       statuses.push({
         programId: row.program_id,
@@ -376,7 +390,16 @@ export function createGrantSync(
                 const gateAnchor=gateText.toLocaleLowerCase("uk").lastIndexOf(rule.suspensionRequiredText.toLocaleLowerCase("uk"));
                 if(gateAnchor<0)throw Error("suspension_required_text_missing");
                 const paused=new RegExp(rule.suspensionClosedPattern,"iu").exec(gateText);
-                if(paused)availability={...availability,state:"closed",sourceUrl:rule.suspensionUrl,evidence:`Сторінка послуги: ${paused[0].slice(0,250)}`};
+                if (paused) {
+                  availability = {...availability, state: "closed", sourceUrl: rule.suspensionUrl, evidence: `Сторінка послуги: ${paused[0].slice(0,250)}`};
+                } else if (availability.state === "open" && rule.suspensionOpenDeadlinePattern) {
+                  const deadline = new RegExp(rule.suspensionOpenDeadlinePattern, "iu").exec(gateText);
+                  const parsed = deadline?.[1] ? parseDate(deadline[1]) : null;
+                  if (!parsed || parsed.toISOString() !== availability.deadlineAt || parsed < at) {
+                    throw Error("service_deadline_unconfirmed");
+                  }
+                  availability = {...availability, evidence: `${CONFIRMED_GATE_EVIDENCE}${deadline![0]}. ${availability.evidence}`};
+                }
               }
             } catch (e) {
               availability = undefined;
@@ -391,8 +414,8 @@ export function createGrantSync(
             checked++;
           } else {
             await client.query(
-              `INSERT INTO grant_source_checks(program_id,source_url,availability,last_attempt_at,last_error) VALUES($1,$2,NULL,$3,$4) ON CONFLICT(program_id) DO UPDATE SET availability=CASE WHEN grant_source_checks.source_url=EXCLUDED.source_url THEN grant_source_checks.availability ELSE NULL END,source_url=EXCLUDED.source_url,last_attempt_at=EXCLUDED.last_attempt_at,last_error=EXCLUDED.last_error`,
-              [rule.programId, sourceUrl, at, error.slice(0, 200)],
+              `INSERT INTO grant_source_checks(program_id,source_url,availability,last_attempt_at,last_error) VALUES($1,$2,NULL,$3,$4) ON CONFLICT(program_id) DO UPDATE SET availability=CASE WHEN $5::boolean AND grant_source_checks.availability->>'state'='open' THEN NULL WHEN grant_source_checks.source_url=EXCLUDED.source_url THEN grant_source_checks.availability ELSE NULL END,source_url=EXCLUDED.source_url,last_attempt_at=EXCLUDED.last_attempt_at,last_error=EXCLUDED.last_error`,
+              [rule.programId, sourceUrl, at, error.slice(0, 200), Boolean(rule.suspensionOpenDeadlinePattern)],
             );
             failed++;
           }

@@ -3,7 +3,7 @@ import type { Pool } from "pg";
 import { z } from "zod";
 import { grantApplicationVersions } from "./grant-application.js";
 import type { GrantApplicationAnswers } from "./grant-application.js";
-import { financialPlanSchema, calculateFinancialPlan } from "./grant-financial-plan.js";
+import { financialPlanSchema, calculateFinancialPlan, financialBusinessPlanRowsMatch } from "./grant-financial-plan.js";
 import type { FinancialPlan } from "./grant-financial-plan.js";
 import { createFinancialExport } from "./grant-financial-export.js";
 
@@ -25,11 +25,14 @@ type Row = {
   saved_case_revision: number | null;
   saved_application_revision: number | null;
   plan: FinancialPlan | null;
+  payment_confirmed: boolean;
 };
 
 const queryProject = `SELECT c.title, c.program_id, c.revision AS case_revision,
     a.revision AS application_revision, a.answers, f.revision AS plan_revision,
-    f.case_revision AS saved_case_revision, f.application_revision AS saved_application_revision, f.plan
+    f.case_revision AS saved_case_revision, f.application_revision AS saved_application_revision, f.plan,
+    EXISTS (SELECT 1 FROM grant_preparation_pilot gp WHERE gp.case_id=c.id
+      AND gp.confirmed_at IS NOT NULL) OR EXISTS (SELECT 1 FROM jar_orders jo WHERE jo.case_id=c.id AND (jo.confirmed_at IS NOT NULL OR jo.manual_unlocked_at IS NOT NULL)) AS payment_confirmed
   FROM cases c
   LEFT JOIN grant_applications a ON a.case_id=c.id AND a.program_id=c.program_id AND a.rules_version=$3
   LEFT JOIN grant_financial_plans f ON f.case_id=a.case_id AND f.program_id=a.program_id AND f.rules_version=a.rules_version
@@ -41,9 +44,10 @@ function view(row: Row) {
   const own = row.answers?.ownContributionKopecks ?? null;
   const reconciled = forecast !== null && grant !== null && own !== null &&
     forecast.totals.grantKopecks === grant && forecast.totals.ownKopecks === own;
+  const officialRowsReady = row.plan !== null && financialBusinessPlanRowsMatch(row.plan, row.answers?.taxProfile);
   const stale = row.plan !== null && (row.saved_case_revision !== row.case_revision || row.saved_application_revision !== row.application_revision);
   return {
-    plan: row.plan, forecast, grant, own, reconciled, stale,
+    plan: row.plan, forecast, grant, own, reconciled, officialRowsReady, stale,
     caseRevision: row.case_revision,
     applicationRevision: row.application_revision ?? 0,
     planRevision: row.plan_revision ?? 0,
@@ -118,9 +122,10 @@ export function grantFinancialPlanRouter(db: Pool) {
       const row = (await db.query<Row>(queryProject, [req.params.id, res.locals.uid, rulesVersion])).rows[0];
       if (!row) { res.status(404).json({ error: "not_found" }); return; }
       if (row.program_id !== "vlasna-sprava") { res.status(422).json({ error: "financial_plan_unavailable" }); return; }
+      if (!row.payment_confirmed) { res.status(402).json({ error: "preparation_payment_pending" }); return; }
       const state = view(row);
       if (!matches(row, command.data) || state.stale) { res.status(409).json({ error: "revision_conflict" }); return; }
-      if (!state.forecast || !state.reconciled) { res.status(422).json({ error: "financial_plan_not_reconciled" }); return; }
+      if (!state.forecast || !state.reconciled || !state.officialRowsReady) { res.status(422).json({ error: "financial_plan_not_reconciled" }); return; }
       if (exporting) { res.status(429).json({ error: "financial_export_busy" }); return; }
       exporting = true;
       const abort = new AbortController();

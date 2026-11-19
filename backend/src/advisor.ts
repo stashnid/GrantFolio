@@ -1,16 +1,27 @@
 import { Router } from "express";
 import { z } from "zod";
 import type { Pool } from "pg";
-import { searchGrants } from "./grant-discovery.js";
-import { GRANT_CATALOG } from "./grant-catalog-data.js";
-import { configuredGeminiResponder } from "./gemini.js";
 import type { AssistantResponder } from "./assistant.js";
+import { postgresAssistantLimiter, type AssistantLimiter } from "./assistant-limits.js";
+import { normalize, searchGrants } from "./grant-discovery.js";
+import { GRANT_CATALOG } from "./grant-catalog-data.js";
+import { extractProfileFromText } from "./profile-extractor.js";
 import { buildDialogueQuery } from "./advisor-dialogue.js";
 const input = z
   .object({
     id: z.string().uuid(),
     conversationId: z.string().uuid(),
     message: z.string().trim().min(1).max(2000),
+  })
+  .strict();
+const renameInput = z
+  .object({
+    title: z
+      .string()
+      .trim()
+      .min(1)
+      .max(70)
+      .refine((value) => !/[\u0000-\u001F\u007F]/.test(value)),
   })
   .strict();
 const uuid = z.string().uuid();
@@ -25,6 +36,9 @@ const view = (r: any) => ({
 // Ask for one missing fact at a time using the current conversation, not just the last message.
 export function nextQuestion(query: string, intents: string[], hasMatches: boolean): string {
   const q = query.toLocaleLowerCase("uk");
+  if (/ферм|господарств/.test(q) && !/тварин|теплиц|садів|ягід|овоч|молок|бджіл|зерн/.test(q)) {
+    return "Можемо одразу почати з першого рядка кошторису. Для вирощування варто визначити, на чому зосередитесь спочатку: запуск виробництва чи зберігання й збут. Що плануєте виробляти на фермі?";
+  }
   // A mention of ФОП alone (e.g. “чи потрібен ФОП?”) is not a status.
   const hasBusinessStatus = /(?:ще\s+)?не\s+(?:є\s+|маю\s+|зареєстрован(?:ий|а)\s+як\s+)?фоп|(?:немає|не маю)\s+(?:зареєстрованого\s+)?фоп|(?:працюю|зареєстрован(?:ий|а)|оформлен(?:ий|а))\s+(?:як\s+)?фоп|(?:маю|відкрив|відкрила|вже)\s+фоп|(?:фоп|бізнес)\s+(?:вже|ще не|немає)|вже працю|планую відкрити/.test(q);
   if (
@@ -63,29 +77,191 @@ export function nextQuestion(query: string, intents: string[], hasMatches: boole
     !hasBusinessStatus
   )
     return "Ви вже працюєте як ФОП або тільки плануєте відкрити справу?";
-  return hasMatches
-    ? "Наступний крок — переглянути можливі програми та перевірити їхні актуальні умови. Яку з них розглянемо першою?"
-    : "Уточніть, будь ласка, які витрати потрібні для справи, щоб я міг допомогти з пошуком.";
+  if (hasMatches)
+    return "Наступний крок — переглянути можливі програми та перевірити їхні актуальні умови. Яку з них розглянемо першою?";
+  if (intents.some(intent => ["equipment", "transport", "production", "garden"].includes(intent)))
+    return "Збережіть опис потреби й перевірте умови програм у каталозі. Робочу чернетку можна підготувати до підтвердження прийому.";
+  return "Які витрати ви хочете покрити? Це допоможе звузити пошук.";
 }
-export function advisorRouter(
-  db: Pool,
-  responder: AssistantResponder | undefined = configuredGeminiResponder(),
-  timeoutMs = 25000,
-) {
+function namedProgram(message: string) {
+  const q = normalize(message);
+  return GRANT_CATALOG.find((p) => {
+    const name = normalize(p.title);
+    return (name.length > 8 && q.includes(name)) ||
+      (p.id === "vlasna-sprava" && /власн(?:а|у|ої|ій) справ[ауиі]/.test(q)) ||
+      (p.id === "ua-greenhouse-grant" && /грант(?:у|ом)? на .*теплиц/.test(q)) ||
+      (p.id === "agro-gardens" && /грант(?:у|ом)? на (?:сад|ягідник|виноградник)/.test(q));
+  });
+}
+// Answer questions about a catalog program using its curated, source-linked fields.
+export function programFollowUp(message: string, previousMatches: { programId: string }[], newNeed: boolean, selectedProgramId?: string, context = ""): string | undefined {
+  if (newNeed) return undefined;
+  const q = normalize(message);
+  const costs = /витрат|витратити|потрат|купити|придбати|закуп|на що|що можна/.test(q);
+  const eligibility = /умов|вимог|хто може|чи (?:можу|підход)|право на|чи потрібен фоп/.test(q);
+  const apply = /як пода|як подат|подача|подати|заявк|документ|оформ/.test(q);
+  if (!costs && !eligibility && !apply) return undefined;
+  const named = namedProgram(message) ?? GRANT_CATALOG.find((p) => p.id === selectedProgramId);
+  const previous = previousMatches.map((m) => GRANT_CATALOG.find((p) => p.id === m.programId)).filter((p): p is (typeof GRANT_CATALOG)[number] => Boolean(p));
+  const farm = /ферм|господарств|агро/i.test(context);
+  const farmExample = farm ? GRANT_CATALOG.find(p => p.id === "vlasna-sprava") : undefined;
+  const program = named ?? previous[0] ?? farmExample;
+  if (!program) return undefined;
+  const example = !named && previous.length !== 1;
+  const sections: string[] = [];
+  if (costs) sections.push(`**На що можна спрямувати кошти**\n${program.details.costs.map(cost => `- ${cost}`).join("\n")}${program.id === "vlasna-sprava" && farm ? "\n\nДля ферми обладнання для сортування, пакування або охолодження може бути кандидатом у кошторис, але допустимість конкретної покупки треба перевірити за чинними правилами." : ""}`);
+  if (eligibility) sections.push(`Основні вимоги: ${program.details.eligibility.join(" ")} ${program.details.exclusions.join(" ")} ${program.details.obligations.join(" ")}`);
+  if (apply && farm && program.id === "vlasna-sprava") sections.push("Для вашої ферми почніть з продукту, обсягу виробництва та каналів збуту. Для кожної покупки вкажіть кількість, ціну за пропозицією постачальника та яку роботу вона дозволить виконати.");
+  if (apply) sections.push(`Документи: ${program.details.documents.join(" ")}\nЯк діяти:\n${program.details.steps.map((step, i) => `${i + 1}. ${step}`).join("\n")}`);
+  const status = program.intakeStatus === "paused" ? "Прийом призупинено; дату відновлення потрібно підтвердити." : program.intakeStatus === "archived" ? "Програма архівна; актуальний прийом не підтверджений." : "Актуальний прийом і вашу відповідність потрібно підтвердити в офіційному джерелі.";
+  const statusKnown = /(?:я|ми) (?:ще |вже |уже )?(?:не )?фоп|(?:працюю|зареєстрован\S*) як фоп|(?:вже|уже) (?:працюю|маю фоп)/.test(normalize(context));
+  const question = example
+    ? previous.length ? "Яку з запропонованих програм ви маєте на увазі?" : "Що плануєте вирощувати або яку продукцію хочете продавати?"
+    : costs ? "Яку покупку перевіримо для вашого кошторису?"
+    : eligibility ? statusKnown ? "Який КВЕД плануєте вказати для цієї діяльності?" : "Ви вже зареєстровані як ФОП або юридична особа?"
+    : "З чого почнемо: з опису продукту, продажів чи кошторису?";
+  return [`${example ? "Як приклад розгляну" : "Розглянемо"} «${program.title}».`, ...sections, status, ...(program.details.unresolved.length ? [`Потрібно уточнити: ${program.details.unresolved[0]}`] : []), `[Офіційні умови](${program.officialUrl})`, question].join("\n\n");
+}
+async function preparationIdea(
+  responder: AssistantResponder,
+  limiter: AssistantLimiter,
+  owner: string,
+  context: string,
+  question: string,
+): Promise<string | undefined> {
+  const timeoutMs = 3200;
+  const lease = await limiter.acquire(owner, timeoutMs + 60000).catch(() => null);
+  if (!lease) return undefined;
+  const controller = new AbortController();
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    const text = await Promise.race([
+      responder({
+        mode: "preparation-ideas",
+        title: "Підготовка бізнес-проєкту",
+        revision: 0,
+        profileRevision: 0,
+        details: context.slice(-2000),
+        items: [],
+        total_kopecks: "0",
+      }, question, controller.signal),
+      new Promise<undefined>(resolve => {
+        timer = setTimeout(() => {
+          controller.abort();
+          resolve(undefined);
+        }, timeoutMs);
+      }),
+    ]);
+    const idea = text?.trim();
+    if (!idea || idea.length > 750 || /[\d<>]|https?:|www\.|грн|%|дедлайн|схвален|дозволен|прийом заяв|умов[иа] гранту|грант |програм[аи]/iu.test(idea)) return undefined;
+    return idea;
+  } catch {
+    return undefined;
+  } finally {
+    if (timer) clearTimeout(timer);
+    await limiter.release(owner, lease).catch(() => {});
+  }
+}
+
+export function advisorRouter(db: Pool, responder?: AssistantResponder, limiter = postgresAssistantLimiter(db)) {
   const router = Router();
   const active = new Set<string>();
   router.get("/conversations", async (_req, res, next) => {
     try {
       const r = await db.query(
-        `SELECT conversation_id AS id, (array_agg(question ORDER BY created_at,id))[1] AS title, MAX(created_at) AS "updatedAt" FROM advisor_messages WHERE owner_id=$1 GROUP BY conversation_id ORDER BY MAX(created_at) DESC LIMIT 30`,
+        `SELECT m.conversation_id AS id, COALESCE(meta.title, (array_agg(m.question ORDER BY m.created_at, m.id))[1]) AS title, MAX(m.created_at) AS "updatedAt"
+         FROM advisor_messages m
+         LEFT JOIN advisor_conversation_meta meta
+           ON meta.owner_id = m.owner_id AND meta.conversation_id = m.conversation_id
+         WHERE m.owner_id=$1
+         GROUP BY m.conversation_id, meta.title
+         ORDER BY MAX(m.created_at) DESC
+         LIMIT 30`,
         [res.locals.uid],
       );
       res.json({
-        conversations: r.rows.map((r) => ({
-          ...r,
-          title: r.title.slice(0, 70),
+        conversations: r.rows.map((row) => ({
+          ...row,
+          title: row.title.slice(0, 70),
         })),
       });
+    } catch (e) {
+      next(e);
+    }
+  });
+  router.patch("/conversations/:conversationId", async (req, res, next) => {
+    const idParsed = uuid.safeParse(req.params.conversationId);
+    if (!idParsed.success) {
+      res.status(400).json({ error: "invalid_conversation" });
+      return;
+    }
+    const parsed = renameInput.safeParse(req.body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "invalid_title" });
+      return;
+    }
+    const conversationId = idParsed.data;
+    const uid: string = res.locals.uid;
+    try {
+      const owned = await db.query(
+        "SELECT 1 FROM advisor_messages WHERE owner_id=$1 AND conversation_id=$2 LIMIT 1",
+        [uid, conversationId],
+      );
+      if (!owned.rowCount) {
+        res.status(404).json({ error: "not_found" });
+        return;
+      }
+      await db.query(
+        `INSERT INTO advisor_conversation_meta (owner_id, conversation_id, title, updated_at)
+         VALUES ($1, $2, $3, now())
+         ON CONFLICT (owner_id, conversation_id)
+         DO UPDATE SET title = EXCLUDED.title, updated_at = now()`,
+        [uid, conversationId, parsed.data.title],
+      );
+      res.json({
+        conversation: { id: conversationId, title: parsed.data.title },
+      });
+    } catch (e) {
+      next(e);
+    }
+  });
+  router.delete("/conversations/:conversationId", async (req, res, next) => {
+    const idParsed = uuid.safeParse(req.params.conversationId);
+    if (!idParsed.success) {
+      res.status(400).json({ error: "invalid_conversation" });
+      return;
+    }
+    const uid: string = res.locals.uid;
+    if (active.has(uid)) {
+      res.status(429).json({ error: "advisor_busy" });
+      return;
+    }
+    const conversationId = idParsed.data;
+    try {
+      const client = await db.connect();
+      try {
+        await client.query("BEGIN");
+        const deletedMessages = await client.query(
+          "DELETE FROM advisor_messages WHERE owner_id=$1 AND conversation_id=$2",
+          [uid, conversationId],
+        );
+        if (!deletedMessages.rowCount) {
+          await client.query("ROLLBACK");
+          res.status(404).json({ error: "not_found" });
+          return;
+        }
+        await client.query(
+          "DELETE FROM advisor_conversation_meta WHERE owner_id=$1 AND conversation_id=$2",
+          [uid, conversationId],
+        );
+        await client.query("COMMIT");
+        res.json({ deleted: true, id: conversationId });
+      } catch (e) {
+        await client.query("ROLLBACK").catch(() => {});
+        throw e;
+      } finally {
+        client.release();
+      }
     } catch (e) {
       next(e);
     }
@@ -169,11 +345,17 @@ export function advisorRouter(
         const current = searchGrants(p.message);
         const previous = searchGrants(previousSeed);
         const dialogue = buildDialogueQuery(p.message, previousSeed);
-        const distinctNeed = dialogue.intent === "search" &&
+        const explicitChange = dialogue.intent === "topic_change";
+        const distinctNeed =
           /(хочу|шукаю|потріб|грант.*для)/i.test(p.message) &&
           previous.intents.some((intent) => intent !== "applicant") &&
-          !current.intents.some((intent) => intent !== "applicant" && previous.intents.includes(intent));
-        const newNeed = dialogue.intent === "topic_change" || (current.intents.length > 0 && distinctNeed);
+          !current.intents.some(
+            (intent) =>
+              intent !== "applicant" && previous.intents.includes(intent),
+          );
+        const followUpWording = /витрат|витратити|потрат|купити|придбати|закуп|на що|що можна|умов|вимог|хто може|чи (?:можу|підход)|право на|як пода|як подат|подача|подати|заявк|документ|оформ/i.test(p.message);
+        const newNeed =
+          explicitChange || (!followUpWording && current.intents.length > 0 && distinctNeed);
         const query = newNeed ? p.message : dialogue.query;
         const rawSearch = searchGrants(query);
         const businessIntents = [
@@ -199,110 +381,41 @@ export function advisorRouter(
                   (m) => !m.programId.startsWith("erasmus-"),
                 ),
         };
-        const profile = await db.query(
-          'SELECT business_name AS "businessName",description,region,details FROM profiles WHERE owner_id=$1',
-          [uid],
-        );
-        let businessProfile;
-        if (profile.rowCount) {
-          const { businessName, description, region, details } = profile.rows[0];
-          const source = details && typeof details === "object" ? details : {};
-          const safe = Object.fromEntries(["legalForm", "industry", "fundingPurpose", "requestedAmount", "teamSize"].filter((key) => typeof source[key] === "string").map((key) => [key, source[key]]));
-          businessProfile = { businessName, description, region, details: safe };
-        }
+        const { facts: extractedFacts } = extractProfileFromText(p.message);
         const greeting = /^(привіт|вітаю|добрий день|доброго дня)[!. ]*$/i.test(
           p.message,
         );
-        let reply = personalEducation
+        const namedSelection = namedProgram(p.message);
+        const selectedProgramId = namedSelection?.id ?? (!newNeed ? prior.at(-1)?.payload?.selectedProgramId : undefined);
+        const followUp = programFollowUp(p.message, prior.at(-1)?.payload?.search?.matches ?? [], newNeed && !namedSelection, selectedProgramId, query) ?? (namedSelection ? `Розглянемо «${namedSelection.title}». ${namedSelection.details.overview} ${namedSelection.intakeStatus === "paused" ? "Прийом призупинено; дату відновлення потрібно підтвердити." : "Актуальний прийом і вашу відповідність потрібно підтвердити."} [Офіційні умови](${namedSelection.officialUrl})\n\nЩо хочете з’ясувати: витрати, вимоги чи подання заявки?` : undefined);
+        const consultation = dialogue.intent === "complaint"
+          ? `Перепрошую, попередня відповідь не допомогла. Я повторно перевірив каталог за вашою попередньою потребою. ${search.matches.length ? search.matches.slice(0, 3).map((m) => `${m.title}: ${m.reason}`).join(" ") : "Підтвердженого результату цього пошуку немає; назву або напрям можна перевірити в каталозі."}`
+          : dialogue.intent === "correction"
+            ? `Врахую ваше уточнення в цій розмові. Збережений профіль не змінено; якщо потрібно оновити його, внесіть зміну в профілі.\n\n${search.explanation}`
+          : personalEducation
           ? "GrantFolio допомагає шукати фінансування для відкриття або розвитку бізнесу. Програми для особистого навчання та стипендії не входять до каталогу. Якщо маєте підприємницьку ідею, розкажіть про неї."
           : studentNeedsIdea
             ? "Допоможу розібратися з фінансуванням підприємницької ідеї. Яку справу ви плануєте відкрити або розвинути та на що потрібні кошти?"
             : greeting
               ? "Вітаю! Допоможу розібратися з фінансуванням і підготувати матеріали для заявки. На що вам потрібні кошти? Можна описати своїми словами — знати назву гранту не потрібно."
-              : `${search.explanation}\n\n${search.matches
+              : followUp ?? `${search.explanation}\n\n${search.matches
                   .slice(0, 3)
                   .map((m) => `${m.title}. ${m.reason}`)
                   .join("\n\n")}\n\n${nextQuestion(query, search.intents, search.matches.length > 0)}`;
-        const selected = (current.matches[0] ?? search.matches[0]);
-        const selectedProgram = selected && GRANT_CATALOG.find((program) => program.id === selected.programId);
-        if (dialogue.intent === "information" && selectedProgram) {
-          reply = `${selectedProgram.title}. ${selectedProgram.summary}\n\nДля кого: ${selectedProgram.targetAudience}\nУмови: ${selectedProgram.keyCondition}\nСтатус прийому та чинні вимоги потрібно перевірити: ${selectedProgram.officialUrl}`;
-        } else if (dialogue.intent === "complaint") {
-          reply = `Перепрошую, попередня відповідь не допомогла. Я повторно перевірив наявний каталог за вашою попередньою потребою. ${search.matches.length ? search.matches.slice(0, 3).map((m) => `${m.title}: ${m.reason}`).join(" ") : "Підтвердженого результату цього пошуку немає; назву програми або напрям можна перевірити в каталозі."}`;
-        } else if (dialogue.intent === "correction") {
-          reply = `Врахую ваше уточнення в цій розмові. Збережений профіль не змінено; якщо потрібно оновити його, внесіть зміну в профілі.\n\n${search.explanation}`;
-        }
-        let mode = "guided";
-        let fallbackReason: "not_configured" | "provider_error" | "invalid_response" | undefined = responder ? undefined : "not_configured";
-        if (responder && !personalEducation && !studentNeedsIdea && !["complaint", "information", "correction"].includes(dialogue.intent)) {
-          const controller = new AbortController();
-          let timer: ReturnType<typeof setTimeout> | undefined;
-          try {
-            const generated = await Promise.race([
-              responder(
-                {
-                  title: "Підбір фінансування за потребою",
-                  revision: 0,
-                  profileRevision: 0,
-                  details: {},
-                  items: [],
-                  total_kopecks: "0",
-                  businessProfile,
-                  mode: "discovery",
-                  discovery: {
-                    query,
-                    search,
-                    programs: search.matches
-                      .slice(0, 4)
-                      .map((m) =>
-                        GRANT_CATALOG.find((p) => p.id === m.programId),
-                      ),
-                    history: newNeed
-                      ? []
-                      : prior
-                          .filter((r) => previousSeed.includes(r.question))
-                          .slice(-6)
-                          .map(({ question, reply }) => ({ question, reply })),
-                  },
-                },
-                p.message,
-                controller.signal,
-              ),
-              new Promise<never>((_, reject) => {
-                timer = setTimeout(() => {
-                  controller.abort();
-                  reject(Error("timeout"));
-                }, timeoutMs);
-              }),
-            ]);
-            if (
-              typeof generated === "string" &&
-              generated.trim() &&
-              generated.length <= 12000
-            ) {
-              reply = generated.trim();
-              mode = "ai";
-            } else {
-              fallbackReason = "invalid_response";
-            }
-          } catch {
-            fallbackReason = "provider_error";
-          } finally {
-            if (timer) clearTimeout(timer);
-          }
-        }
-        if (fallbackReason === "provider_error" || fallbackReason === "invalid_response") {
-          reply = `Модель тимчасово недоступна; нижче наведено обмежений пошук каталогу.\n\n${reply}`;
-        }
-        search.questions = ["complaint", "information", "correction"].includes(dialogue.intent)
-          ? []
-          : [nextQuestion(query, search.intents, search.matches.length > 0)];
+        const idea = responder && !greeting && !personalEducation && !studentNeedsIdea && !["complaint", "correction"].includes(dialogue.intent) &&
+          (followUp || rawSearch.intents.some(intent => businessIntents.includes(intent)))
+          ? await preparationIdea(responder, limiter, uid, newNeed ? "" : previousSeed, p.message)
+          : undefined;
+        const reply = idea ? `**Ідея для вашої чернетки**\n\n${idea}\n\n${consultation}` : consultation;
+        search.questions = ["complaint", "correction"].includes(dialogue.intent) || followUp
+          ? [] : [nextQuestion(query, search.intents, search.matches.length > 0)];
         const payload = {
-          mode,
+          mode: "guided",
+          dialogueIntent: dialogue.intent,
+          selectedProgramId,
           search,
           seed: query.slice(-2000),
-          dialogueIntent: dialogue.intent,
-          fallbackReason,
+          extractedFacts: extractedFacts.length ? extractedFacts : undefined,
         };
         const saved = await db.query(
           `INSERT INTO advisor_messages(id,conversation_id,owner_id,question,reply,payload) VALUES($1,$2,$3,$4,$5,$6::jsonb) ON CONFLICT(id) DO NOTHING RETURNING *`,

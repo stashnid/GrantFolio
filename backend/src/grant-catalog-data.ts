@@ -1,4 +1,5 @@
 import { EXPANDED_FUNDING_CATALOG } from "./expanded-funding-catalog.js";
+import { GLOBAL_FUNDING_ADDITIONS } from "./global-funding-additions.js";
 /** Shared, curated program information. Not an automated eligibility decision. */
 export type GrantCatalogEntry = {
   id: string;
@@ -65,7 +66,7 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
     provider: "Дія / Державний центр зайнятості",
     amount: "Старт — до 500 тис. грн; масштабування — до 2,5 млн грн",
     deadline:
-      "Поточний етап: 16–27 листопада 2026 року за чинним календарем Мінекономіки.",
+      "Поточний прийом уточнюйте на сторінці Дії.",
     category: "erobota",
     categoryLabel: "Власна справа",
     targetAudience: "Повнолітні громадяни України, ФОП і юридичні особи",
@@ -77,8 +78,8 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
     ],
     officialUrl:
       "https://diia.gov.ua/services/zapochatkuvannia-ta-masshtabuvannia-vlasnoi-spravy",
-    checkedAt: "2026-11-16",
-    intakeStatus: "open",
+    checkedAt: "2026-11-18",
+    intakeStatus: "unconfirmed",
     planningLimitKopecks: 250000000,
     details: {
       overview:
@@ -98,6 +99,7 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
       ],
       costs: [
         "Комерційний і виробничий транспорт; особисте авто не прирівнюється до цієї витрати.",
+        "Для аграрного бізнес-плану постанова КМУ №616 передбачає свійських тварин і птицю, саджанці, насіння й сировину серед пов’язаних із планом витрат. Ці позиції входять до групи пов’язаних із бізнес-планом товарів і послуг зі спільним лімітом до 50% гранту.",
         "Виробничі активи, оренда, цифрові рішення, брендинг, маркетинг та облаштування робочих місць; для окремих витрат діють ліміти.",
       ],
       obligations: [
@@ -112,7 +114,7 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
         "Після підтвердження етапу: увійдіть у Дію, заповніть заяву, додайте план, виберіть банк і підпишіть.",
       ],
       timing: [
-        "Чинний календар Мінекономіки: етап 16–27 листопада; наступний — 1–15 грудня. Перед поданням перевіряйте, чи не оголошено зупинення.",
+        "Календар Мінекономіки містить етап 16–27 листопада, а сторінка Дії вказувала 27 жовтня під час звірки 18 листопада. Поточний прийом потребує підтвердження.",
       ],
       pitfalls: [
         "Студентський статус не визначає вік і не є окремою підставою для гранту. Для підтримки молодого підприємця перевіряються вік, бізнес-план та інші умови програми.",
@@ -152,18 +154,8 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
       ],
       unresolved: [
         "Точні надбавки, власний внесок та обмеження для вашого напряму; чинний шаблон потрібно звірити з офіційною формою.",
-        "На сторінці послуги лишилася стара дата 27 жовтня; поточний етап визначено за чинним нормативним календарем.",
+        "Не підтверджено, що ці дати відповідають одному відкритому раунду.",
       ],
-    },
-    availability: {
-      state: "open",
-      checkedAt: "2026-11-16T14:13:24.000Z",
-      validUntil: "2026-11-19T16:45:34.770Z",
-      sourceUrl: "https://zakon.rada.gov.ua/laws/show/z1185-26",
-      evidence: "Календар подання: Листопад 16–27.",
-      deadlineAt: "2026-11-27T23:59:59+02:00",
-      rolling: false,
-      startsAt: "2026-11-16T00:00:00+02:00",
     },
     searchTerms: [
       "ветерани",
@@ -718,6 +710,7 @@ export const GRANT_CATALOG: GrantCatalogEntry[] = [
     },
   },
   ...EXPANDED_FUNDING_CATALOG,
+  ...GLOBAL_FUNDING_ADDITIONS,
 ];
 
 // Preserve one set of sourced facts for catalog filters, project planning and assistant.

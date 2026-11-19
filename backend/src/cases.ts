@@ -1,3 +1,5 @@
+import { jarAccessRouter } from "./monobank-jar.js";
+import { grantPreparationPilotRouter, type PaymentConfig } from "./grant-preparation-pilot.js";
 import {GRANT_CATALOG} from "./grant-catalog-data.js";
 import { Router } from "express";
 import type { Pool } from "pg";
@@ -5,6 +7,7 @@ import { randomUUID } from "node:crypto";
 import { z } from "zod";
 import { commandSchema, totalKopecks } from "./budget.js";
 import { detailsCommandSchema, readiness } from "./project-details.js";
+import { grantApplicationVersions } from "./grant-application.js";
 import { draftExport } from "./draft-export.js";
 import { assistantRouter } from "./assistant.js";
 import { configuredGeminiResponder } from "./gemini.js";
@@ -49,13 +52,31 @@ function view(row: CaseRow) {
     totalKopecks: Number(row.total_kopecks),
   };
 }
-export function casesRouter(db: Pool) {
+export function casesRouter(db: Pool, payment?: PaymentConfig) {
   const router = Router();
-  router.use(assistantRouter(db, configuredGeminiResponder()));
   router.use((_req, res, next) => {
     res.set("Cache-Control", "no-store");
     next();
   });
+  router.use(jarAccessRouter(db));
+  // Listing and reserving a project are free. Every project operation is checked server-side.
+  router.use(async (req, res, next) => {
+    const parts = req.path.split("/").filter(Boolean);
+    if (!parts.length || (parts.length === 1 && (req.method === "GET" || req.method === "DELETE"))) { next(); return; }
+    const id = parts[0];
+    if (!idSchema.safeParse(id).success) { res.sendStatus(404); return; }
+    try {
+      const result = await db.query(`SELECT EXISTS (SELECT 1 FROM jar_orders j WHERE j.case_id=c.id
+        AND (j.confirmed_at IS NOT NULL OR j.manual_unlocked_at IS NOT NULL)) OR EXISTS
+        (SELECT 1 FROM grant_preparation_pilot p WHERE p.case_id=c.id AND p.confirmed_at IS NOT NULL) AS paid
+        FROM cases c WHERE c.id=$1 AND c.owner_id=$2`, [id, res.locals.uid]);
+      if (!result.rowCount) { res.sendStatus(404); return; }
+      if (!result.rows[0].paid) { res.status(402).json({error:"project_payment_required"}); return; }
+      next();
+    } catch (error) { next(error); }
+  });
+  router.use(grantPreparationPilotRouter(db, payment));
+  router.use(assistantRouter(db, configuredGeminiResponder()));
   router.use(grantApplicationRouter(db));
   router.use(grantFinancialPlanRouter(db));
   router.get("/", async (_req, res, next) => {
@@ -171,6 +192,10 @@ export function casesRouter(db: Pool) {
       }
       res.json({ deleted: true });
     } catch (e) {
+      if ((e as { code?: string }).code === "P0001") {
+        res.status(409).json({ error: "payment_pending" });
+        return;
+      }
       next(e);
     }
   });
@@ -181,8 +206,12 @@ export function casesRouter(db: Pool) {
     }
     try {
       const result = await db.query(
-        "SELECT title, program_id, revision, details, items, total_kopecks FROM cases WHERE id=$1 AND owner_id=$2",
-        [req.params.id, res.locals.uid],
+        `SELECT c.title, c.program_id, c.revision, c.details, c.items, c.total_kopecks,
+           a.answers AS application_answers, a.revision AS application_revision
+         FROM cases c LEFT JOIN grant_applications a ON a.case_id=c.id AND a.program_id=c.program_id
+           AND a.rules_version=($3::jsonb->>c.program_id)
+         WHERE c.id=$1 AND c.owner_id=$2`,
+        [req.params.id, res.locals.uid, JSON.stringify(grantApplicationVersions)],
       );
       if (!result.rowCount) {
         res.status(404).json({ error: "not_found" });

@@ -1,4 +1,5 @@
 import { ReplyReveal } from "./ReplyReveal";
+import { useConfirm } from "./ConfirmDialog";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import "./Assistant.css";
 import { readableApiError } from "./api";
@@ -43,6 +44,7 @@ type Props = {
   welcomePrompt?: string;
   nextStep?: { label: string; description: string; onOpen: () => void };
   onReviewDocuments?: () => void;
+  embedded?: boolean;
 };
 
 type StarterIconKind = "budget" | "rules" | "customers" | "readiness" | "idea" | "plan";
@@ -406,7 +408,11 @@ export function Assistant({
   projectDetails,
   onApplySuggestion,
   canApplySuggestions = false,
+  embedded = false,
 }: Props) {
+  const confirm = useConfirm();
+  const activeCaseIdRef = useRef(caseId);
+  activeCaseIdRef.current = caseId;
   const starterPrompts = getStarterPrompts(programTitle, programSelected);
   const [revealingId, setRevealingId] = useState<string | null>(null);
   const scrollArea = useRef<HTMLDivElement>(null);
@@ -567,15 +573,33 @@ export function Assistant({
   }, [message, onDraftChange]);
 
   useEffect(() => {
-    if (prefilledPrompt) {
-      if (!message.trim() || message === prefilledPrompt || window.confirm("Замінити ненадіслане запитання запропонованим текстом?")) {
-        setMessage(prefilledPrompt);
-      }
-      onClearPrefilled?.();
+    if (!prefilledPrompt) return;
+    const promptToApply = prefilledPrompt;
+    const targetCaseId = caseId;
+    onClearPrefilled?.();
+    if (!message.trim() || message === promptToApply) {
+      setMessage(promptToApply);
+      return;
     }
-  }, [prefilledPrompt, onClearPrefilled, caseId]);
+    void confirm({
+      title: "Замінити ненадіслане запитання?",
+      message: "У полі вводу вже є текст. Замінити його запропонованим запитанням?",
+      confirmLabel: "Замінити",
+      cancelLabel: "Залишити мій текст",
+      tone: "warning",
+    }).then((confirmed) => {
+      if (confirmed && active.current && activeCaseIdRef.current === targetCaseId) {
+        setMessage(promptToApply);
+      }
+    });
+  }, [prefilledPrompt, onClearPrefilled, caseId, confirm]);
 
   useEffect(() => {
+    if (exchanges.length === 0 && !loading) {
+      if (scrollArea.current) scrollArea.current.scrollTop = 0;
+      scrollToBottom.current = false;
+      return;
+    }
     if (scrollToBottom.current) {
       followReply();
       scrollToBottom.current = false;
@@ -666,8 +690,18 @@ export function Assistant({
     }, 5000);
   }
 
-  function usePrompt(text: string) {
-    if (message.trim() && message !== text && !window.confirm("Замінити ненадіслане запитання запропонованим текстом?")) return;
+  async function usePrompt(text: string) {
+    const targetCaseId = caseId;
+    if (message.trim() && message !== text) {
+      const confirmed = await confirm({
+        title: "Замінити ненадіслане запитання?",
+        message: "У полі вводу вже є текст. Замінити його запропонованим запитанням?",
+        confirmLabel: "Замінити",
+        cancelLabel: "Залишити мій текст",
+        tone: "warning",
+      });
+      if (!confirmed || !active.current || activeCaseIdRef.current !== targetCaseId) return;
+    }
     setMessage(text);
     inputRef.current?.focus();
   }
@@ -700,12 +734,18 @@ export function Assistant({
 
   return (
     <section className="live-chat-container" aria-labelledby="live-chat-heading">
-      <header className="live-chat-header">
-        <div className="chat-header-info">
-          <h2 id="live-chat-heading">Асистент</h2>
-          <span className="chat-status-indicator">Відповідає на основі збереженої версії проєкту</span>
-        </div>
-      </header>
+      {embedded ? (
+        <h2 id="live-chat-heading" className="sr-only">
+          Асистент
+        </h2>
+      ) : (
+        <header className="live-chat-header">
+          <div className="chat-header-info">
+            <h2 id="live-chat-heading">Асистент</h2>
+            <span className="chat-status-indicator">Відповідає на основі збереженої версії проєкту</span>
+          </div>
+        </header>
+      )}
       <div
         ref={scrollArea}
         className="chat-scroll-area"
@@ -882,7 +922,7 @@ export function Assistant({
             </div>
           </div>
         )}
-        {(nextStep || onReviewDocuments) && (
+        {hasMessages && (nextStep || onReviewDocuments) && (
           <section className="chat-next-step" aria-label="Наступні кроки">
             {nextStep && (
               <div className="chat-next-step-content">

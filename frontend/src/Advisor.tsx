@@ -1,3 +1,4 @@
+import { hasGuidedApplication } from "./grants";
 import { advisorFollowups } from "./advisor-followups";
 import { isGrantAvailable } from "../../backend/src/grant-availability";
 import { useGrantPrograms } from "./GrantPrograms";
@@ -9,6 +10,8 @@ import type { GrantProgram } from "./grants";
 import type { SearchResult } from "../../backend/src/grant-discovery";
 import { AiEmblem, CopyActionIcon, FormattedReply, ScrollDownIcon, SendArrowIcon } from "./Assistant";
 import { ReplyReveal } from "./ReplyReveal";
+import { useConfirm } from "./ConfirmDialog";
+import { FeedbackPromptBanner } from "./FeedbackPromptBanner";
 import "./Advisor.css";
 import { advisorSessionKey, createAdvisorSession, parseAdvisorSession } from "./advisor-session";
 
@@ -26,7 +29,7 @@ type Message = {
   mode: string;
   search: SearchResult;
   seed: string;
-  profileUpdated?: boolean;
+  selectedProgramId?: string;
   extractedFacts?: ExtractedProfileFact[];
 };
 type Conversation = { id: string; title: string };
@@ -77,6 +80,26 @@ function AdvisorStarterIcon({ kind }: { kind: AdvisorStarterKind }) {
   }
 }
 
+function RenameIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M12 20h9" />
+      <path d="M16.5 3.5a2.12 2.12 0 1 1 3 3L7 19l-4 1 1-4 12.5-12.5Z" />
+    </svg>
+  );
+}
+
+function DeleteIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M3 6h18" />
+      <path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2" />
+      <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+      <path d="M10 11v6M14 11v6" />
+    </svg>
+  );
+}
+
 export function Advisor({
   user,
   onPrepare,
@@ -86,6 +109,7 @@ export function Advisor({
   prefillConversationId,
   onClearPrefilled,
   onOpenProfile,
+  onOpenFeedback,
 }: {
   user: User;
   onPrepare: (p: GrantProgram, seed: string) => void;
@@ -95,8 +119,13 @@ export function Advisor({
   prefillConversationId?: string;
   onClearPrefilled: () => void;
   onOpenProfile?: () => void;
+  onOpenFeedback?: (context?: { programId?: string | null }) => void;
 }) {
   const { programs: GRANT_PROGRAMS } = useGrantPrograms();
+  const preparablePilot = GRANT_PROGRAMS.find(program =>
+    program.id === "vlasna-sprava" && !isGrantAvailable(program),
+  );
+  const confirm = useConfirm();
   const [conversations, setConversations] = useState<Conversation[]>([]),
     [conversation, setConversation] = useState(""),
     [messages, setMessages] = useState<Message[]>([]),
@@ -125,24 +154,108 @@ export function Advisor({
   }, []);
   const [historySearch, setHistorySearch] = useState("");
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyError, setHistoryError] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const [editingSurface, setEditingSurface] = useState<"desktop" | "mobile">("desktop");
+  const [mutatingChatId, setMutatingChatId] = useState<string | null>(null);
+  const [draftVersion, setDraftVersion] = useState(0);
+  const historyOpenRef = useRef(historyOpen);
+  historyOpenRef.current = historyOpen;
+  const editingIdRef = useRef<string | null>(null);
+  editingIdRef.current = editingId;
+  const mutatingChatIdRef = useRef<string | null>(null);
+  mutatingChatIdRef.current = mutatingChatId;
+  const activeUidRef = useRef(user.uid);
+  activeUidRef.current = user.uid;
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
+  const desktopRenameInputRef = useRef<HTMLInputElement>(null);
+  const mobileRenameInputRef = useRef<HTMLInputElement>(null);
+  const historyControllerRef = useRef<AbortController | null>(null);
+  const skipHistoryFetchId = useRef<string | null>(null);
   const historyPanel = useRef<HTMLElement>(null);
   const historyButton = useRef<HTMLButtonElement>(null);
+  const restoreHistoryFocus = useCallback((targetConversationId?: string) => {
+    window.requestAnimationFrame(() => {
+      const container = historyOpenRef.current
+        ? historyPanel.current
+        : document.getElementById("advisor-history-slot") ??
+          document.querySelector<HTMLElement>(".advisor-history-desktop");
+      if (!container) return;
+      if (targetConversationId) {
+        const items = Array.from(container.querySelectorAll<HTMLButtonElement>("button.advisor-history-item"));
+        const match = items.find((btn) => btn.dataset.conversationId === targetConversationId);
+        if (match) {
+          match.focus();
+          return;
+        }
+      }
+      const fallback =
+        container.querySelector<HTMLButtonElement>("button.advisor-history-item") ??
+        container.querySelector<HTMLButtonElement>("button.advisor-new-chat");
+      fallback?.focus();
+    });
+  }, []);
+  const cancelRename = useCallback(() => {
+    if (mutatingChatIdRef.current !== null) return;
+    const targetId = editingIdRef.current ?? undefined;
+    setEditingId(null);
+    setEditingTitle("");
+    setHistoryError("");
+    restoreHistoryFocus(targetId);
+  }, [restoreHistoryFocus]);
   const closeHistory = useCallback(() => {
     setHistoryOpen(false);
+    setHistoryError("");
+    if (mutatingChatIdRef.current === null) {
+      setEditingId(null);
+      setEditingTitle("");
+    }
     historyButton.current?.focus();
   }, []);
+  useEffect(() => {
+    if (!editingId) return;
+    const target = editingSurface === "mobile" ? mobileRenameInputRef.current : desktopRenameInputRef.current;
+    if (target) {
+      target.focus();
+      target.select();
+    }
+  }, [editingId, editingSurface]);
   useEffect(() => {
     if (!historyOpen) return;
     historyPanel.current?.focus();
     const onGlobalKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
+        if (event.defaultPrevented) return;
+        if (editingIdRef.current !== null) {
+          event.preventDefault();
+          cancelRename();
+          return;
+        }
         event.preventDefault();
         closeHistory();
+        return;
+      }
+      if (event.key === "Tab") {
+        const panel = historyPanel.current;
+        if (panel && !panel.contains(document.activeElement)) {
+          event.preventDefault();
+          const firstControl = panel.querySelector<HTMLElement>(
+            "button:not(:disabled), input:not(:disabled)"
+          );
+          (firstControl ?? panel).focus();
+        }
       }
     };
     window.addEventListener("keydown", onGlobalKeyDown);
     return () => window.removeEventListener("keydown", onGlobalKeyDown);
-  }, [historyOpen, closeHistory]);
+  }, [historyOpen, closeHistory, cancelRename]);
 
   const input = useRef<HTMLTextAreaElement>(null),
     attempts = useRef<Record<string, { id: string; text: string }>>({}),
@@ -188,28 +301,37 @@ export function Advisor({
   const current = useRef(conversation);
   current.current = conversation;
 
-  async function loadConversations() {
-    const r = await authenticatedRequest(user, "/api/advisor/conversations");
+  async function loadConversations(signal?: AbortSignal) {
+    const uid = user.uid;
+    const r = await authenticatedRequest(user, "/api/advisor/conversations", { signal });
     if (!r.ok) throw new ApiError("http", r.status);
     const data = await r.json();
     if (!Array.isArray(data.conversations)) throw Error();
+    if (activeUidRef.current !== uid || signal?.aborted) return [];
     setConversations(data.conversations);
     return data.conversations as Conversation[];
   }
 
   useEffect(() => {
+    const currentUid = user.uid;
+    const controller = new AbortController();
     let active = true;
     drafts.current = {};
     attempts.current = {};
     textRef.current = "";
     current.current = "";
+    skipHistoryFetchId.current = null;
     setText("");
     setConversation("");
+    setEditingId(null);
+    setEditingTitle("");
+    setMutatingChatId(null);
+    setHistoryError("");
     setRestored(false);
     setStorageError(false);
     let preferred = "";
     try {
-      const saved = parseAdvisorSession(sessionStorage.getItem(advisorSessionKey(user.uid)));
+      const saved = parseAdvisorSession(sessionStorage.getItem(advisorSessionKey(currentUid)));
       if (saved) {
         drafts.current = { ...saved.drafts };
         attempts.current = { ...saved.attempts };
@@ -227,31 +349,35 @@ export function Advisor({
       setStorageError(true);
     }
     storageReady.current = true;
-    loadConversations()
+    loadConversations(controller.signal)
       .then((rows) => {
-        if (active && !current.current) {
+        if (active && !controller.signal.aborted && !current.current) {
           const id = rows[0]?.id ?? crypto.randomUUID();
           current.current = id;
           setConversation(id);
         }
       })
       .catch((e) => {
-        if (active) {
-          setError(readableApiError(e, "Не вдалося відкрити розмови. Можна почати нову."));
-          if (!current.current) {
-            const id = crypto.randomUUID();
-            current.current = id;
-            setConversation(id);
-          }
+        if (!active || controller.signal.aborted || (e instanceof DOMException && e.name === "AbortError")) {
+          return;
+        }
+        setError(readableApiError(e, "Не вдалося відкрити розмови. Можна почати нову."));
+        if (!current.current) {
+          const id = crypto.randomUUID();
+          current.current = id;
+          setConversation(id);
         }
       });
-    const flush = () => persistRef.current();
+    const flush = () => {
+      if (activeUidRef.current === currentUid) persistRef.current();
+    };
     window.addEventListener("beforeunload", flush);
     return () => {
       active = false;
+      controller.abort();
       window.removeEventListener("beforeunload", flush);
       if (timerRef.current !== null) window.clearTimeout(timerRef.current);
-      flush();
+      if (activeUidRef.current === currentUid) flush();
       storageReady.current = false;
     };
   }, [user.uid]);
@@ -299,18 +425,31 @@ export function Advisor({
   useEffect(() => {
     if (!conversation) return;
     const controller = new AbortController();
+    historyControllerRef.current = controller;
     setMessages([]);
     setRevealingId(null);
     nearBottom.current = true;
     setIsAtBottom(true);
     setError("");
+    if (skipHistoryFetchId.current === conversation) {
+      skipHistoryFetchId.current = null;
+      setHasMore(false);
+      setCursor(null);
+      setLoading(false);
+      return () => {
+        if (historyControllerRef.current === controller) historyControllerRef.current = null;
+      };
+    }
     void history(conversation, null, controller.signal);
-    return () => controller.abort();
+    return () => {
+      controller.abort();
+      if (historyControllerRef.current === controller) historyControllerRef.current = null;
+    };
   }, [conversation]);
 
   useEffect(() => {
     onDirty(!!text.trim() || busy || Object.values(drafts.current).some((d) => !!d.trim()));
-  }, [text, busy, conversation, onDirty]);
+  }, [text, busy, conversation, draftVersion, onDirty]);
 
   useEffect(() => {
     if (!prefilledMessage || busy || !conversation || current.current !== conversation) return;
@@ -320,6 +459,10 @@ export function Advisor({
   }, [prefilledMessage, prefillConversationId, busy, conversation, onClearPrefilled]);
 
   useEffect(() => {
+    if (messages.length === 0 && !busy) {
+      if (scrollArea.current) scrollArea.current.scrollTop = 0;
+      return;
+    }
     followReply();
   }, [messages, busy]);
 
@@ -337,7 +480,12 @@ export function Advisor({
   }
 
   function changeConversation(id: string) {
-    if (busy || id === current.current) return;
+    if (busy || mutatingChatId !== null || id === current.current) return;
+    setHistoryError("");
+    if (editingId !== null) {
+      setEditingId(null);
+      setEditingTitle("");
+    }
     if (!conversations.some((c) => c.id === id) && !drafts.current[id]) setHistorySearch("");
     if (current.current) drafts.current[current.current] = textRef.current;
     const draft = drafts.current[id] ?? "";
@@ -349,7 +497,7 @@ export function Advisor({
   }
 
   async function send() {
-    if (sending.current || !text.trim() || !conversation) return;
+    if (sending.current || mutatingChatId !== null || !text.trim() || !conversation) return;
     sending.current = true;
     const question = text.trim(),
       id = conversation;
@@ -426,14 +574,15 @@ export function Advisor({
   }
 
   const draftTitle = (value: string) => value.trim().replace(/\s+/g, " ").slice(0, 64) || "Нова розмова";
-  const isSavedConversation = conversations.some((c) => c.id === conversation);
+  const savedIds = new Set(conversations.map((c) => c.id));
+  const isSavedConversation = savedIds.has(conversation);
   const isFreshEmptyChat = !!conversation && !isSavedConversation && !text.trim() && messages.length === 0;
   const localIds = Object.keys(drafts.current).filter(
-    (id) => !!drafts.current[id].trim() && !conversations.some((c) => c.id === id)
+    (id) => !!drafts.current[id].trim() && !savedIds.has(id)
   );
   const entries = [
     ...(!isSavedConversation && conversation && (!!text.trim() || messages.length > 0)
-      ? [{ id: conversation, title: draftTitle(text) }]
+      ? [{ id: conversation, title: draftTitle(text.trim() || messages[0]?.question || "") }]
       : []),
     ...localIds.filter((id) => id !== conversation).map((id) => ({ id, title: draftTitle(drafts.current[id]) })),
     ...conversations,
@@ -442,7 +591,160 @@ export function Advisor({
     entry.title.toLocaleLowerCase("uk").includes(historySearch.trim().toLocaleLowerCase("uk"))
   );
 
+  const resetActiveChatToFresh = () => {
+    historyControllerRef.current?.abort();
+    const nextId = crypto.randomUUID();
+    skipHistoryFetchId.current = nextId;
+    setMessages([]);
+    setHasMore(false);
+    setCursor(null);
+    setLoading(false);
+    setRevealingId(null);
+    setRestored(false);
+    setError("");
+    setHistorySearch("");
+    textRef.current = "";
+    setText("");
+    current.current = nextId;
+    setConversation(nextId);
+  };
+
+  function startRename(entry: Conversation, surface: "desktop" | "mobile") {
+    if (busy || mutatingChatId !== null) return;
+    setHistoryError("");
+    setEditingId(entry.id);
+    setEditingTitle(entry.title);
+    setEditingSurface(surface);
+  }
+
+  async function submitRename(id: string) {
+    if (busy || mutatingChatId !== null) return;
+    const existing = conversations.find((c) => c.id === id);
+    if (!existing) {
+      setEditingId(null);
+      setEditingTitle("");
+      restoreHistoryFocus();
+      return;
+    }
+    const trimmed = editingTitle.trim().slice(0, 70);
+    if (!trimmed || trimmed === existing.title) {
+      setEditingId(null);
+      setEditingTitle("");
+      restoreHistoryFocus(id);
+      return;
+    }
+    const uid = user.uid;
+    setMutatingChatId(id);
+    setHistoryError("");
+    try {
+      const r = await authenticatedRequest(
+        user,
+        `/api/advisor/conversations/${encodeURIComponent(id)}`,
+        {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ title: trimmed }),
+        }
+      );
+      if (!r.ok) throw new ApiError("http", r.status);
+      const data = await r.json();
+      if (activeUidRef.current !== uid) return;
+      const updatedTitle =
+        typeof data?.conversation?.title === "string" && data.conversation.title.trim()
+          ? data.conversation.title.trim()
+          : trimmed;
+      setConversations((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, title: updatedTitle } : c))
+      );
+      setEditingId(null);
+      setEditingTitle("");
+      restoreHistoryFocus(id);
+    } catch (e) {
+      if (activeUidRef.current === uid) {
+        setHistoryError(readableApiError(e, "Не вдалося перейменувати розмову. Спробуйте ще раз."));
+      }
+    } finally {
+      if (activeUidRef.current === uid) setMutatingChatId(null);
+    }
+  }
+
+  async function deleteConversation(entry: Conversation, isSaved: boolean) {
+    if (busy || mutatingChatId !== null) return;
+    setHistoryError("");
+    const id = entry.id;
+    const uid = user.uid;
+    if (!isSaved) {
+      const confirmed = await confirm({
+        title: "Видалити чернетку розмови?",
+        message: "Ненадісланий текст цієї розмови буде видалено.",
+        confirmLabel: "Видалити",
+        cancelLabel: "Скасувати",
+        tone: "danger",
+      });
+      if (!confirmed || !mountedRef.current || activeUidRef.current !== uid || mutatingChatIdRef.current !== null) return;
+      if (editingId === id) {
+        setEditingId(null);
+        setEditingTitle("");
+      }
+      delete drafts.current[id];
+      delete attempts.current[id];
+      if (id === current.current) {
+        resetActiveChatToFresh();
+      }
+      setDraftVersion((v) => v + 1);
+      persistRef.current();
+      restoreHistoryFocus();
+      return;
+    }
+
+    const confirmed = await confirm({
+      title: "Видалити розмову?",
+      message: `Розмову «${entry.title}» та всі повідомлення в цьому чаті буде видалено.`,
+      confirmLabel: "Видалити",
+      cancelLabel: "Скасувати",
+      tone: "danger",
+    });
+    if (!confirmed || !mountedRef.current || activeUidRef.current !== uid || mutatingChatIdRef.current !== null) return;
+
+    setMutatingChatId(id);
+    setHistoryError("");
+    try {
+      const r = await authenticatedRequest(
+        user,
+        `/api/advisor/conversations/${encodeURIComponent(id)}`,
+        { method: "DELETE" }
+      );
+      if (!r.ok && r.status !== 404) throw new ApiError("http", r.status);
+      if (activeUidRef.current !== uid) return;
+      if (editingId === id) {
+        setEditingId(null);
+        setEditingTitle("");
+      }
+      setConversations((prev) => prev.filter((c) => c.id !== id));
+      delete drafts.current[id];
+      delete attempts.current[id];
+      if (id === current.current) {
+        resetActiveChatToFresh();
+      }
+      setDraftVersion((v) => v + 1);
+      persistRef.current();
+      restoreHistoryFocus();
+    } catch (e) {
+      if (activeUidRef.current === uid) {
+        setHistoryError(readableApiError(e, "Не вдалося видалити розмову. Спробуйте ще раз."));
+      }
+    } finally {
+      if (activeUidRef.current === uid) setMutatingChatId(null);
+    }
+  }
+
   const startNewChat = () => {
+    if (busy || mutatingChatId !== null) return;
+    setHistoryError("");
+    if (editingId !== null) {
+      setEditingId(null);
+      setEditingTitle("");
+    }
     if (!isFreshEmptyChat) {
       changeConversation(crypto.randomUUID());
     }
@@ -450,65 +752,165 @@ export function Advisor({
     input.current?.focus();
   };
 
-  const historyContents = (
-    <>
-      <div className="advisor-history-heading">
-        <h2>Розмови</h2>
-        <button type="button" className="advisor-history-close" aria-label="Закрити історію" onClick={closeHistory}>
-          ×
-        </button>
-      </div>
-      <button
-        type="button"
-        className={`advisor-new-chat${isFreshEmptyChat ? " is-current" : ""}`}
-        disabled={busy}
-        onClick={startNewChat}
-      >
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
-          <path d="M12 5v14M5 12h14" />
-        </svg>
-        <span>Нова розмова</span>
-      </button>
-      <label className="advisor-history-search">
-        <span className="sr-only">Пошук розмов</span>
-        <input
-          type="search"
-          value={historySearch}
-          onChange={(e) => setHistorySearch(e.target.value)}
-          placeholder="Пошук розмов…"
-        />
-      </label>
-      <nav aria-label="Список розмов" className="advisor-history-list">
-        {visibleEntries.map((entry) => (
-          <button
-            key={entry.id}
-            type="button"
-            className={entry.id === conversation ? "advisor-history-item is-active" : "advisor-history-item"}
-            aria-current={entry.id === conversation ? "page" : undefined}
-            disabled={busy}
-            onClick={() => {
-              changeConversation(entry.id);
-              if (historyOpen) closeHistory();
-            }}
-          >
-            <span>{entry.title}</span>
-            {(entry.id === conversation ? !!text.trim() : !!drafts.current[entry.id]?.trim()) && <small>Чернетка</small>}
+  const renderHistoryContents = (surface: "desktop" | "mobile") => {
+    const controlsDisabled = busy || mutatingChatId !== null;
+    return (
+      <>
+        <div className="advisor-history-heading">
+          <h2>Розмови</h2>
+          <button type="button" className="advisor-history-close" aria-label="Закрити історію" onClick={closeHistory}>
+            ×
           </button>
-        ))}
-        {visibleEntries.length === 0 && (
-          <p className="advisor-history-empty">
-            {historySearch.trim()
-              ? "Розмов не знайдено."
-              : "Ваші розмови з’являться тут після першого запитання."}
+        </div>
+        <button
+          type="button"
+          className={`advisor-new-chat${isFreshEmptyChat ? " is-current" : ""}`}
+          disabled={controlsDisabled}
+          onClick={startNewChat}
+        >
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" aria-hidden="true">
+            <path d="M12 5v14M5 12h14" />
+          </svg>
+          <span>Нова розмова</span>
+        </button>
+        <label className="advisor-history-search">
+          <span className="sr-only">Пошук розмов</span>
+          <input
+            type="search"
+            value={historySearch}
+            onChange={(e) => setHistorySearch(e.target.value)}
+            placeholder="Пошук розмов…"
+          />
+        </label>
+        {historyError && (
+          <p className="advisor-history-error" role="alert">
+            {historyError}
           </p>
         )}
-      </nav>
-    </>
-  );
+        <nav aria-label="Список розмов" className="advisor-history-list">
+          {visibleEntries.map((entry) => {
+            const isActive = entry.id === conversation;
+            const isSaved = savedIds.has(entry.id);
+            const hasDraft = isActive ? !!text.trim() : !!drafts.current[entry.id]?.trim();
+            const canDelete = isSaved || hasDraft || !isActive;
+            const isEditing = editingId === entry.id;
+            const isMutating = mutatingChatId === entry.id;
+
+            return (
+              <div
+                key={entry.id}
+                className={`advisor-history-row${isActive ? " advisor-history-row-active" : ""}${isEditing ? " is-editing" : ""}`}
+              >
+                {isEditing ? (
+                  <form
+                    className="advisor-history-rename-form"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      void submitRename(entry.id);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Escape") {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        e.nativeEvent.stopPropagation();
+                        cancelRename();
+                      }
+                    }}
+                  >
+                    <input
+                      ref={surface === "mobile" ? mobileRenameInputRef : desktopRenameInputRef}
+                      type="text"
+                      className="advisor-history-rename-input"
+                      value={editingTitle}
+                      onChange={(e) => setEditingTitle(e.target.value)}
+                      maxLength={70}
+                      aria-label="Нова назва розмови"
+                      disabled={isMutating}
+                    />
+                    <button
+                      type="submit"
+                      className="advisor-history-action-btn advisor-history-action-save"
+                      aria-label="Зберегти назву"
+                      title="Зберегти"
+                      disabled={isMutating}
+                    >
+                      <span aria-hidden="true">✓</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="advisor-history-action-btn advisor-history-action-cancel"
+                      aria-label="Скасувати перейменування"
+                      title="Скасувати"
+                      disabled={isMutating}
+                      onClick={cancelRename}
+                    >
+                      <span aria-hidden="true">×</span>
+                    </button>
+                  </form>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      className={isActive ? "advisor-history-item is-active" : "advisor-history-item"}
+                      data-conversation-id={entry.id}
+                      aria-current={isActive ? "page" : undefined}
+                      disabled={controlsDisabled}
+                      onClick={() => {
+                        changeConversation(entry.id);
+                        if (historyOpen) closeHistory();
+                      }}
+                    >
+                      <span>{entry.title}</span>
+                      {hasDraft && <small>Чернетка</small>}
+                    </button>
+                    {(isSaved || canDelete) && (
+                      <div className="advisor-history-actions">
+                        {isSaved && (
+                          <button
+                            type="button"
+                            className="advisor-history-action-btn"
+                            aria-label={`Перейменувати розмову «${entry.title}»`}
+                            title="Перейменувати"
+                            disabled={controlsDisabled}
+                            onClick={() => startRename(entry, surface)}
+                          >
+                            <RenameIcon />
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            type="button"
+                            className="advisor-history-action-btn advisor-history-action-delete"
+                            aria-label={`Видалити розмову «${entry.title}»`}
+                            title="Видалити"
+                            disabled={controlsDisabled}
+                            onClick={() => void deleteConversation(entry, isSaved)}
+                          >
+                            <DeleteIcon />
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
+          {visibleEntries.length === 0 && (
+            <p className="advisor-history-empty">
+              {historySearch.trim()
+                ? "Розмов не знайдено."
+                : "Ваші розмови з’являться тут після першого запитання."}
+            </p>
+          )}
+        </nav>
+      </>
+    );
+  };
 
   const desktopHistory = (
     <aside className="advisor-history advisor-history-desktop" aria-label="Історія розмов">
-      {historyContents}
+      {renderHistoryContents("desktop")}
     </aside>
   );
 
@@ -538,6 +940,12 @@ export function Advisor({
         onKeyDown={(event) => {
           if (!historyOpen) return;
           if (event.key === "Escape") {
+            if (event.defaultPrevented) return;
+            if (editingIdRef.current !== null) {
+              event.preventDefault();
+              cancelRename();
+              return;
+            }
             event.preventDefault();
             closeHistory();
           }
@@ -561,7 +969,7 @@ export function Advisor({
           }
         }}
       >
-        {historyContents}
+        {renderHistoryContents("mobile")}
       </aside>
       <div className="advisor-page">
         <div className="advisor-toolbar">
@@ -640,8 +1048,9 @@ export function Advisor({
                 Попередні повідомлення
               </button>
             )}
-            {messages.map((m) => {
+            {messages.map((m, index) => {
               const isCopied = copiedId === m.id;
+              const selectedProgram = GRANT_PROGRAMS.find(program => program.id === m.selectedProgramId);
               return (
                 <div className="chat-turn" key={m.id}>
                   <div className="chat-bubble user-bubble">
@@ -653,7 +1062,7 @@ export function Advisor({
                       <AiEmblem />
                       <strong className="author-name">GrantFolio Асистент</strong>
                       <span className="revision-badge">
-                        {m.mode === "guided" ? "Підбір за умовами каталогу" : "З урахуванням вашої розмови"}
+                        {m.mode === "guided" ? "Консультація за каталогом" : "Раніше збережена відповідь ШІ"}
                       </span>
                     </div>
                     <div className="bubble-text assistant-text">
@@ -685,7 +1094,7 @@ export function Advisor({
                           <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
                             <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
                           </svg>
-                          <span>{m.profileUpdated ? "Дані збережено у Профіль бізнесу:" : "Виявлено деталі для Профілю:"}</span>
+                          <span>Можливі дані для профілю. Звірте їх перед збереженням.</span>
                         </div>
                         <div className="advisor-sync-chips">
                           {m.extractedFacts.map((f) => (
@@ -705,7 +1114,7 @@ export function Advisor({
                         )}
                       </div>
                     )}
-                    {revealingId !== m.id && m.search.matches.length > 0 && (
+                    {revealingId !== m.id && !selectedProgram && m.search.matches.length > 0 && (
                       <div className="advisor-recommendations" aria-label="Можливі програми">
                         {m.search.matches.slice(0, 3).map((match) => {
                           const p = GRANT_PROGRAMS.find((program) => program.id === match.programId);
@@ -715,6 +1124,10 @@ export function Advisor({
                               <h3>{match.title}</h3>
                               <p>{match.reason}</p>
                               <small>{match.caution}</small>
+                              <p>{hasGuidedApplication(p.id)
+                                ? "У GrantFolio доступні анкета та підготовка робочих матеріалів."
+                                : "У GrantFolio доступні умови програми та посилання на надавача."}</p>
+                              <p><a href={p.officialUrl} target="_blank" rel="noopener noreferrer" aria-label={`Офіційне джерело програми: ${match.title} (відкриється в новій вкладці)`}>Офіційне джерело ↗</a></p>
                               <div className="advisor-grant-actions">
                                 <button
                                   type="button"
@@ -724,20 +1137,47 @@ export function Advisor({
                                 >
                                   Умови програми
                                 </button>
-                                <button
+                                {hasGuidedApplication(p.id) && <button
                                   type="button"
                                   className="advisor-grant-primary"
                                   aria-label={`Готувати матеріали для програми: ${match.title}`}
                                   onClick={() => onPrepare(p, m.seed)}
                                 >
                                   Готувати матеріали
-                                </button>
+                                </button>}
                               </div>
                             </article>
                           );
                         })}
                       </div>
                     )}
+                    {revealingId !== m.id && !selectedProgram && m.search.matches.length > 0 && index === messages.length - 1 && onOpenFeedback && (
+                      <FeedbackPromptBanner
+                        milestoneKey="advisor-matches"
+                        title="Чи підійшли вам запропоновані гранти?"
+                        description="Будь ласка, поділіться, чи легко було розібратися та що варто покращити на сайті."
+                        actionLabel="Поділитися думкою"
+                        onOpenFeedback={() => onOpenFeedback({ programId: m.search.matches[0]?.programId ?? null })}
+                      />
+                    )}
+                    {revealingId !== m.id && selectedProgram && hasGuidedApplication(selectedProgram.id) &&
+                      <div className="advisor-grant-actions">
+                        <button type="button" className="advisor-grant-primary" onClick={() => onPrepare(selectedProgram, m.seed)}>
+                          Почати чернетку для «{selectedProgram.title}»
+                        </button>
+                      </div>}
+                    {revealingId !== m.id && !selectedProgram && preparablePilot &&
+                      m.search.intents.includes("business") &&
+                      !m.search.intents.includes("study") && (
+                        <aside className="advisor-grant" aria-label="Підготовка до майбутнього прийому">
+                          <h3>Власна справа 2.0 · прийом не підтверджено</h3>
+                          <p>Можна заздалегідь підготувати опис і кошторис. Перевірте свій статус, КВЕД і допустимі витрати в умовах програми.</p>
+                          <div className="advisor-grant-actions">
+                            <button type="button" className="advisor-grant-secondary" onClick={() => onView(preparablePilot)}>Переглянути умови «Власної справи»</button>
+                            <button type="button" className="advisor-grant-primary" onClick={() => onPrepare(preparablePilot, m.seed)}>Готувати робочу чернетку</button>
+                          </div>
+                        </aside>
+                      )}
                     {revealingId !== m.id && (
                       <div className="advisor-followups">
                         {advisorFollowups(m.seed, m.search.intents.includes("transport")).map((q) => (
@@ -856,7 +1296,7 @@ export function Advisor({
                   className="chat-send-btn"
                   aria-label="Надіслати запитання"
                   title="Надіслати запитання"
-                  disabled={busy || loading || !text.trim()}
+                  disabled={busy || loading || mutatingChatId !== null || !text.trim()}
                 >
                   <SendArrowIcon />
                 </button>

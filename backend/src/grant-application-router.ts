@@ -1,8 +1,13 @@
 import { Router } from "express";
 import type { Pool } from "pg";
+import { readFile } from "node:fs/promises";
+import { fileURLToPath } from "node:url";
 import { z } from "zod";
 import { getGrantApplication, grantApplicationAnswersSchema, grantApplicationVersions } from "./grant-application.js";
 import type { GrantApplicationAnswers, GrantApplicationContext } from "./grant-application.js";
+import { createDiiaBusinessPlanExport, mapGrantApplicationAnswersToDiiaCells } from "./diia-business-plan-export.js";
+import { financialBusinessPlanRowsMatch, financialPlanSchema } from "./grant-financial-plan.js";
+import { itemSchema } from "./budget.js";
 
 const revision = z.number().int().min(0).max(2147483646);
 const command = z.object({
@@ -16,6 +21,7 @@ type Project = {
   revision: number;
   details: GrantApplicationContext["details"];
   total_kopecks: string;
+  items?: unknown;
   region?: string;
   city?: string;
   legal_form?: string;
@@ -30,30 +36,104 @@ function currentAnswers(project: Project, entry?: Entry): GrantApplicationAnswer
 }
 
 function response(project: Project, answers: GrantApplicationAnswers, applicationRevision: number) {
+  const application = getGrantApplication(project.program_id, answers, {
+    details: project.details,
+    budgetTotalKopecks: project.total_kopecks,
+    region: project.region,
+    city: project.city,
+    legalForm: project.legal_form,
+    kved: project.kved,
+  });
   return {
-    application: getGrantApplication(project.program_id, answers, {
-      details: project.details,
-      budgetTotalKopecks: project.total_kopecks,
-      region: project.region,
-      city: project.city,
-      legalForm: project.legal_form,
-      kved: project.kved,
-    }),
+    application,
+    documentCoverage: application?.programId === "vlasna-sprava"
+      ? mapGrantApplicationAnswersToDiiaCells(answers)
+      : null,
     answers,
     revision: applicationRevision,
     caseRevision: project.revision,
   };
 }
 
-const selectedProject = `SELECT c.program_id, c.revision, c.details, c.total_kopecks, p.region,
+const selectedProject = `SELECT c.program_id, c.revision, c.details, c.total_kopecks, c.items, p.region,
     p.details->>'city' AS city, p.details->>'legalForm' AS legal_form, p.details->>'kved' AS kved
   FROM cases c LEFT JOIN profiles p ON p.owner_id=c.owner_id WHERE c.id=$1 AND c.owner_id=$2`;
+const vlasnaSpravaWorkingWorkbook = readFile(fileURLToPath(new URL("../assets/vlasna-sprava-2026-diia-example-sanitized.xlsx", import.meta.url)));
 
 export function grantApplicationRouter(db: Pool) {
   const router = Router();
+  let exportingDiiaDraft = false;
   router.param("id", (_req, res, next, value) => {
     if (!z.string().uuid().safeParse(value).success) { res.status(404).json({ error: "not_found" }); return; }
     next();
+  });
+  router.get("/:id/grant-application/working-example", async (req, res, next) => {
+    try {
+      const result = await db.query(
+        "SELECT 1 FROM cases WHERE id=$1 AND owner_id=$2 AND program_id='vlasna-sprava'",
+        [req.params.id, res.locals.uid],
+      );
+      if (!result.rowCount) { res.status(404).json({ error: "not_found" }); return; }
+      res.type("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+        .attachment("biznes-plan-vlasna-sprava-2026-ochyshchenyi-zrazok.xlsx")
+        .send(await vlasnaSpravaWorkingWorkbook);
+    } catch (error) { next(error); }
+  });
+  router.post("/:id/grant-application/diia-draft/export", async (req, res, next) => {
+    const parsed = z.object({ expectedRevision: revision, expectedCaseRevision: revision }).strict().safeParse(req.body);
+    if (!parsed.success) { res.status(400).json({ error: "invalid_application_export" }); return; }
+    try {
+      const result = await db.query<Project & { answers: GrantApplicationAnswers | null; application_revision: number | null; case_revision: number | null; financial_plan: unknown; payment_confirmed: boolean }>(
+        `SELECT c.program_id, c.revision, c.details, c.total_kopecks, c.items, p.region,
+           p.details->>'city' AS city, p.details->>'legalForm' AS legal_form, p.details->>'kved' AS kved,
+           a.answers, a.revision AS application_revision, a.case_revision, f.plan AS financial_plan,
+           EXISTS (SELECT 1 FROM grant_preparation_pilot gp WHERE gp.case_id=c.id
+             AND gp.confirmed_at IS NOT NULL) OR EXISTS (SELECT 1 FROM jar_orders jo WHERE jo.case_id=c.id AND (jo.confirmed_at IS NOT NULL OR jo.manual_unlocked_at IS NOT NULL)) AS payment_confirmed
+         FROM cases c LEFT JOIN profiles p ON p.owner_id=c.owner_id
+         LEFT JOIN grant_applications a ON a.case_id=c.id AND a.program_id=c.program_id
+           AND a.rules_version=($3::jsonb->>c.program_id)
+         LEFT JOIN grant_financial_plans f ON f.case_id=c.id AND f.program_id=c.program_id AND f.rules_version=a.rules_version
+         WHERE c.id=$1 AND c.owner_id=$2`,
+        [req.params.id, res.locals.uid, JSON.stringify(grantApplicationVersions)],
+      );
+      const project = result.rows[0];
+      if (!project || project.program_id !== "vlasna-sprava") { res.status(404).json({ error: "not_found" }); return; }
+      if (!project.payment_confirmed) { res.status(402).json({ error: "preparation_payment_pending" }); return; }
+      if (project.revision !== parsed.data.expectedCaseRevision || project.application_revision !== parsed.data.expectedRevision || project.case_revision !== project.revision) {
+        res.status(409).json({ error: "revision_conflict" }); return;
+      }
+      const answers = grantApplicationAnswersSchema.parse(project.answers ?? {});
+      const application = getGrantApplication(project.program_id, answers, {
+        details: project.details, budgetTotalKopecks: project.total_kopecks, region: project.region,
+        city: project.city, legalForm: project.legal_form, kved: project.kved,
+      });
+      if (!answers.confirmAccuracy || !application?.readyForReview) {
+        res.status(422).json({ error: "application_not_ready_for_draft" }); return;
+      }
+      const financialPlan = financialPlanSchema.safeParse(project.financial_plan);
+      if (!financialPlan.success || !financialBusinessPlanRowsMatch(financialPlan.data, answers.taxProfile) ||
+          financialPlan.data.months[0].grantKopecks !== answers.requestedGrantKopecks ||
+          financialPlan.data.months.slice(1).some(month => month.grantKopecks !== 0) ||
+          financialPlan.data.months.reduce((total, month) => total + month.ownKopecks, 0) !== answers.ownContributionKopecks) {
+        res.status(422).json({ error: "business_plan_financial_rows_incomplete" }); return;
+      }
+      const budgetItems = z.array(itemSchema).max(100).safeParse(project.items);
+      if (!budgetItems.success) { res.status(422).json({ error: "business_plan_budget_invalid" }); return; }
+      if (exportingDiiaDraft) { res.status(429).json({ error: "business_plan_export_busy" }); return; }
+      const mapping = mapGrantApplicationAnswersToDiiaCells(answers, {
+        budgetTotalKopecks: Number(project.total_kopecks), items: budgetItems.data, financialPlan: financialPlan.data,
+      });
+      exportingDiiaDraft = true;
+      try {
+        const archive = await createDiiaBusinessPlanExport(await vlasnaSpravaWorkingWorkbook, mapping.cells, []);
+        res.attachment("grantfolio-vlasna-sprava-draft.zip").send(archive);
+      } catch (error) {
+        console.warn("Diia business plan export failed", error instanceof Error ? error.name : "UnknownError");
+        if (!res.headersSent) res.status(503).json({ error: "business_plan_export_unavailable" });
+      } finally {
+        exportingDiiaDraft = false;
+      }
+    } catch (error) { next(error); }
   });
   router.get("/:id/grant-application", async (req, res, next) => {
     try {
