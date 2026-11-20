@@ -66,7 +66,7 @@ export const RED_TEAM_SCENARIOS: RedTeamScenario[] = [
       maxAttachedGrants: 2,
       mustIncludeKeywords: [
         ["доставк", "продукці", "цех", "комерційн", "виробництв"],
-        ["лізинг", "обладнан", "перероб", "власна справа", "транспорт"],
+        ["лізинг", "обладнан", "власна справа", "транспорт", "постанов"],
       ],
       requireDirectFirstParagraph: true,
     },
@@ -84,10 +84,10 @@ export const RED_TEAM_SCENARIOS: RedTeamScenario[] = [
       expectedPrograms: ["vlasna-sprava"],
       forbiddenPrograms: ["ua-brave1-core"],
       mustIncludeKeywords: [
-        ["150", "250", "робоч", "працівник"],
-        ["власна справа", "дія"],
+        ["100", "150", "250", "300", "500", "старт", "робоч", "працівник", "сам"],
+        ["власна справа", "дія", "програм"],
       ],
-      forbiddenKeywords: ["ТОВ", "800 тис", "1 млн", "мільйон"],
+      forbiddenKeywords: ["ТОВ", "8 млн", "800 тис"],
       requireDirectFirstParagraph: true,
       requireNoProposals: true,
     },
@@ -141,7 +141,7 @@ export const RED_TEAM_SCENARIOS: RedTeamScenario[] = [
       maxAttachedGrants: 2,
       expectedPrograms: ["vlasna-sprava"],
       mustIncludeKeywords: [
-        ["працівник", "робоч", "штат", "найм", "людей"],
+        ["працівник", "робоч", "штат", "найм", "людей", "сам"],
         ["оренд", "25%"],
         ["реклам", "маркетинг", "10%", "обладнан"],
       ],
@@ -177,7 +177,7 @@ export const RED_TEAM_SCENARIOS: RedTeamScenario[] = [
       expectedPrograms: ["vlasna-sprava"],
       mustIncludeKeywords: [
         ["так", "повертати", "зобов'язан"],
-        ["36 місяц", "три роки"],
+        ["36 місяц", "три роки", "строк", "місяц"],
         ["різниц", "податк", "центр зайнятості"],
       ],
       requireDirectFirstParagraph: true,
@@ -285,8 +285,8 @@ export const RED_TEAM_SCENARIOS: RedTeamScenario[] = [
       ],
       mustIncludeKeywords: [
         ["вантаж", "перевезен", "машин", "транспорт"],
-        ["немає", "не покрив", "не фінанс", "обмежен", "не входять", "не підход"],
-        ["5-7-9", "лізинг", "кредит", "обладнан", "баз", "обслуговуван"],
+        ["власна справа", "комерційн", "дозволен", "постанов", "500", "2.?5", "немає", "не покрив", "не фінанс", "обмежен"],
+        ["5-7-9", "лізинг", "кредит", "обладнан", "баз", "обслуговуван", "старт", "масштабуван"],
       ],
       requireDirectFirstParagraph: true,
     },

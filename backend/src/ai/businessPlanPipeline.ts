@@ -183,13 +183,13 @@ function performPreSubmissionAudit(
     });
   }
 
-  // Check 2: Jobs vs grant amount
-  if (playbook?.program_id === "vlasna-sprava" && snapshot.requestedGrantUah > 150000 && snapshot.employeesCount < 2) {
+  // Check 2: Jobs vs grant amount (Власна справа 2.0: scaling > 500k requires min 1 job)
+  if (playbook?.program_id === "vlasna-sprava" && snapshot.requestedGrantUah > 500000 && snapshot.employeesCount < 1) {
     issues.push({
       criterion: "Вимоги до створення робочих місць",
       risk_level: "high",
-      issue: "Для суми гранту понад 150 тис. грн обов'язково створити мінімум 2 робочих місця.",
-      recommendation: "Додайте 2-го працівника до штатного розпису в розділі «Персонал».",
+      issue: "Для суми гранту понад 500 тис. грн (масштабування бізнесу за Постановою № 616) обов'язково створити мінімум 1 робоче місце.",
+      recommendation: "Додайте щонайменше 1 працівника до штатного розпису в розділі «Персонал».",
     });
   }
 

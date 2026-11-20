@@ -95,10 +95,10 @@ test("Grant Validator catches cash deficits, tax payback deficits, and job requi
   const vlasnaSpravaPlaybook = getProgramPlaybook("vlasna-sprava");
   assert.ok(vlasnaSpravaPlaybook);
 
-  // Scenario 1: Deficit in tax payback (1 employee, 250k grant on FOP 2 -> taxes ~279k, but if salary/revenue zero)
+  // Scenario 1: Deficit in tax payback and scaling jobs violation (>500k requires min 1 job under Vlasna Sprava 2.0)
   const deficientFinance = calculateDeterministicFinance({
     taxSystem: "fop_group_2",
-    requestedGrantKopecks: 25000000,
+    requestedGrantKopecks: 60000000,
     ownContributionKopecks: 0,
     openingBalanceKopecks: 0,
     hiredEmployeesCount: 0, // No employees!
@@ -113,17 +113,17 @@ test("Grant Validator catches cash deficits, tax payback deficits, and job requi
   const validation1 = validateGrantFinancials(
     deficientFinance,
     {
-      totalKopecks: 25000000,
-      items: [{ name: "Обладнання", kopecks: 25000000 }],
+      totalKopecks: 60000000,
+      items: [{ name: "Обладнання", kopecks: 60000000 }],
     },
-    { requestedGrantKopecks: 25000000, newJobs: 0 },
+    { requestedGrantKopecks: 60000000, newJobs: 0 },
     vlasnaSpravaPlaybook
   );
 
   assert.equal(validation1.valid, false);
   const errorCodes1 = validation1.blocking_errors.map(e => e.code);
   assert.ok(errorCodes1.includes("TAX_PAYBACK_DEFICIT"), "Catches tax payback deficit");
-  assert.ok(errorCodes1.includes("INSUFFICIENT_JOBS_VLASNA_SPRAVA"), "Catches insufficient jobs for 250k");
+  assert.ok(errorCodes1.includes("INSUFFICIENT_JOBS_VLASNA_SPRAVA"), "Catches insufficient jobs for scaling >500k");
 
   // Scenario 2: Cash deficit detection (expenses exceed inflows)
   const cashDeficitFinance = calculateDeterministicFinance({

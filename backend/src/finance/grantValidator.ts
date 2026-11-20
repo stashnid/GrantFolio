@@ -78,21 +78,26 @@ export function validateGrantFinancials(
   const jobs = questionnaire.newJobs ?? questionnaire.hiredEmployeesCount ?? 1;
 
   if (playbook?.program_id === "vlasna-sprava") {
-    const threshold150 = 150_000_00;
-    if (requestedGrantKopecks > threshold150 && jobs < 2) {
+    // Власна справа 2.0 (Постанова КМУ № 616, зі змінами № 1214):
+    // Старт (до 500 000 грн): створення робочих місць не обов'язкове (0 найманих працівників, робота самостійно дозволена).
+    // Масштабування (понад 500 000 грн, до 2 500 000 грн): обов'язкове створення щонайменше 1 нового робочого місця.
+    const maxGrantLimit = 250_000_000; // 2.5 млн грн у копійках
+    const scalingThreshold = 50_000_000; // 500 тис. грн у копійках
+
+    if (requestedGrantKopecks > maxGrantLimit) {
+      blocking_errors.push({
+        code: "GRANT_AMOUNT_EXCEEDS_MAX",
+        field: "requestedGrantKopecks",
+        message: `Запитувана сума (${(requestedGrantKopecks / 100).toLocaleString("uk-UA")} грн) перевищує максимальний ліміт 2 500 000 грн для програми «Власна справа 2.0».`,
+        severity: "blocking_error",
+        currentValue: requestedGrantKopecks,
+        requiredValue: maxGrantLimit,
+      });
+    } else if (requestedGrantKopecks > scalingThreshold && jobs < 1) {
       blocking_errors.push({
         code: "INSUFFICIENT_JOBS_VLASNA_SPRAVA",
         field: "newJobs",
-        message: `Для мікрогранту понад 150 000 грн (ваша сума: ${(requestedGrantKopecks / 100).toLocaleString("uk-UA")} грн) обов'язкове створення щонайменше 2 робочих місць. Зазначено: ${jobs}.`,
-        severity: "blocking_error",
-        currentValue: jobs,
-        requiredValue: 2,
-      });
-    } else if (jobs < 1) {
-      blocking_errors.push({
-        code: "MIN_ONE_JOB_REQUIRED",
-        field: "newJobs",
-        message: "Для отримання гранту обов'язкове створення щонайменше 1 офіційного робочого місця на 36 місяців.",
+        message: `Для масштабування бізнесу за програмою «Власна справа 2.0» (понад 500 000 грн) обов'язкове створення щонайменше 1 нового робочого місця. Зазначено: ${jobs}.`,
         severity: "blocking_error",
         currentValue: jobs,
         requiredValue: 1,

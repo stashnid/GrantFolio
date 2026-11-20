@@ -68,7 +68,7 @@ test("searchOfficialRules retrieves relevant regulatory sections from local file
   assert(vlasnaRules.length > 0, "Must return rules for Vlasna Sprava");
   const rentSection = vlasnaRules.find((r) => /оренд|працівник/i.test(r.snippet + r.section_title));
   assert(rentSection, "Must find sections discussing rent or workers");
-  assert.equal(rentSection.doc_id, "kmu-738-regulation");
+  assert.equal(rentSection.doc_id, "kmu-616-regulation");
   assert.match(rentSection.source_url, /zakon\.rada\.gov\.ua/);
 
   const brave1Rules = await searchOfficialRules({

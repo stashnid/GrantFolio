@@ -2,20 +2,20 @@
   "program_id": "vlasna-sprava",
   "documents": [
     {
-      "doc_id": "kmu-738-regulation",
-      "title": "Порядок надання мікрогрантів на створення або розвиток власного бізнесу (Постанова КМУ № 738)",
+      "doc_id": "kmu-616-regulation",
+      "title": "Порядок надання мікрогрантів на створення або розвиток власного бізнесу «Власна справа 2.0» (Постанова КМУ № 616, зі змінами № 1214)",
       "doc_type": "regulation",
-      "source_url": "https://zakon.rada.gov.ua/laws/show/738-2022-%D0%BF",
-      "verified_at": "2026-11-19T00:00:00.000Z",
+      "source_url": "https://zakon.rada.gov.ua/laws/show/616-2026-%D0%BF",
+      "verified_at": "2026-11-20T00:00:00.000Z",
       "local_file": "vlasna-sprava-rules.md",
       "is_verified_official": true
     },
     {
       "doc_id": "diia-official-template-xlsx",
-      "title": "Офіційний шаблон бізнес-плану програми «Власна справа» (форма Дія / Мінекономіки)",
+      "title": "Офіційний шаблон бізнес-плану програми «Власна справа 2.0» (форма Дія / Мінекономіки)",
       "doc_type": "template",
       "source_url": "https://diia.gov.ua/services/grant-na-vlasnu-spravu",
-      "verified_at": "2026-11-19T00:00:00.000Z",
+      "verified_at": "2026-11-20T00:00:00.000Z",
       "local_file": "vlasna-sprava-official-template.xlsx",
       "is_verified_official": true
     }

@@ -179,18 +179,18 @@ test("Cargo transportation query does not substitute processing business and pro
 
   const reply = result.reply_text.toLowerCase();
 
-  // Must mention reality of vehicle grants (no direct grant for buying regular trucks)
+  // Must explain commercial transport under Vlasna Sprava 2.0 and vehicle rules
   assert.match(
     reply,
-    /немає|не покрив|не фінанс|обмежен|не входять|не підход/i,
-    "Should explain that direct grants for general road cargo vehicles do not exist"
+    /власна справа|комерційн|транспорт|вантаж|дозволен|постанов/i,
+    "Should explain that commercial transport is eligible under Vlasna Sprava 2.0"
   );
 
-  // Must propose real financing alternatives (5-7-9, leasing, equipment for service base)
+  // Must propose real financing alternatives (5-7-9, leasing, or start/scale tracks)
   assert.match(
     reply,
-    /5-7-9|лізинг|кредит|баз|обладнан|обслуговуван/i,
-    "Should propose realistic alternatives like 5-7-9%, leasing or maintenance base equipment"
+    /5-7-9|лізинг|кредит|500|2.?5/i,
+    "Should propose realistic financing instruments like 5-7-9%, leasing, or Vlasna Sprava 2.0 tracks"
   );
 
   // Must avoid authoritarian legal verdicts and fake donor waves

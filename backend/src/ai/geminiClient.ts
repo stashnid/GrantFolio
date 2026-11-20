@@ -112,13 +112,23 @@ export async function callGeminiGenerate(
 
   while (attempts < 4) {
     attempts++;
-    res = await fetchImpl(url, {
-      method: "POST",
-      headers: Object.fromEntries(headers),
-      body: JSON.stringify(payload),
-      signal: request.signal,
-      redirect: "error",
-    });
+    try {
+      res = await fetchImpl(url, {
+        method: "POST",
+        headers: Object.fromEntries(headers),
+        body: JSON.stringify(payload),
+        signal: request.signal,
+        redirect: "error",
+      });
+    } catch (networkErr: any) {
+      if (attempts < 4) {
+        const delayMs = Math.min(10000, 1500 * attempts);
+        console.warn(`[AI] Network socket error on attempt ${attempts} (${networkErr?.message || networkErr}), retrying in ${delayMs}ms...`);
+        await new Promise((resolve) => setTimeout(resolve, delayMs));
+        continue;
+      }
+      throw networkErr;
+    }
 
     if (res.status === 400 && generationConfig.thinkingConfig) {
       // Safe fallback: retry without thinkingConfig if the endpoint or model version does not support thinking

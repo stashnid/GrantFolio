@@ -1433,7 +1433,7 @@ export function Advisor({
               <textarea
                 ref={input}
                 aria-label="Опишіть вашу потребу"
-                placeholder="Наприклад: хочу купити авто для доставки, працюю як ФОП у Львові…"
+                placeholder="Наприклад: хочу купити вантажне авто для бізнесу або розробляю дрони…"
                 value={text}
                 rows={1}
                 maxLength={2000}
