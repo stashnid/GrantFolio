@@ -187,8 +187,12 @@ export async function hybridSearchGrants(
     ["сад", "теплиц", "ягід", "фермер", "полів", "агро", "врожай", "земл", "трактор"].some((kw) => w.includes(kw))
   );
 
-  const hasProcessingIntent = queryWords.some((w) =>
-    ["перероб", "заморозк", "сушк", "сировин", "харчов", "борошн", "елеватор", "фасуван"].some((kw) => w.includes(kw))
+  const hasTransportLogisticsIntent = queryWords.some((w) =>
+    ["перевезен", "вантаж", "вантажівк", "фура", "тягач", "логістик", "грузовик", "сипуч"].some((kw) => w.includes(kw))
+  );
+
+  const hasProcessingIntent = !hasTransportLogisticsIntent && queryWords.some((w) =>
+    ["перероб", "заморозк", "сушк", "консерв", "сировин", "харчов", "борошн", "елеватор", "фасуван"].some((kw) => w.includes(kw))
   );
 
   // Try generating semantic embedding
@@ -213,7 +217,8 @@ export async function hybridSearchGrants(
     if ((program.id === "agro-gardens" || program.id === "mercy-corps-uasp-agro") && !hasAgroIntent) {
       continue;
     }
-    if (program.id === "processing-business" && !hasProcessingIntent && hasDefenseIntent) {
+    // Processing grants strictly require genuine processing intent and must NEVER be attached to transport/logistics
+    if (program.id === "processing-business" && !hasProcessingIntent) {
       continue;
     }
 

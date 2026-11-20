@@ -68,7 +68,19 @@ export function isAiConfigured(): boolean {
 }
 
 export function isMockAllowed(): boolean {
-  return process.env.NODE_ENV === "test" || process.env.ALLOW_AI_MOCK === "true";
+  if (process.env.ALLOW_AI_MOCK === "true") {
+    return true;
+  }
+  if (process.env.NODE_ENV === "development" || process.env.NODE_ENV === "production") {
+    return false;
+  }
+  if (process.env.NODE_ENV === "test") {
+    return true;
+  }
+  return (
+    process.env.npm_lifecycle_event === "test" ||
+    process.argv.some((arg) => arg.includes("--test") || arg.endsWith("test.ts") || arg.endsWith("test.js"))
+  );
 }
 
 export function resolveModelForRole(role: AiModelRole): string {

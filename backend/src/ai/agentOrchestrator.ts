@@ -700,6 +700,12 @@ export async function runAgentOrchestrator(
     // Sort by match_score descending
     verifiedGrants.sort((a, b) => b.match_score - a.match_score);
 
+    // Business model protection: cargo transportation / logistics queries must never attach processing-business
+    const isTransportLogistics = /перевезен|вантаж|сипуч|вантажівк|фура|тягач|автопарк/i.test(msgLower);
+    if (isTransportLogistics) {
+      verifiedGrants = verifiedGrants.filter((g) => g.program_id !== "processing-business");
+    }
+
     // Limit to max 2 top cards (or 3 for multi-topic queries like drone assembly or fruit drying + antidrone)
     const isMultiTopic =
       (msgLower.includes("дрон") && (msgLower.includes("майстерн") || msgLower.includes("підприєм"))) ||
@@ -752,8 +758,9 @@ async function runOfflineAgentOrchestrator(
 
   const attached_grants = results.filter((r) => GRANT_CATALOG.some((p) => p.id === r.program_id));
 
+  const isTransportLogistics = /перевезен|вантаж|сипуч|вантажівк|фура|тягач|автопарк/i.test(msg);
   const isVeteran = /ветеран|убд/i.test(msg);
-  const isProcessing = /переробк|заморозк|цех/i.test(msg);
+  const isProcessing = /переробк|заморозк|цех/i.test(msg) && !isTransportLogistics;
   const isBakery250kNoStaff = /пекарн/i.test(msg) && (/250/i.test(msg) || /дія\.?бізнес/i.test(msg)) && (/сам|без працівник/i.test(msg));
   const isBrave1Docs = /brave1/i.test(msg) && (/документ|подач|чекліст|brief|проєкт/i.test(msg));
 
@@ -766,6 +773,14 @@ async function runOfflineAgentOrchestrator(
       "2. Власна інженерна R&D-розробка нових моделей БПЛА, систем РЕБ чи прошивок для оборонних потреб:\n" +
       "Якщо ви створюєте власну унікальну конструкцію, польотний контролер чи систему протидії радіоелектронній боротьбі (TRL 3+) — це оборонний сектор. У такому разі слід подаватися до оборонного кластера Brave1 (гранти від $12 500 до $50 000 і більше на R&D, стендові та полігонні випробування).\n\n" +
       "Уточніть, будь ласка: ви плануєте відкривати сервісно-ремонтну майстерню як комерційний бізнес чи ведете власну конструкторську розробку під військові потреби?";
+  } else if (isTransportLogistics) {
+    reply_text =
+      "Прямих державних безповоротних грантів на придбання звичайних вантажних автомобілів, фур чи тягачів для перевезень наразі немає, оскільки транспортні засоби загального призначення не відносяться до виробничого обладнання за Порядком № 738.\n\n" +
+      "Для розвитку вашого бізнесу діють такі реальні фінансові інструменти:\n" +
+      "1. Пільгове кредитування та лізинг: державна програма «Доступні кредити 5-7-9%» або фінансовий лізинг у державних банках (Ощадбанк, ПриватБанк) на придбання та оновлення комерційного вантажного автопарку.\n" +
+      "2. Програма «Власна справа» (до 250 000 грн за умови створення 2 робочих місць): кошти гранту можна спрямувати на власну базу обслуговування/ремонту техніки (шиномонтаж, діагностичне обладнання, підйомники, компресори, навантажувач на базі або диспетчерське ПЗ).\n" +
+      "3. «Грант для ветеранів та членів їхніх сімей» (до 500 тис. чи 1 млн грн): якщо у вас або подружжя є статус УБД (зі створенням робочих місць та співфінансуванням 70/30).\n\n" +
+      "Який із цих варіантів — пільговий лізинг/кредит на машини чи обладнання власної бази/СТО — для вас зараз найбільш актуальний?";
   } else if (isBakery250kNoStaff) {
     reply_text =
       "Тут є два критичні моменти, які потрібно одразу розділити, щоб не отримати автоматичну відмову. " +
@@ -800,9 +815,13 @@ async function runOfflineAgentOrchestrator(
       : "Опишіть детальніше заплановані витрати або сферу бізнесу, щоб я міг підібрати точні умови грантових програм.";
   }
 
+  const safe_attached_grants = isTransportLogistics
+    ? attached_grants.filter((g) => g.program_id !== "processing-business")
+    : attached_grants;
+
   return {
     reply_text,
-    attached_grants,
+    attached_grants: safe_attached_grants,
     pending_proposals: [],
     tool_trace: [
       {

@@ -150,3 +150,49 @@ test("Security: agent filters out non-existent program IDs and stages proposals 
   assert.equal(result.pending_proposals[0].target, "budget_item");
   assert.equal(result.pending_proposals[0].summary, "Додати сонячний інвертор");
 });
+
+test("Cargo transportation query does not substitute processing business and provides grounded alternative financing paths", async () => {
+  const query = "я займаюсь перевезенням сипучих товарів грузовики машинами, які є гранти?";
+
+  // 1. hybridSearchGrants check: processing-business must not match cargo transportation
+  const searchResults = await hybridSearchGrants({
+    semanticQuery: query,
+    keywords: ["перевезення", "вантажні", "машини", "транспорт"],
+  });
+  assert.ok(
+    !searchResults.some((r) => r.program_id === "processing-business"),
+    "processing-business must not be returned for cargo logistics query"
+  );
+
+  // 2. Orchestrator response check
+  const result = await runAgentOrchestrator({
+    userMessage: query,
+  });
+
+  // Must never attach processing-business card
+  assert.ok(
+    !result.attached_grants.some((g) => g.program_id === "processing-business"),
+    "Orchestrator must not attach processing-business card for cargo transport"
+  );
+
+  const reply = result.reply_text.toLowerCase();
+
+  // Must mention reality of vehicle grants (no direct grant for buying regular trucks)
+  assert.match(
+    reply,
+    /немає|не покрив|не фінанс|обмежен|не входять|не підход/i,
+    "Should explain that direct grants for general road cargo vehicles do not exist"
+  );
+
+  // Must propose real financing alternatives (5-7-9, leasing, equipment for service base)
+  assert.match(
+    reply,
+    /5-7-9|лізинг|кредит|баз|обладнан|обслуговуван/i,
+    "Should propose realistic alternatives like 5-7-9%, leasing or maintenance base equipment"
+  );
+
+  // Must avoid authoritarian legal verdicts and fake donor waves
+  assert.ok(!reply.includes("закон прямо забороняє"), "Must not use authoritarian phrase 'закон прямо забороняє'");
+  assert.ok(!reply.includes("хвиля донорів") && !reply.includes("донорські хвилі"), "Must not invent fake donor waves");
+  assert.ok(!reply.includes("переробне підприємство"), "Must not impose processing business on a trucking company");
+});
